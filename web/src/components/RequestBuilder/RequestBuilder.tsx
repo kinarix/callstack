@@ -94,7 +94,7 @@ function getContentType(headers: KeyValue[]): string {
 
 let logIdCounter = 0;
 
-function buildCurl(method: string, url: string, headers: KeyValue[], body: string): string {
+function buildCurl(method: string, url: string, params: KeyValue[], headers: KeyValue[], body: string): string {
   const parts = [`curl -X ${method}`];
   const activeHeaders = headers.filter(h => h.enabled !== false && h.key.trim());
   for (const h of activeHeaders) {
@@ -107,6 +107,11 @@ function buildCurl(method: string, url: string, headers: KeyValue[], body: strin
     } else {
       parts.push(`--data ${JSON.stringify(body.trim())}`);
     }
+  }
+  const activeParams = params.filter(p => p.enabled !== false && p.key.trim());
+  if (activeParams.length > 0) {
+    const qs = activeParams.map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`).join('&');
+    url = url.includes('?') ? `${url}&${qs}` : `${url}?${qs}`;
   }
   parts.push(JSON.stringify(url));
   return parts.join(' \\\n  ');
@@ -312,7 +317,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand }: RequestBuil
 
     dispatch({ type: 'SET_LOADING', payload: true });
     const sentAt = Date.now();
-    const curl = buildCurl(request.method, normalizedUrl, resolvedHeaders, resolvedBody);
+    const curl = buildCurl(request.method, normalizedUrl, resolvedParams, resolvedHeaders, resolvedBody);
 
     try {
       const result = await send({

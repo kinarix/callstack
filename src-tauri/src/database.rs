@@ -101,7 +101,7 @@ impl Database {
                 position INTEGER DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (project_id) REFERENCES projects(id)
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             );
             CREATE TABLE IF NOT EXISTS responses (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -112,7 +112,7 @@ impl Database {
                 body TEXT,
                 time_ms INTEGER,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (request_id) REFERENCES requests(id)
+                FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE
             );
             CREATE TABLE IF NOT EXISTS folders (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -120,7 +120,7 @@ impl Database {
                 name TEXT NOT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (project_id) REFERENCES projects(id)
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             );
             CREATE TABLE IF NOT EXISTS environments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -486,9 +486,17 @@ pub fn update_request(
 #[tauri::command]
 pub fn delete_request(db: tauri::State<Database>, id: i64) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    // Temporarily disable foreign key constraints to avoid conflicts
+    conn.execute("PRAGMA foreign_keys = OFF", [])
+        .map_err(|e| e.to_string())?;
+
     conn.execute("DELETE FROM responses WHERE request_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM requests WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+
+    // Re-enable foreign key constraints
+    conn.execute("PRAGMA foreign_keys = ON", [])
         .map_err(|e| e.to_string())?;
     Ok(())
 }

@@ -110,18 +110,29 @@ function collectRequests(items: unknown[]): ParsedRequest[] {
 const POSTMAN_SCHEMA = 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json';
 
 function toPostmanItem(req: Request) {
+  // Ensure params is an array
+  const params = Array.isArray(req.params) ? req.params : [];
+  const enabledParams = params.filter((p) => p && p.enabled !== false);
+
+  // Construct the raw URL with query params
+  const queryString = enabledParams.length > 0
+    ? '?' + enabledParams.map((p) => `${encodeURIComponent(p.key || '')}=${encodeURIComponent(p.value || '')}`).join('&')
+    : '';
+  const rawUrl = req.url + queryString;
+
+  // Ensure headers is an array
+  const headers = Array.isArray(req.headers) ? req.headers : [];
+
   return {
     name: req.name,
     request: {
       method: req.method,
-      header: req.headers
-        .filter((h) => h.enabled !== false)
-        .map((h) => ({ key: h.key, value: h.value, type: 'text' })),
+      header: headers
+        .filter((h) => h && h.enabled !== false)
+        .map((h) => ({ key: h.key || '', value: h.value || '', type: 'text' })),
       url: {
-        raw: req.url,
-        query: req.params
-          .filter((p) => p.enabled !== false)
-          .map((p) => ({ key: p.key, value: p.value })),
+        raw: rawUrl,
+        query: enabledParams.map((p) => ({ key: p.key || '', value: p.value || '' })),
       },
       ...(req.body ? { body: { mode: 'raw' as const, raw: req.body } } : {}),
     },

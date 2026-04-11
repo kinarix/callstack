@@ -60,6 +60,7 @@ pub async fn send_request(
         for p in active_params {
             query.append_pair(&p.key, &p.value);
         }
+        drop(query);
     }
 
     // Build request

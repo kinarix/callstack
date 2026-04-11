@@ -307,24 +307,35 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
     setPendingDelete({ type: 'env', id, name });
   };
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = useCallback(async () => {
     if (!pendingDelete) return;
     const pd = pendingDelete;
+    console.log('Starting delete:', pd);
     setPendingDelete(null);
-    if (pd.type === 'project') {
-      await deleteProject(pd.id);
-      dispatch({ type: 'DELETE_PROJECT', payload: pd.id });
-    } else if (pd.type === 'folder') {
-      await deleteFolder(pd.id);
-      dispatch({ type: 'DELETE_FOLDER', payload: pd.id });
-    } else if (pd.type === 'request') {
-      await deleteRequest(pd.id);
-      dispatch({ type: 'DELETE_REQUEST', payload: pd.id });
-    } else if (pd.type === 'env') {
-      await deleteEnvironment(pd.id);
-      dispatch({ type: 'DELETE_ENVIRONMENT', payload: pd.id });
+    try {
+      if (pd.type === 'project') {
+        console.log('Deleting project:', pd.id);
+        await deleteProject(pd.id);
+        dispatch({ type: 'DELETE_PROJECT', payload: pd.id });
+      } else if (pd.type === 'folder') {
+        console.log('Deleting folder:', pd.id);
+        await deleteFolder(pd.id);
+        dispatch({ type: 'DELETE_FOLDER', payload: pd.id });
+      } else if (pd.type === 'request') {
+        console.log('Deleting request:', pd.id);
+        await deleteRequest(pd.id);
+        console.log('Request deleted successfully');
+        dispatch({ type: 'DELETE_REQUEST', payload: pd.id });
+      } else if (pd.type === 'env') {
+        console.log('Deleting environment:', pd.id);
+        await deleteEnvironment(pd.id);
+        dispatch({ type: 'DELETE_ENVIRONMENT', payload: pd.id });
+      }
+    } catch (error) {
+      console.error('Delete failed:', error);
+      setPendingDelete(pd);
     }
-  };
+  }, [pendingDelete, deleteProject, deleteFolder, deleteRequest, deleteEnvironment, dispatch]);
 
   const handleCreateFolder = (projectId: number, e: React.MouseEvent) => {
     e.stopPropagation();
