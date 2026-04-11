@@ -17,6 +17,9 @@
   --border-primary: #3a3a47;
   --border-secondary: #2f2f3a;
 
+  /* Generic accent (UI highlights, focus rings, drag targets) */
+  --accent: #3b82f6;
+
   /* Accents - HTTP methods */
   --accent-get: #10b981;      /* teal */
   --accent-post: #3b82f6;     /* blue */

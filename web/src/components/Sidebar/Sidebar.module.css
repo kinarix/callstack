@@ -351,23 +351,25 @@
   border-radius: var(--radius-sm);
 }
 
-.treeRow.dropAbove::after,
-.treeRow.dropBelow::after {
-  content: '';
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  height: 2px;
-  background: var(--accent);
-  border-radius: 1px;
-  pointer-events: none;
-  z-index: 1;
+.requestRowWrap {
+  position: relative;
 }
 
-.treeRow.dropAbove::after {
+.dropLine {
+  position: absolute;
+  left: 22px; /* align with RequestItem content (matches treeRow padding-left) */
+  right: 4px;
+  height: 2px;
+  background: var(--accent-delete);
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.dropLine.dropAbove {
   top: 0;
 }
 
-.treeRow.dropBelow::after {
+.dropLine.dropBelow {
   bottom: 0;
 }

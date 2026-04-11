@@ -377,7 +377,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
     const currentDragOver = dragOver;
     setDragOver(null);
     dragging.current = null;
-    if (!d || d.kind !== 'request') return;
+    if (!d || d.kind !== 'request' || d.id === overRequest.id) return;
     const above = currentDragOver?.type === 'request-above';
     await applyRequestMove(d.id, overRequest.project_id, overRequest.folder_id, overRequest.id, above);
   };
@@ -385,6 +385,10 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
   const onRequestDragOver = (e: React.DragEvent, request: Request) => {
     e.preventDefault();
     e.stopPropagation();
+    if (dragging.current?.kind === 'request' && dragging.current.id === request.id) {
+      setDragOver(null);
+      return;
+    }
     const rect = e.currentTarget.getBoundingClientRect();
     const above = e.clientY < rect.top + rect.height / 2;
     setDragOver({ type: above ? 'request-above' : 'request-below', id: request.id });
@@ -634,36 +638,39 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                   <div className={`${styles.treeRow} ${styles.emptyRow}`}>No requests</div>
                                 ) : (
                                   folderRequests.map((request) => (
-                                    <div
-                                      key={request.id}
-                                      className={[
-                                        styles.treeRow,
-                                        dragOver?.id === request.id && dragOver.type === 'request-above' && styles.dropAbove,
-                                        dragOver?.id === request.id && dragOver.type === 'request-below' && styles.dropBelow,
-                                      ].filter(Boolean).join(' ')}
-                                      draggable
-                                      onDragStart={(e) => {
-                                        dragging.current = { kind: 'request', id: request.id };
-                                        e.dataTransfer.effectAllowed = 'move';
-                                        e.stopPropagation();
-                                      }}
-                                      onDragEnd={() => {
-                                        dragging.current = null;
-                                        setDragOver(null);
-                                      }}
-                                      onDragOver={(e) => onRequestDragOver(e, request)}
-                                      onDragLeave={clearDragOverIfLeaving}
-                                      onDrop={(e) => handleDropOnRequest(e, request)}
-                                    >
-                                      <RequestItem
-                                        request={request}
-                                        isSelected={currentRequestId === request.id}
-                                        isEditing={editingRequestId === request.id}
-                                        onSelect={handleSelect}
-                                        onDelete={requestDeleteRequest}
-                                        onRenameCommit={handleRenameCommit}
-                                        onRenameCancel={() => setEditingRequestId(null)}
-                                      />
+                                    <div key={request.id} className={styles.requestRowWrap}>
+                                      {dragOver?.id === request.id && dragOver.type === 'request-above' && (
+                                        <div className={`${styles.dropLine} ${styles.dropAbove}`} />
+                                      )}
+                                      <div
+                                        className={styles.treeRow}
+                                        draggable
+                                        onDragStart={(e) => {
+                                          dragging.current = { kind: 'request', id: request.id };
+                                          e.dataTransfer.effectAllowed = 'move';
+                                          e.stopPropagation();
+                                        }}
+                                        onDragEnd={() => {
+                                          dragging.current = null;
+                                          setDragOver(null);
+                                        }}
+                                        onDragOver={(e) => onRequestDragOver(e, request)}
+                                        onDragLeave={clearDragOverIfLeaving}
+                                        onDrop={(e) => handleDropOnRequest(e, request)}
+                                      >
+                                        <RequestItem
+                                          request={request}
+                                          isSelected={currentRequestId === request.id}
+                                          isEditing={editingRequestId === request.id}
+                                          onSelect={handleSelect}
+                                          onDelete={requestDeleteRequest}
+                                          onRenameCommit={handleRenameCommit}
+                                          onRenameCancel={() => setEditingRequestId(null)}
+                                        />
+                                      </div>
+                                      {dragOver?.id === request.id && dragOver.type === 'request-below' && (
+                                        <div className={`${styles.dropLine} ${styles.dropBelow}`} />
+                                      )}
                                     </div>
                                   ))
                                 )}
@@ -679,36 +686,39 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                           <div className={`${styles.treeRow} ${styles.emptyRow}`}>No requests</div>
                         ) : (
                           rootRequests.map((request) => (
-                            <div
-                              key={request.id}
-                              className={[
-                                styles.treeRow,
-                                dragOver?.id === request.id && dragOver.type === 'request-above' && styles.dropAbove,
-                                dragOver?.id === request.id && dragOver.type === 'request-below' && styles.dropBelow,
-                              ].filter(Boolean).join(' ')}
-                              draggable
-                              onDragStart={(e) => {
-                                dragging.current = { kind: 'request', id: request.id };
-                                e.dataTransfer.effectAllowed = 'move';
-                                e.stopPropagation();
-                              }}
-                              onDragEnd={() => {
-                                dragging.current = null;
-                                setDragOver(null);
-                              }}
-                              onDragOver={(e) => onRequestDragOver(e, request)}
-                              onDragLeave={clearDragOverIfLeaving}
-                              onDrop={(e) => handleDropOnRequest(e, request)}
-                            >
-                              <RequestItem
-                                request={request}
-                                isSelected={currentRequestId === request.id}
-                                isEditing={editingRequestId === request.id}
-                                onSelect={handleSelect}
-                                onDelete={requestDeleteRequest}
-                                onRenameCommit={handleRenameCommit}
-                                onRenameCancel={() => setEditingRequestId(null)}
-                              />
+                            <div key={request.id} className={styles.requestRowWrap}>
+                              {dragOver?.id === request.id && dragOver.type === 'request-above' && (
+                                <div className={`${styles.dropLine} ${styles.dropAbove}`} />
+                              )}
+                              <div
+                                className={styles.treeRow}
+                                draggable
+                                onDragStart={(e) => {
+                                  dragging.current = { kind: 'request', id: request.id };
+                                  e.dataTransfer.effectAllowed = 'move';
+                                  e.stopPropagation();
+                                }}
+                                onDragEnd={() => {
+                                  dragging.current = null;
+                                  setDragOver(null);
+                                }}
+                                onDragOver={(e) => onRequestDragOver(e, request)}
+                                onDragLeave={clearDragOverIfLeaving}
+                                onDrop={(e) => handleDropOnRequest(e, request)}
+                              >
+                                <RequestItem
+                                  request={request}
+                                  isSelected={currentRequestId === request.id}
+                                  isEditing={editingRequestId === request.id}
+                                  onSelect={handleSelect}
+                                  onDelete={requestDeleteRequest}
+                                  onRenameCommit={handleRenameCommit}
+                                  onRenameCancel={() => setEditingRequestId(null)}
+                                />
+                              </div>
+                              {dragOver?.id === request.id && dragOver.type === 'request-below' && (
+                                <div className={`${styles.dropLine} ${styles.dropBelow}`} />
+                              )}
                             </div>
                           ))
                         )}
