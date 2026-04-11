@@ -17,6 +17,7 @@ interface RawRequest {
   position: number;
   createdAt: string;
   updatedAt: string;
+  imported: boolean;
 }
 
 function parseRequest(raw: RawRequest): Request {
@@ -35,6 +36,7 @@ function parseRequest(raw: RawRequest): Request {
     position: raw.position,
     created_at: raw.createdAt,
     updated_at: raw.updatedAt,
+    imported: raw.imported ?? false,
   };
 }
 
@@ -44,6 +46,7 @@ interface RawFolder {
   name: string;
   createdAt: string;
   updatedAt: string;
+  imported: boolean;
 }
 
 function parseFolder(raw: RawFolder): Folder {
@@ -53,6 +56,7 @@ function parseFolder(raw: RawFolder): Folder {
     name: raw.name,
     created_at: raw.createdAt,
     updated_at: raw.updatedAt,
+    imported: raw.imported ?? false,
   };
 }
 
@@ -180,9 +184,22 @@ export function useDatabase() {
   );
 
   const createFolder = useCallback(
-    async (projectId: number, name: string): Promise<Folder> => {
-      const raw = await invoke<RawFolder>('create_folder', { projectId, name });
+    async (projectId: number, name: string, imported?: boolean): Promise<Folder> => {
+      const raw = await invoke<RawFolder>('create_folder', { projectId, name, imported: imported ?? null });
       return parseFolder(raw);
+    },
+    []
+  );
+
+  const importRequests = useCallback(
+    async (
+      projectId: number,
+      folderId: number | null,
+      userEmail: string | null,
+      requests: { name: string; method: string; url: string; params: string; headers: string; body: string }[]
+    ): Promise<Request[]> => {
+      const raws = await invoke<RawRequest[]>('import_requests', { projectId, folderId, userEmail, requests });
+      return raws.map(parseRequest);
     },
     []
   );
@@ -370,6 +387,7 @@ export function useDatabase() {
     createFolder,
     updateFolder,
     deleteFolder,
+    importRequests,
     duplicateRequest,
     duplicateFolder,
     saveResponse,

@@ -69,6 +69,23 @@ function CopyIcon() {
   );
 }
 
+function ImportedIcon() {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 10 10"
+      fill="none"
+      aria-label="Imported"
+      style={{ flexShrink: 0, color: 'var(--text-tertiary)', opacity: 0.7 }}
+    >
+      <title>Imported</title>
+      <path d="M5 1v5M2.5 4L5 6.5L7.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M1.5 8h7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 interface RequestItemProps {
   request: Request;
   isSelected: boolean;
@@ -143,7 +160,10 @@ export function RequestItem({
             spellCheck={false}
           />
         ) : (
-          <div className={styles.name}>{request.name}</div>
+          <div className={styles.name}>
+            {request.name}
+            {request.imported && <ImportedIcon />}
+          </div>
         )}
       </div>
       {!isEditing && (

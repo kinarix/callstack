@@ -22,6 +22,7 @@ export interface Folder {
   name: string;
   created_at: string;
   updated_at: string;
+  imported: boolean;
 }
 
 export interface Request {
@@ -39,6 +40,7 @@ export interface Request {
   position: number;
   created_at: string;
   updated_at: string;
+  imported: boolean;
 }
 
 export interface Response {
