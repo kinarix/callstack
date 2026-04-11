@@ -55,6 +55,8 @@ pub fn run() {
             database::create_folder,
             database::update_folder,
             database::delete_folder,
+            database::duplicate_request,
+            database::duplicate_folder,
             database::save_response,
             database::get_last_response,
             database::list_environments,

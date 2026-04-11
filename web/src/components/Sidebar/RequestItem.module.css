@@ -128,3 +128,28 @@
   color: var(--text-primary);
   transform: scale(1.2);
 }
+
+.copyBtn {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  transition: all var(--transition-base);
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item:hover .copyBtn {
+  opacity: 1;
+}
+
+.copyBtn:hover {
+  color: var(--text-primary);
+  transform: scale(1.2);
+}
