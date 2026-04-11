@@ -1,0 +1,57 @@
+.builder {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+.bodyError {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px var(--space-2);
+  background: color-mix(in srgb, var(--accent-delete) 12%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent-delete) 30%, transparent);
+  font-size: 12px;
+  color: var(--accent-delete);
+  flex-shrink: 0;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.bodyErrorIcon {
+  flex-shrink: 0;
+}
+
+.panes {
+  flex: 1;
+  display: grid;
+  /* grid-template-columns driven by inline style */
+  min-height: 0;
+  border-top: 1px solid var(--border-primary);
+}
+
+.splitHandle {
+  width: 4px;
+  cursor: col-resize;
+  background: var(--border-secondary);
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.splitHandle:hover {
+  background: var(--border-primary);
+}
+
+.requestPane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.responsePane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}

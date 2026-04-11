@@ -1,0 +1,105 @@
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 3px var(--space-1);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+}
+
+.item:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-secondary);
+}
+
+.item.selected {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-post);
+}
+
+.fileIcon {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.badge {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--bg-primary);
+  min-width: 42px;
+  text-align: center;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nameInput {
+  width: 100%;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--accent-post);
+  border-radius: 3px;
+  padding: 1px 4px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.url {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.deleteBtn {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  transition: all var(--transition-base);
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item:hover .deleteBtn {
+  opacity: 1;
+  color: var(--status-error);
+}
+
+.deleteBtn:hover {
+  transform: scale(1.2);
+}

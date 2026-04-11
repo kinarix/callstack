@@ -1,0 +1,127 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  width: 700px;
+  max-width: 92vw;
+  height: 380px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.titleRow {
+  flex: 1;
+  min-width: 0;
+}
+
+.nameBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nameBtn:hover {
+  background: var(--bg-hover);
+  color: var(--accent-post);
+}
+
+.nameBtn svg {
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.nameInput {
+  background: var(--bg-primary);
+  border: 1px solid var(--accent-post);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 2px 6px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-1);
+  min-height: 0;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.cancelBtn {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 16px;
+  font-family: 'Outfit', sans-serif;
+}
+
+.cancelBtn:hover {
+  background: var(--bg-hover);
+}
+
+.saveBtn {
+  background: var(--accent-post);
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 20px;
+  font-family: 'Outfit', sans-serif;
+}
+
+.saveBtn:hover {
+  filter: brightness(1.1);
+}

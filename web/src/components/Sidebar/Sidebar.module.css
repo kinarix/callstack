@@ -1,0 +1,373 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-primary);
+  height: 100%;
+  overflow: hidden;
+}
+
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-1) 0 var(--space-2);
+  height: 36px;
+  border-bottom: 1px solid var(--border-primary);
+  flex-shrink: 0;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-tertiary);
+}
+
+.newProjectBtn,
+.collapseBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-base), color var(--transition-base);
+  padding: 0;
+}
+
+.newProjectBtn:hover,
+.collapseBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* ── Tree ─────────────────────────────────────────────── */
+
+.tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-1) 0;
+  user-select: none;
+}
+
+.empty {
+  padding: var(--space-2);
+  color: var(--text-tertiary);
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* ── Project (folder) ─────────────────────────────────── */
+
+.project {
+  display: flex;
+  flex-direction: column;
+}
+
+/* padding: top bottom left right
+   left=6px so chevron center = 6 + 6 = 12px from .project left */
+.projectRow {
+  display: flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 4px 0 6px;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.projectRow:hover {
+  background: var(--bg-hover);
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  transition: transform 0.15s ease;
+  transform: rotate(-90deg);
+}
+
+.chevron.chevronOpen {
+  transform: rotate(0deg);
+}
+
+.projectName {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.projectNameInput {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: var(--bg-input, var(--bg-secondary));
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 0 4px;
+  outline: none;
+  height: 20px;
+}
+
+.folderNameInput {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-secondary);
+  background: var(--bg-input, var(--bg-secondary));
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 0 4px;
+  outline: none;
+  height: 20px;
+}
+
+.iconBtn {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--text-secondary);
+  opacity: 0;
+  transition: opacity var(--transition-base), color var(--transition-base), background var(--transition-base);
+  padding: 0;
+  line-height: 1;
+}
+
+.projectRow:hover .iconBtn {
+  opacity: 1;
+}
+
+.iconBtn:hover {
+  background: var(--bg-tertiary, var(--bg-primary));
+  color: var(--text-primary);
+}
+
+.iconBtn.deleteBtn:hover {
+  color: var(--status-error);
+}
+
+.folderAddBtn {
+  width: auto;
+  padding: 0 5px;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+}
+
+/* ── Children (tree lines) ────────────────────────────── */
+
+.children {
+  position: relative;
+}
+
+/* Vertical tree line — left=12 matches chevron center */
+.children::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border-primary);
+  pointer-events: none;
+}
+
+/* Each row in the tree (request item or empty label) */
+.treeRow {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  padding-left: 22px; /* 12 (vertical line) + 10 (connector) = 22 */
+}
+
+.treeRow.dragging {
+  opacity: 0.4;
+}
+
+.folderDropActive > .folder > .folderRow {
+  background: var(--bg-hover);
+  outline: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+}
+
+.projectRowDropActive {
+  background: var(--bg-hover);
+  outline: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+}
+
+/* Horizontal connector from vertical line to content */
+.treeRow::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 10px;
+  height: 1px;
+  background: var(--border-primary);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.emptyRow {
+  height: 26px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-style: italic;
+  align-items: center;
+  padding-left: 26px;
+}
+
+/* ── Folders ──────────────────────────────────────────── */
+
+.folder {
+  display: flex;
+  flex-direction: column;
+}
+
+.folderRow {
+  display: flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 4px 0 16px;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.folderRow:hover {
+  background: var(--bg-hover);
+}
+
+.folderRow:hover .iconBtn {
+  opacity: 1;
+}
+
+.folderName {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.folderChildren {
+  position: relative;
+  padding-left: 16px;
+}
+
+.folderChildren::before {
+  content: '';
+  position: absolute;
+  left: 22px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border-primary);
+  pointer-events: none;
+}
+
+.treeIcon {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.treeIconProject {
+  color: var(--accent-put);
+}
+
+.treeIconFolder {
+  color: var(--accent-post);
+}
+
+.treeIconEnv {
+  color: var(--accent-patch);
+}
+
+.envRow {
+  cursor: pointer;
+  gap: 5px;
+}
+
+.envRow:hover {
+  background: var(--bg-hover);
+}
+
+.envRow:hover .iconBtn {
+  opacity: 1;
+}
+
+.envName {
+  flex: 1;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.envRow:hover .envName {
+  color: var(--text-primary);
+}
+
+.dragOver {
+  background: var(--bg-hover);
+  outline: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+}
+
+.treeRow.dropAbove::after,
+.treeRow.dropBelow::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.treeRow.dropAbove::after {
+  top: 0;
+}
+
+.treeRow.dropBelow::after {
+  bottom: 0;
+}

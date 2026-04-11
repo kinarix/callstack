@@ -1,0 +1,38 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/v2/core/tauri-config-schema/schema.json",
+  "productName": "Callstack",
+  "version": "0.1.0",
+  "identifier": "com.kinarix.callstack",
+  "build": {
+    "frontendDist": "../web/dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm run dev --prefix web",
+    "beforeBuildCommand": "npm run build --prefix web"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Callstack",
+        "width": 1200,
+        "height": 800,
+        "resizable": true,
+        "fullscreen": true,
+        "dragDropEnabled": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

@@ -1,0 +1,121 @@
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.row {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+.checkbox {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-secondary);
+  border-radius: 4px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all var(--transition-base);
+}
+
+.checkbox:hover {
+  border-color: var(--accent-post);
+}
+
+.checkbox.checked {
+  background: var(--accent-post);
+  border-color: var(--accent-post);
+  color: var(--bg-primary);
+}
+
+.input {
+  flex: 1;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  transition: all var(--transition-base);
+}
+
+.input:first-of-type {
+  flex: 0 1 150px;
+  min-width: 100px;
+}
+
+.input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent-post);
+}
+
+.input:disabled {
+  background: var(--bg-tertiary);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.deleteBtn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-base);
+}
+
+.deleteBtn:hover {
+  color: var(--status-error);
+  transform: scale(1.2);
+}
+
+.addBtn {
+  padding: var(--space-1) var(--space-2);
+  background: transparent;
+  border: 1px dashed var(--border-secondary);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.addBtn:hover {
+  border-color: var(--accent-post);
+  color: var(--accent-post);
+}
+
+.empty {
+  padding: var(--space-2);
+  color: var(--text-tertiary);
+  font-size: 12px;
+  text-align: center;
+}

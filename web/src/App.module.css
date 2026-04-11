@@ -1,0 +1,121 @@
+.app {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 60px 1fr;
+  height: 100vh;
+  background: var(--bg-primary);
+  gap: 0;
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+/* body: fills the row below the header, stacks content + footer */
+.body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.content {
+  display: grid;
+  grid-template-columns: 280px 4px 1fr; /* overridden by inline style */
+  background: var(--bg-primary);
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
+.sidebarWrap {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.resizeHandle {
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.resizeHandle:hover {
+  background: var(--border-primary);
+}
+
+.main {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.floatingExpand {
+  background: none;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  width: 32px;
+  height: 32px;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin-bottom: var(--space-2);
+  transition: color var(--transition-base), border-color var(--transition-base);
+}
+
+.floatingExpand:hover {
+  color: var(--text-primary);
+  border-color: var(--border-primary);
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: var(--text-secondary);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-secondary);
+  border-top-color: var(--accent-post);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-tertiary);
+  text-align: center;
+  padding: var(--space-4);
+}
+
+.emptyState h2 {
+  font-size: 20px;
+  margin: 0 0 var(--space-2) 0;
+  color: var(--text-primary);
+}
+
+.emptyState p {
+  margin: 0;
+  max-width: 300px;
+}

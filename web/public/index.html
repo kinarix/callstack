@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CALLSTACK - Quick Start</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+      color: #e0e0e0;
+      padding: 40px 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: rgba(22, 22, 22, 0.8);
+      border: 2px solid #2a2a2a;
+      border-radius: 4px;
+      padding: 40px;
+    }
+
+    h1 {
+      font-size: 48px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #00ff88, #00b8ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 20px;
+      letter-spacing: 2px;
+    }
+
+    h2 {
+      color: #00ff88;
+      margin-top: 30px;
+      margin-bottom: 15px;
+      font-size: 24px;
+      border-left: 4px solid #00ff88;
+      padding-left: 12px;
+    }
+
+    p {
+      line-height: 1.8;
+      margin-bottom: 15px;
+      color: #b0b0b0;
+    }
+
+    .cta-button {
+      display: inline-block;
+      background: #00ff88;
+      color: #0a0a0a;
+      padding: 16px 32px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 18px;
+      border-radius: 4px;
+      margin: 20px 10px 20px 0;
+      transition: all 0.3s;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .cta-button:hover {
+      background: #00b8ff;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 255, 136, 0.3);
+    }
+
+    .cta-button.secondary {
+      background: transparent;
+      border: 2px solid #00ff88;
+      color: #00ff88;
+    }
+
+    .cta-button.secondary:hover {
+      background: rgba(0, 255, 136, 0.1);
+    }
+
+    code {
+      background: #0a0a0a;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      color: #00ff88;
+      border: 1px solid #2a2a2a;
+    }
+
+    pre {
+      background: #0a0a0a;
+      padding: 20px;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin: 20px 0;
+      border: 1px solid #2a2a2a;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      border: none;
+      color: #e0e0e0;
+    }
+
+    .feature-list {
+      list-style: none;
+      margin: 20px 0;
+    }
+
+    .feature-list li {
+      padding: 10px 0;
+      padding-left: 30px;
+      position: relative;
+      color: #b0b0b0;
+    }
+
+    .feature-list li:before {
+      content: "▸";
+      position: absolute;
+      left: 0;
+      color: #00ff88;
+      font-weight: bold;
+      font-size: 20px;
+    }
+
+    .warning {
+      background: rgba(255, 170, 0, 0.1);
+      border-left: 4px solid #ffaa00;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+
+    .warning strong {
+      color: #ffaa00;
+    }
+
+    .success {
+      background: rgba(0, 255, 136, 0.1);
+      border-left: 4px solid #00ff88;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+
+    .step {
+      background: #161616;
+      border: 1px solid #2a2a2a;
+      padding: 20px;
+      margin: 15px 0;
+      border-radius: 4px;
+      border-left: 4px solid #00b8ff;
+    }
+
+    .step h3 {
+      color: #00b8ff;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>CALLSTACK</h1>
+    <p style="font-size: 18px; color: #00ff88; margin-bottom: 30px;">
+      A brutalist Progressive Web App for API testing with local SQLite storage
+    </p>
+
+    <a href="callstack.html" class="cta-button">Launch CALLSTACK</a>
+    <a href="README.md" class="cta-button secondary" download>Download README</a>
+
+    <h2>✨ Features</h2>
+    <ul class="feature-list">
+      <li>Full REST API testing (GET, POST, PUT, DELETE, PATCH)</li>
+      <li>Local SQLite storage - all data stays in your browser</li>
+      <li>Google Sign-In for multi-device sync (optional)</li>
+      <li>Works completely offline once installed</li>
+      <li>Request builder with params, headers, and body</li>
+      <li>Response viewer with timing and size metrics</li>
+      <li>Auto-save - never lose your work</li>
+      <li>Brutalist dark mode design</li>
+    </ul>
+
+    <h2>🚀 Quick Start</h2>
+
+    <div class="step">
+      <h3>Step 1: Test Locally</h3>
+      <p>You're already here! Just click "Launch CALLSTACK" above to start using it.</p>
+      <p>For local development, serve these files with any HTTP server:</p>
+      <pre><code># Python
+python -m http.server 8000
+
+# Node.js
+npx http-server -p 8000</code></pre>
+    </div>
+
+    <div class="step">
+      <h3>Step 2: Deploy (Optional)</h3>
+      <p>Deploy to any static hosting service for HTTPS (required for PWA installation):</p>
+      <ul class="feature-list">
+        <li><strong>GitHub Pages:</strong> Free, easy, includes HTTPS</li>
+        <li><strong>Netlify:</strong> Drag-and-drop deployment</li>
+        <li><strong>Vercel:</strong> One-command deployment</li>
+        <li><strong>Cloudflare Pages:</strong> Global CDN</li>
+      </ul>
+    </div>
+
+    <div class="step">
+      <h3>Step 3: Enable Google Sign-In (Optional)</h3>
+      <p>To sync requests across devices:</p>
+      <ol style="margin-left: 20px; color: #b0b0b0; line-height: 1.8;">
+        <li>Create a Google Cloud Project</li>
+        <li>Enable OAuth 2.0</li>
+        <li>Get your Client ID</li>
+        <li>Update <code>GOOGLE_CLIENT_ID</code> in callstack.html</li>
+      </ol>
+      <p style="margin-top: 10px; font-size: 14px; color: #909090;">
+        See README.md for detailed instructions
+      </p>
+    </div>
+
+    <div class="warning">
+      <strong>⚠️ CORS Notice:</strong> Like all browser-based API tools, you may encounter CORS errors when testing certain APIs. This is a browser security feature, not a bug. See the README for workarounds.
+    </div>
+
+    <div class="success">
+      <strong>✓ Privacy First:</strong> All data is stored locally in your browser. Nothing is sent to external servers (except when you make API requests, of course!).
+    </div>
+
+    <h2>📦 Files Included</h2>
+    <ul class="feature-list">
+      <li><code>callstack.html</code> - Main application (single file!)</li>
+      <li><code>manifest.json</code> - PWA configuration</li>
+      <li><code>sw.js</code> - Service Worker for offline support</li>
+      <li><code>icon-192.png</code> - App icon (192×192)</li>
+      <li><code>icon-512.png</code> - App icon (512×512)</li>
+      <li><code>README.md</code> - Complete documentation</li>
+      <li><code>generate-icons.py</code> - Icon generator script</li>
+    </ul>
+
+    <h2>🎯 Use Cases</h2>
+    <ul class="feature-list">
+      <li>Test REST APIs during development</li>
+      <li>Debug API responses and headers</li>
+      <li>Share API request collections with team</li>
+      <li>Test APIs offline (with saved requests)</li>
+      <li>Quick API prototyping and exploration</li>
+      <li>Alternative to Postman for simple testing</li>
+    </ul>
+
+    <h2>🔧 System Requirements</h2>
+    <ul class="feature-list">
+      <li>Modern browser (Chrome 67+, Edge 79+, Firefox 60+, Safari 11.1+)</li>
+      <li>JavaScript enabled</li>
+      <li>LocalStorage enabled (not private/incognito mode)</li>
+      <li>HTTPS hosting (for PWA installation and Google Sign-In)</li>
+    </ul>
+
+    <h2>📖 Documentation</h2>
+    <p>
+      Full documentation is available in <code>README.md</code> including:
+    </p>
+    <ul class="feature-list">
+      <li>Detailed setup instructions</li>
+      <li>Google Sign-In configuration</li>
+      <li>Deployment guides for various platforms</li>
+      <li>Database schema and backup procedures</li>
+      <li>Troubleshooting common issues</li>
+      <li>Customization options</li>
+    </ul>
+
+    <h2>🎨 Design Philosophy</h2>
+    <p>
+      CALLSTACK embraces a brutalist aesthetic with:
+    </p>
+    <ul class="feature-list">
+      <li><strong>Dark mode</strong> for reduced eye strain during long dev sessions</li>
+      <li><strong>Monospace typography</strong> (JetBrains Mono) for code-centric work</li>
+      <li><strong>Geometric precision</strong> with clean grids and borders</li>
+      <li><strong>Neon accents</strong> for visual hierarchy and method differentiation</li>
+      <li><strong>No bloat</strong> - single HTML file, minimal dependencies</li>
+    </ul>
+
+    <div class="success" style="margin-top: 40px; text-align: center;">
+      <p style="font-size: 20px; margin-bottom: 10px;">Ready to test some APIs?</p>
+      <a href="callstack.html" class="cta-button">Launch CALLSTACK</a>
+    </div>
+
+    <p style="text-align: center; margin-top: 40px; color: #606060; font-size: 14px;">
+      Built with ❤️ using SQL.js, Service Workers, and modern web standards<br>
+      No backend required • Offline-first • Privacy-focused
+    </p>
+  </div>
+</body>
+</html>
