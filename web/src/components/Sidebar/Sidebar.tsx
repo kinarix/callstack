@@ -65,6 +65,14 @@ function BinIcon() {
   );
 }
 
+function PenIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <path d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function ProjectIcon() {
   return (
     <svg className={`${styles.treeIcon} ${styles.treeIconProject}`} width="13" height="13" viewBox="0 0 13 13" fill="none">
@@ -555,6 +563,15 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                     >
                       +
                     </button>
+                    {editingProjectId !== project.id && (
+                      <button
+                        className={styles.iconBtn}
+                        onClick={(e) => { e.stopPropagation(); setEditingProjectId(project.id); }}
+                        title="Rename project"
+                      >
+                        <PenIcon />
+                      </button>
+                    )}
                     <button
                       className={`${styles.iconBtn} ${styles.deleteBtn}`}
                       onClick={(e) => requestDeleteProject(project.id, e)}
@@ -623,6 +640,15 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                               >
                                 +
                               </button>
+                              {editingFolderId !== folder.id && (
+                                <button
+                                  className={styles.iconBtn}
+                                  onClick={(e) => { e.stopPropagation(); setEditingFolderId(folder.id); }}
+                                  title="Rename folder"
+                                >
+                                  <PenIcon />
+                                </button>
+                              )}
                               <button
                                 className={`${styles.iconBtn} ${styles.deleteBtn}`}
                                 onClick={(e) => { e.stopPropagation(); requestDeleteFolder(folder.id, e); }}
@@ -666,6 +692,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                           onDelete={requestDeleteRequest}
                                           onRenameCommit={handleRenameCommit}
                                           onRenameCancel={() => setEditingRequestId(null)}
+                                          onRenameStart={() => setEditingRequestId(request.id)}
                                         />
                                       </div>
                                       {dragOver?.id === request.id && dragOver.type === 'request-below' && (
@@ -714,6 +741,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                   onDelete={requestDeleteRequest}
                                   onRenameCommit={handleRenameCommit}
                                   onRenameCancel={() => setEditingRequestId(null)}
+                                  onRenameStart={() => setEditingRequestId(request.id)}
                                 />
                               </div>
                               {dragOver?.id === request.id && dragOver.type === 'request-below' && (

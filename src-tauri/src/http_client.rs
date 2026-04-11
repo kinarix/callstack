@@ -129,7 +129,7 @@ pub async fn send_request(
     match response {
         Ok(resp) => {
             let status = resp.status().as_u16();
-            let status_text = resp.status().to_string();
+            let status_text = resp.status().canonical_reason().unwrap_or("").to_string();
 
             let resp_headers: Vec<ResponseHeader> = resp
                 .headers()

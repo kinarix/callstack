@@ -29,7 +29,9 @@ function normalizeUrl(raw: string): string {
     // URL constructor lowercases scheme and hostname automatically
     return new URL(trimmed).toString();
   } catch {
-    return trimmed.toLowerCase();
+    // Return as-is — do NOT lowercase. If the URL contains template variables
+    // like {{baseUrl}}, lowercasing would corrupt the variable names.
+    return trimmed;
   }
 }
 

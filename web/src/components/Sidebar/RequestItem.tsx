@@ -52,6 +52,14 @@ function MethodIcon({ method }: { method: string }) {
   }
 }
 
+function PenIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <path d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 interface RequestItemProps {
   request: Request;
   isSelected: boolean;
@@ -60,6 +68,7 @@ interface RequestItemProps {
   onDelete: (id: number, e: React.MouseEvent) => void;
   onRenameCommit?: (id: number, name: string) => void;
   onRenameCancel?: () => void;
+  onRenameStart?: () => void;
 }
 
 export function RequestItem({
@@ -70,6 +79,7 @@ export function RequestItem({
   onDelete,
   onRenameCommit,
   onRenameCancel,
+  onRenameStart,
 }: RequestItemProps) {
   const [draftName, setDraftName] = useState(request.name);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -126,15 +136,24 @@ export function RequestItem({
         )}
       </div>
       {!isEditing && (
-        <button
-          className={styles.deleteBtn}
-          onClick={(e) => onDelete(request.id, e)}
-          title="Delete"
-        >
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden>
-            <path d="M2 3.5h9M5 3.5V2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M3.5 3.5l.5 7h5l.5-7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+        <>
+          <button
+            className={styles.editBtn}
+            onClick={(e) => { e.stopPropagation(); onRenameStart?.(); }}
+            title="Rename"
+          >
+            <PenIcon />
+          </button>
+          <button
+            className={styles.deleteBtn}
+            onClick={(e) => onDelete(request.id, e)}
+            title="Delete"
+          >
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden>
+              <path d="M2 3.5h9M5 3.5V2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M3.5 3.5l.5 7h5l.5-7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </>
       )}
     </div>
   );
