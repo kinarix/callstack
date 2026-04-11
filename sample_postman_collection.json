@@ -1,0 +1,773 @@
+{
+  "info": {
+    "_postman_id": "3156661f-97b9-4c63-a29e-c2a5704160ea",
+    "name": "Authx",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "6204602"
+  },
+  "item": [
+    {
+      "name": "Auth Flow",
+      "item": [
+        {
+          "name": "Step1: Precheck",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = JSON.parse(responseBody);",
+                  "postman.setEnvironmentVariable(\"precheck_nonce\", jsonData.nonce);",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disabledSystemHeaders": {}
+          },
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "http://localhost:3000",
+                "type": "text"
+              },
+              {
+                "key": "X-Forwarded-For",
+                "value": "192.168.2.1,202.3.4.54, 34.123.53.22, 34.110.225.187,35.191.10.93",
+                "type": "text"
+              },
+              {
+                "key": "Host",
+                "value": "{{host}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Client-Citylatlong",
+                "value": "12.971599,77.594563",
+                "type": "text"
+              },
+              {
+                "key": "X-Client-City",
+                "value": "Bengaluru",
+                "type": "text"
+              },
+              {
+                "key": "X-Client-Region",
+                "value": "IN",
+                "type": "text"
+              },
+              {
+                "key": "X-Client-Ip",
+                "value": "106.51.86.180",
+                "type": "text"
+              },
+              {
+                "key": "",
+                "value": "",
+                "type": "text",
+                "disabled": true
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user_name\": \"harikm\",\n    \"state\": \"dfe7bcb2-c117-4d18-aa37-ab07269e5502\",\n    \"scope\": [\n        \"openid\"\n    ],\n    \"nonce\": \"{{$randomUUID}}\",\n    \"response_type\": \"code\",\n    \"redirect_url\": \"http://localhost:3000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}:{{port}}/{{base_path}}/precheck?client_id={{client_id}}",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "{{base_path}}",
+                "precheck"
+              ],
+              "query": [
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Step2: Resend OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = JSON.parse(responseBody);",
+                  "postman.setEnvironmentVariable(\"precheck_nonce\", jsonData.nonce);",
+                  ""
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "http://localhost:3000",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nonce\":\"{{precheck_nonce}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}:{{port}}/{{base_path}}/otp/resend?client_id={{client_id}}",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "{{base_path}}",
+                "otp",
+                "resend"
+              ],
+              "query": [
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Step3: OTP Evaluate",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = JSON.parse(responseBody);",
+                  "postman.setEnvironmentVariable(\"otp_nonce\", jsonData.nonce);",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  ""
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "http://localhost:3000",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nonce\":\"{{precheck_nonce}}\",\n    \"otp\": \"111111\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}:{{port}}/{{base_path}}/otp?client_id=b4204b8f-81ae-4d32-8724-06e4368123a1",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "{{base_path}}",
+                "otp"
+              ],
+              "query": [
+                {
+                  "key": "client_id",
+                  "value": "b4204b8f-81ae-4d32-8724-06e4368123a1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Step4-A Set PIN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = JSON.parse(responseBody);",
+                  "postman.setEnvironmentVariable(\"pin_nonce\", jsonData.nonce);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "http://localhost:3000",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nonce\":\"{{otp_nonce}}\",\n    \"pin\": \"1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}:{{port}}/{{base_path}}/pin?client_id=b4204b8f-81ae-4d32-8724-06e4368123a1",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "{{base_path}}",
+                "pin"
+              ],
+              "query": [
+                {
+                  "key": "client_id",
+                  "value": "b4204b8f-81ae-4d32-8724-06e4368123a1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Step4-B Validate PIN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = JSON.parse(responseBody);",
+                  "postman.setEnvironmentVariable(\"pin_nonce\", jsonData.nonce);",
+                  "postman.setEnvironmentVariable(\"tnc_nonce\", jsonData.nonce);",
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "http://localhost:3000",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nonce\":\"{{otp_nonce}}\",\n    \"pin\": \"1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}:{{port}}/{{base_path}}/pin?client_id=b4204b8f-81ae-4d32-8724-06e4368123a1",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "{{base_path}}",
+                "pin"
+              ],
+              "query": [
+                {
+                  "key": "client_id",
+                  "value": "b4204b8f-81ae-4d32-8724-06e4368123a1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Step4-C Reset PIN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  ""
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "http://localhost:3000",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"code\":\"UDYW7hZSsnDJ4sWVAGctKB\",\n    \"pin\": \"7777\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}:{{port}}/{{base_path}}/pin/reset?client_id=b4204b8f-81ae-4d32-8724-06e4368123a1",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "{{base_path}}",
+                "pin",
+                "reset"
+              ],
+              "query": [
+                {
+                  "key": "client_id",
+                  "value": "b4204b8f-81ae-4d32-8724-06e4368123a1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Step5: AuthCode",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = JSON.parse(responseBody);",
+                  "postman.setEnvironmentVariable(\"authorization_code\", jsonData.authorization_code);",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "http://localhost:3000",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nonce\":\"{{pin_nonce}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}:{{port}}/{{base_path}}/code?client_id=b4204b8f-81ae-4d32-8724-06e4368123a1",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "{{base_path}}",
+                "code"
+              ],
+              "query": [
+                {
+                  "key": "client_id",
+                  "value": "b4204b8f-81ae-4d32-8724-06e4368123a1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = JSON.parse(responseBody);",
+                  "postman.setEnvironmentVariable(\"login_nonce\", jsonData.nonce);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "http://localhost:3000",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{   \n    \"password\": \"admin123\",\n    \"nonce\": \"{{precheck_nonce}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}:{{port}}/{{base_path}}/authorize?clientId=15cffc57-8845-4a72-8d2b-f9ab03bdb50d",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "{{base_path}}",
+                "authorize"
+              ],
+              "query": [
+                {
+                  "key": "clientId",
+                  "value": "15cffc57-8845-4a72-8d2b-f9ab03bdb50d"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Authorization Code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = JSON.parse(responseBody);",
+                  "postman.setEnvironmentVariable(\"refresh_token\", jsonData.refreshToken);",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "https://canary.dmartlink.com",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"code\": \"{{authorization_code}}\",\n    \"grant_type\": \"authorization_code\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}:{{port}}/{{base_path}}/token?client_id=b4204b8f-81ae-4d32-8724-06e4368123a1",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "{{base_path}}",
+                "token"
+              ],
+              "query": [
+                {
+                  "key": "client_id",
+                  "value": "b4204b8f-81ae-4d32-8724-06e4368123a1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Client Credentials",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = JSON.parse(responseBody);",
+                  "postman.setEnvironmentVariable(\"refresh_token\", jsonData.refresh_token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "https://canary.dmartlink.com",
+                "type": "text",
+                "disabled": true
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"client_secret\": \"vwx27rwggB92JKeNF4OB2Zyk\",\n    \"grant_type\": \"client_credentials\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}:{{port}}/{{base_path}}/token?client_id=1ffd45d6-8241-4a14-b286-f488a03cf676",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "{{base_path}}",
+                "token"
+              ],
+              "query": [
+                {
+                  "key": "client_id",
+                  "value": "1ffd45d6-8241-4a14-b286-f488a03cf676"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "https://canary.dmartlink.com",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"refresh_token\": \"{{refresh_token}}\",\n    \"grant_type\": \"refresh_token\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}:{{port}}/{{base_path}}/token?client_id=b4204b8f-81ae-4d32-8724-06e4368123a1",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "{{base_path}}",
+                "token"
+              ],
+              "query": [
+                {
+                  "key": "client_id",
+                  "value": "b4204b8f-81ae-4d32-8724-06e4368123a1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Forgot PIN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = JSON.parse(responseBody);",
+                  "postman.setEnvironmentVariable(\"otp_nonce\", jsonData.nonce);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "http://localhost:3000",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nonce\": \"{{otp_nonce}}\",\n    \"email\":\"harikrishnanm@gmail.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}:{{port}}/{{base_path}}/pin/forgot?client_id=b4204b8f-81ae-4d32-8724-06e4368123a1",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "{{base_path}}",
+                "pin",
+                "forgot"
+              ],
+              "query": [
+                {
+                  "key": "Origin",
+                  "value": "",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "client_id",
+                  "value": "b4204b8f-81ae-4d32-8724-06e4368123a1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Record Agreement",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201){",
+                  "    var jsonData = JSON.parse(responseBody);",
+                  "    postman.setEnvironmentVariable(\"pin_nonce\", jsonData.nonce);",
+                  "}",
+                  ""
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "http://localhost:3000",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nonce\":\"{{tnc_nonce}}\",\n    \"action\": \"AGREE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{host}}:{{port}}/{{base_path}}/agreement?client_id=b4204b8f-81ae-4d32-8724-06e4368123a1",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "{{base_path}}",
+                "agreement"
+              ],
+              "query": [
+                {
+                  "key": "client_id",
+                  "value": "b4204b8f-81ae-4d32-8724-06e4368123a1"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "New Request",
+      "request": {
+        "method": "GET",
+        "header": []
+      },
+      "response": []
+    },
+    {
+      "name": "New Request",
+      "request": {
+        "method": "GET",
+        "header": []
+      },
+      "response": []
+    }
+  ]
+}

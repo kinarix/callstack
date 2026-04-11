@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useDatabase } from '../../hooks/useDatabase';
 import { RequestItem } from './RequestItem';
@@ -6,7 +6,14 @@ import { NewProjectModal } from './NewProjectModal';
 import { NewFolderModal } from './NewFolderModal';
 import { EnvModal } from '../EnvModal/EnvModal';
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
+import { ImportModal } from '../ImportModal/ImportModal';
+import { ExportModal } from '../ExportModal/ExportModal';
+import type { ExportItem } from '../ExportModal/ExportModal';
+import type { ParsedCollection, ParsedRequest } from '../../utils/postmanParser';
+import { exportFolderAsPostman, exportProjectAsPostman } from '../../utils/postmanParser';
+import { invoke } from '@tauri-apps/api/core';
 import type { Environment, Request } from '../../lib/types';
+import { FilePickerModal } from '../FilePickerModal/FilePickerModal';
 import styles from './Sidebar.module.css';
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -132,6 +139,41 @@ type DragOver = {
   id: number;
 } | null;
 
+function ImportIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+      <path d="M6 1.5v6M3 5.5L6 8.5L9 5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 10h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ExportIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+      <path d="M6 8V2M3 5L6 2L9 5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 10h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ImportedFolderIcon() {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 10 10"
+      fill="none"
+      aria-label="Imported"
+      style={{ flexShrink: 0, color: 'var(--text-tertiary)', opacity: 0.7, marginLeft: 4 }}
+    >
+      <title>Imported</title>
+      <path d="M5 1v5M2.5 4L5 6.5L7.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M1.5 8h7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
@@ -155,6 +197,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
     reorderRequests,
     duplicateRequest,
     duplicateFolder,
+    importRequests,
   } = useDatabase();
 
   const { projects, requests, folders, environments, currentRequestId, expandedProjects, expandedFolders } = state;
@@ -168,6 +211,30 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
   const [envModalEnv, setEnvModalEnv] = useState<Environment | null>(null);
   const [expandedEnvSections, setExpandedEnvSections] = useState<Set<number>>(new Set());
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+  const [importModalState, setImportModalState] = useState<{
+    collectionName: string;
+    requests: ParsedCollection['requests'];
+    folderId: number;
+    projectId: number;
+  } | null>(null);
+  const [exportModalState, setExportModalState] = useState<{
+    title: string;
+    items: ExportItem[];
+    mode: 'project';
+    projectName: string;
+    folderGroups: { name: string; requests: Request[] }[];
+    rootRequests: Request[];
+  } | {
+    title: string;
+    items: ExportItem[];
+    mode: 'folder';
+    folderName: string;
+  } | null>(null);
+  const [filePickerState, setFilePickerState] = useState<
+    | { mode: 'project'; projectId: number }
+    | { mode: 'folder'; folderId: number; projectId: number }
+    | null
+  >(null);
 
   // Native DnD — ref avoids re-renders during drag; state drives visual feedback
   const dragging = useRef<{ kind: 'request' | 'folder'; id: number } | null>(null);
@@ -313,6 +380,130 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
     result.requests.forEach((r) => dispatch({ type: 'ADD_REQUEST', payload: r }));
   };
 
+  // ─── Import handlers ───────────────────────────────────────────────────────
+
+  const handleProjectImportClick = useCallback((e: React.MouseEvent, projectId: number) => {
+    e.stopPropagation();
+    setFilePickerState({ mode: 'project', projectId });
+  }, []);
+
+  const handleFolderImportClick = useCallback((e: React.MouseEvent, folderId: number, projectId: number) => {
+    e.stopPropagation();
+    setFilePickerState({ mode: 'folder', folderId, projectId });
+  }, []);
+
+  const handleFilePickerParsed = useCallback(async (collection: ParsedCollection) => {
+    if (!filePickerState) return;
+    setFilePickerState(null);
+
+    if (filePickerState.mode === 'project') {
+      const { projectId } = filePickerState;
+      try {
+        const folder = await createFolder(projectId, collection.name, true);
+        dispatch({ type: 'ADD_FOLDER', payload: folder });
+        if (!expandedProjects.has(projectId)) {
+          dispatch({ type: 'TOGGLE_PROJECT', payload: projectId });
+        }
+        dispatch({ type: 'TOGGLE_FOLDER', payload: folder.id });
+        if (collection.requests.length > 0) {
+          const requestData = collection.requests.map((r) => ({
+            name: r.name,
+            method: r.method,
+            url: r.url,
+            params: JSON.stringify(r.params),
+            headers: JSON.stringify(r.headers),
+            body: r.body,
+          }));
+          const imported = await importRequests(projectId, folder.id, state.currentUser?.email ?? null, requestData);
+          imported.forEach((req) => dispatch({ type: 'ADD_REQUEST', payload: req }));
+        }
+      } catch (err) {
+        console.error('Failed to import collection:', err);
+      }
+    } else {
+      const { folderId, projectId } = filePickerState;
+      setImportModalState({ collectionName: collection.name, requests: collection.requests, folderId, projectId });
+    }
+  }, [filePickerState, createFolder, importRequests, dispatch, expandedProjects, state.currentUser]);
+
+  const handleModalImport = useCallback(async (selected: ParsedRequest[]) => {
+    const ctx = importModalState;
+    setImportModalState(null);
+    if (!ctx || selected.length === 0) return;
+
+    try {
+      const requestData = selected.map((r) => ({
+        name: r.name,
+        method: r.method,
+        url: r.url,
+        params: JSON.stringify(r.params),
+        headers: JSON.stringify(r.headers),
+        body: r.body,
+      }));
+      const imported = await importRequests(ctx.projectId, ctx.folderId, state.currentUser?.email ?? null, requestData);
+      imported.forEach((req) => dispatch({ type: 'ADD_REQUEST', payload: req }));
+    } catch (err) {
+      console.error('Failed to import requests:', err);
+    }
+  }, [importModalState, importRequests, dispatch, state.currentUser]);
+
+  // ─── Export handlers ──────────────────────────────────────────────────────
+
+  const handleProjectExportClick = useCallback((e: React.MouseEvent, projectId: number) => {
+    e.stopPropagation();
+    const project = state.projects.find((p) => p.id === projectId);
+    if (!project) return;
+    const projectFolderList = state.folders.filter((f) => f.project_id === projectId);
+    const allReqs = state.requests.filter((r) => r.project_id === projectId);
+    const rootRequests = allReqs.filter((r) => r.folder_id == null);
+    const folderGroups = projectFolderList.map((f) => ({
+      name: f.name,
+      requests: allReqs.filter((r) => r.folder_id === f.id),
+    }));
+    const items: ExportItem[] = [
+      ...rootRequests.map((r) => ({ request: r })),
+      ...projectFolderList.flatMap((f) =>
+        allReqs.filter((r) => r.folder_id === f.id).map((r) => ({ request: r, folderName: f.name })),
+      ),
+    ];
+    setExportModalState({ title: `Export "${project.name}"`, items, mode: 'project', projectName: project.name, folderGroups, rootRequests });
+  }, [state.projects, state.folders, state.requests]);
+
+  const handleFolderExportClick = useCallback((e: React.MouseEvent, folderId: number) => {
+    e.stopPropagation();
+    const folder = state.folders.find((f) => f.id === folderId);
+    if (!folder) return;
+    const items: ExportItem[] = state.requests
+      .filter((r) => r.folder_id === folderId)
+      .map((r) => ({ request: r, folderName: folder.name }));
+    setExportModalState({ title: `Export folder "${folder.name}"`, items, mode: 'folder', folderName: folder.name });
+  }, [state.folders, state.requests]);
+
+  const handleModalExport = useCallback(async (selected: ExportItem[]) => {
+    const ctx = exportModalState;
+    setExportModalState(null);
+    if (!ctx || selected.length === 0) return;
+    try {
+      let content: string;
+      let filename: string;
+      if (ctx.mode === 'folder') {
+        content = exportFolderAsPostman(ctx.folderName, selected.map((i) => i.request));
+        filename = `${ctx.folderName}.postman_collection.json`;
+      } else {
+        const selectedIds = new Set(selected.map((i) => i.request.id));
+        const rootRequests = ctx.rootRequests.filter((r) => selectedIds.has(r.id));
+        const folderGroups = ctx.folderGroups
+          .map((g) => ({ name: g.name, requests: g.requests.filter((r) => selectedIds.has(r.id)) }))
+          .filter((g) => g.requests.length > 0);
+        content = exportProjectAsPostman(ctx.projectName, rootRequests, folderGroups);
+        filename = `${ctx.projectName}.postman_collection.json`;
+      }
+      await invoke('save_file', { filename, content });
+    } catch (err) {
+      console.error('Failed to export:', err);
+    }
+  }, [exportModalState]);
+
   // ─── Native DnD handlers ───────────────────────────────────────────────────
 
   const applyRequestMove = async (
@@ -438,6 +629,30 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
         <NewProjectModal
           onConfirm={handleCreateNewProject}
           onCancel={() => setShowNewProjectModal(false)}
+        />
+      )}
+      {filePickerState && (
+        <FilePickerModal
+          title={filePickerState.mode === 'project' ? 'Import into project' : 'Import into folder'}
+          confirmLabel={filePickerState.mode === 'project' ? 'Import all' : 'Select requests'}
+          onParsed={handleFilePickerParsed}
+          onCancel={() => setFilePickerState(null)}
+        />
+      )}
+      {importModalState && (
+        <ImportModal
+          collectionName={importModalState.collectionName}
+          requests={importModalState.requests}
+          onImport={handleModalImport}
+          onCancel={() => setImportModalState(null)}
+        />
+      )}
+      {exportModalState && (
+        <ExportModal
+          title={exportModalState.title}
+          items={exportModalState.items}
+          onExport={handleModalExport}
+          onCancel={() => setExportModalState(null)}
         />
       )}
       {folderModalProjectId !== null && (
@@ -580,6 +795,20 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                     </button>
                     <button
                       className={styles.iconBtn}
+                      onClick={(e) => handleProjectImportClick(e, project.id)}
+                      title="Import Postman collection"
+                    >
+                      <ImportIcon />
+                    </button>
+                    <button
+                      className={styles.iconBtn}
+                      onClick={(e) => handleProjectExportClick(e, project.id)}
+                      title="Export as Postman collection"
+                    >
+                      <ExportIcon />
+                    </button>
+                    <button
+                      className={styles.iconBtn}
                       onClick={(e) => handleCreateRootRequest(project.id, e)}
                       title="Add request"
                     >
@@ -653,6 +882,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                   onDoubleClick={(e) => { e.stopPropagation(); setEditingFolderId(folder.id); }}
                                 >
                                   {folder.name}
+                                  {folder.imported && <ImportedFolderIcon />}
                                 </span>
                               )}
                               <button
@@ -661,6 +891,20 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                 title="Add request"
                               >
                                 +
+                              </button>
+                              <button
+                                className={styles.iconBtn}
+                                onClick={(e) => handleFolderImportClick(e, folder.id, project.id)}
+                                title="Import Postman collection into folder"
+                              >
+                                <ImportIcon />
+                              </button>
+                              <button
+                                className={styles.iconBtn}
+                                onClick={(e) => handleFolderExportClick(e, folder.id)}
+                                title="Export folder as Postman collection"
+                              >
+                                <ExportIcon />
                               </button>
                               {editingFolderId !== folder.id && (
                                 <button
