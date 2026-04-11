@@ -42,6 +42,13 @@ pub struct Folder {
     pub updated_at: String,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DuplicateFolderResult {
+    pub folder: Folder,
+    pub requests: Vec<Request>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StoredResponse {
@@ -632,6 +639,134 @@ pub fn delete_folder(db: tauri::State<Database>, id: i64) -> Result<(), String> 
     conn.execute("DELETE FROM folders WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+// --- Duplicate commands ---
+
+#[tauri::command]
+pub fn duplicate_request(db: tauri::State<Database>, id: i64) -> Result<Request, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+
+    let (project_id, folder_id): (i64, Option<i64>) = conn
+        .query_row(
+            "SELECT project_id, folder_id FROM requests WHERE id = ?1",
+            params![id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .map_err(|e| e.to_string())?;
+
+    let max_position: i64 = conn
+        .query_row(
+            "SELECT COALESCE(MAX(position), -1) FROM requests WHERE project_id = ?1 AND folder_id IS ?2",
+            params![project_id, folder_id],
+            |row| row.get(0),
+        )
+        .unwrap_or(-1);
+
+    let new_position = max_position + 1;
+
+    conn.execute(
+        "INSERT INTO requests (project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position)
+         SELECT project_id, folder_id, user_email, 'Copy of ' || name, method, url, params, headers, body, COALESCE(attachments, '[]'), ?2
+         FROM requests WHERE id = ?1",
+        params![id, new_position],
+    )
+    .map_err(|e| e.to_string())?;
+
+    let new_id = conn.last_insert_rowid();
+
+    conn.query_row(
+        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at FROM requests WHERE id = ?1",
+        params![new_id],
+        |row| {
+            Ok(Request {
+                id: row.get(0)?,
+                project_id: row.get(1)?,
+                folder_id: row.get(2)?,
+                user_email: row.get(3)?,
+                name: row.get(4)?,
+                method: row.get(5)?,
+                url: row.get(6)?,
+                params: row.get(7)?,
+                headers: row.get(8)?,
+                body: row.get(9)?,
+                attachments: row.get(10)?,
+                position: row.get(11)?,
+                created_at: row.get(12)?,
+                updated_at: row.get(13)?,
+            })
+        },
+    )
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn duplicate_folder(db: tauri::State<Database>, id: i64) -> Result<DuplicateFolderResult, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "INSERT INTO folders (project_id, name) SELECT project_id, 'Copy of ' || name FROM folders WHERE id = ?1",
+        params![id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    let new_folder_id = conn.last_insert_rowid();
+
+    let folder = conn
+        .query_row(
+            "SELECT id, project_id, name, created_at, updated_at FROM folders WHERE id = ?1",
+            params![new_folder_id],
+            |row| {
+                Ok(Folder {
+                    id: row.get(0)?,
+                    project_id: row.get(1)?,
+                    name: row.get(2)?,
+                    created_at: row.get(3)?,
+                    updated_at: row.get(4)?,
+                })
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "INSERT INTO requests (project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position)
+         SELECT project_id, ?2, user_email, name, method, url, params, headers, body, COALESCE(attachments, '[]'), position
+         FROM requests WHERE folder_id = ?1",
+        params![id, new_folder_id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at
+             FROM requests WHERE folder_id = ?1 ORDER BY position ASC",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let new_requests = stmt
+        .query_map(params![new_folder_id], |row| {
+            Ok(Request {
+                id: row.get(0)?,
+                project_id: row.get(1)?,
+                folder_id: row.get(2)?,
+                user_email: row.get(3)?,
+                name: row.get(4)?,
+                method: row.get(5)?,
+                url: row.get(6)?,
+                params: row.get(7)?,
+                headers: row.get(8)?,
+                body: row.get(9)?,
+                attachments: row.get(10)?,
+                position: row.get(11)?,
+                created_at: row.get(12)?,
+                updated_at: row.get(13)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(DuplicateFolderResult { folder, requests: new_requests })
 }
 
 // --- Response commands ---

@@ -60,6 +60,15 @@ function PenIcon() {
   );
 }
 
+function CopyIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <rect x="4" y="4" width="6.5" height="6.5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M3.5 8H2C1.72 8 1.5 7.78 1.5 7.5V2C1.5 1.72 1.72 1.5 2 1.5H7.5C7.78 1.5 8 1.72 8 2V3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 interface RequestItemProps {
   request: Request;
   isSelected: boolean;
@@ -69,6 +78,7 @@ interface RequestItemProps {
   onRenameCommit?: (id: number, name: string) => void;
   onRenameCancel?: () => void;
   onRenameStart?: () => void;
+  onDuplicate?: () => void;
 }
 
 export function RequestItem({
@@ -80,6 +90,7 @@ export function RequestItem({
   onRenameCommit,
   onRenameCancel,
   onRenameStart,
+  onDuplicate,
 }: RequestItemProps) {
   const [draftName, setDraftName] = useState(request.name);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -143,6 +154,13 @@ export function RequestItem({
             title="Rename"
           >
             <PenIcon />
+          </button>
+          <button
+            className={styles.copyBtn}
+            onClick={(e) => { e.stopPropagation(); onDuplicate?.(); }}
+            title="Duplicate"
+          >
+            <CopyIcon />
           </button>
           <button
             className={styles.deleteBtn}

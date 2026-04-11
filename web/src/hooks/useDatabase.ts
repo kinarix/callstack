@@ -202,6 +202,22 @@ export function useDatabase() {
     []
   );
 
+  const duplicateRequest = useCallback(
+    async (id: number): Promise<Request> => {
+      const raw = await invoke<RawRequest>('duplicate_request', { id });
+      return parseRequest(raw);
+    },
+    []
+  );
+
+  const duplicateFolder = useCallback(
+    async (id: number): Promise<{ folder: Folder; requests: Request[] }> => {
+      const raw = await invoke<{ folder: RawFolder; requests: RawRequest[] }>('duplicate_folder', { id });
+      return { folder: parseFolder(raw.folder), requests: raw.requests.map(parseRequest) };
+    },
+    []
+  );
+
   const saveResponse = useCallback(
     async (
       requestId: number,
@@ -354,6 +370,8 @@ export function useDatabase() {
     createFolder,
     updateFolder,
     deleteFolder,
+    duplicateRequest,
+    duplicateFolder,
     saveResponse,
     getLastResponse,
     listEnvironments,

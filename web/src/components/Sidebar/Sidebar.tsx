@@ -73,6 +73,15 @@ function PenIcon() {
   );
 }
 
+function CopyIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <rect x="4" y="4" width="6.5" height="6.5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M3.5 8H2C1.72 8 1.5 7.78 1.5 7.5V2C1.5 1.72 1.72 1.5 2 1.5H7.5C7.78 1.5 8 1.72 8 2V3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function ProjectIcon() {
   return (
     <svg className={`${styles.treeIcon} ${styles.treeIconProject}`} width="13" height="13" viewBox="0 0 13 13" fill="none">
@@ -144,6 +153,8 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
     moveRequest,
     moveFolder,
     reorderRequests,
+    duplicateRequest,
+    duplicateFolder,
   } = useDatabase();
 
   const { projects, requests, folders, environments, currentRequestId, expandedProjects, expandedFolders } = state;
@@ -289,6 +300,17 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
     setEditingFolderId(null);
     const updated = await updateFolder(id, name);
     dispatch({ type: 'UPDATE_FOLDER', payload: updated });
+  };
+
+  const handleDuplicateRequest = async (requestId: number) => {
+    const newReq = await duplicateRequest(requestId);
+    dispatch({ type: 'ADD_REQUEST', payload: newReq });
+  };
+
+  const handleDuplicateFolder = async (folderId: number) => {
+    const result = await duplicateFolder(folderId);
+    dispatch({ type: 'ADD_FOLDER', payload: result.folder });
+    result.requests.forEach((r) => dispatch({ type: 'ADD_REQUEST', payload: r }));
   };
 
   // ─── Native DnD handlers ───────────────────────────────────────────────────
@@ -649,6 +671,15 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                   <PenIcon />
                                 </button>
                               )}
+                              {editingFolderId !== folder.id && (
+                                <button
+                                  className={styles.iconBtn}
+                                  onClick={(e) => { e.stopPropagation(); handleDuplicateFolder(folder.id); }}
+                                  title="Duplicate folder"
+                                >
+                                  <CopyIcon />
+                                </button>
+                              )}
                               <button
                                 className={`${styles.iconBtn} ${styles.deleteBtn}`}
                                 onClick={(e) => { e.stopPropagation(); requestDeleteFolder(folder.id, e); }}
@@ -693,6 +724,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                           onRenameCommit={handleRenameCommit}
                                           onRenameCancel={() => setEditingRequestId(null)}
                                           onRenameStart={() => setEditingRequestId(request.id)}
+                                          onDuplicate={() => handleDuplicateRequest(request.id)}
                                         />
                                       </div>
                                       {dragOver?.id === request.id && dragOver.type === 'request-below' && (
@@ -742,6 +774,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                   onRenameCommit={handleRenameCommit}
                                   onRenameCancel={() => setEditingRequestId(null)}
                                   onRenameStart={() => setEditingRequestId(request.id)}
+                                  onDuplicate={() => handleDuplicateRequest(request.id)}
                                 />
                               </div>
                               {dragOver?.id === request.id && dragOver.type === 'request-below' && (
