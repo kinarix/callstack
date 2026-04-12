@@ -80,6 +80,13 @@ impl Database {
         let conn = Connection::open(&db_path).map_err(|e| format!("Cannot open database: {e}"))?;
 
         conn.execute_batch(
+            "PRAGMA busy_timeout = 5000;
+             PRAGMA journal_mode = WAL;
+             PRAGMA foreign_keys = ON;",
+        )
+        .map_err(|e| format!("Cannot set database pragmas: {e}"))?;
+
+        conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS projects (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_email TEXT,
@@ -486,17 +493,9 @@ pub fn update_request(
 #[tauri::command]
 pub fn delete_request(db: tauri::State<Database>, id: i64) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    // Temporarily disable foreign key constraints to avoid conflicts
-    conn.execute("PRAGMA foreign_keys = OFF", [])
-        .map_err(|e| e.to_string())?;
-
     conn.execute("DELETE FROM responses WHERE request_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM requests WHERE id = ?1", params![id])
-        .map_err(|e| e.to_string())?;
-
-    // Re-enable foreign key constraints
-    conn.execute("PRAGMA foreign_keys = ON", [])
         .map_err(|e| e.to_string())?;
     Ok(())
 }
