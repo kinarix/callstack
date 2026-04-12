@@ -13,6 +13,8 @@ interface RequestBuilderProps {
   request: Request | null;
   showExpandBtn?: boolean;
   onExpand?: () => void;
+  executeRef?: React.MutableRefObject<(() => void) | null>;
+  copyFlash?: boolean;
 }
 
 interface UrlError {
@@ -156,7 +158,7 @@ function getActiveEnvKey(projectId: number | null) {
   return projectId ? `callstack.activeEnv.${projectId}` : null;
 }
 
-export function RequestBuilder({ request, showExpandBtn, onExpand }: RequestBuilderProps) {
+export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, copyFlash }: RequestBuilderProps) {
   const { state, dispatch } = useApp();
   const { send, cancelRequest } = useHttpClient();
   const { updateRequest, saveResponse } = useDatabase();
@@ -401,6 +403,9 @@ export function RequestBuilder({ request, showExpandBtn, onExpand }: RequestBuil
     }
   };
 
+  // Keep executeRef current so App.tsx keyboard shortcut can trigger send
+  if (executeRef) executeRef.current = handleSend;
+
   return (
     <div className={styles.builder}>
       <UrlBar
@@ -450,6 +455,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand }: RequestBuil
           <ResponseViewer
             response={state.currentResponse}
             requestName={request?.name}
+            copyFlash={copyFlash}
             onClear={() => dispatch({ type: 'SET_RESPONSE', payload: null })}
           />
         </div>

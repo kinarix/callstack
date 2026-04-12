@@ -52,6 +52,9 @@
 }
 
 .floatingExpand {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
   background: none;
   border: 1px solid var(--border-secondary);
   border-radius: var(--radius-sm);
@@ -64,7 +67,6 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  margin-bottom: var(--space-2);
   transition: color var(--transition-base), border-color var(--transition-base);
 }
 
@@ -118,4 +120,67 @@
 .emptyState p {
   margin: 0;
   max-width: 300px;
+}
+
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.confirmDialog {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-3);
+  min-width: 280px;
+  max-width: 380px;
+  box-shadow: var(--shadow-lg);
+}
+
+.confirmDialog p {
+  margin: 0 0 var(--space-2) 0;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.confirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+.confirmCancel {
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  padding: 5px var(--space-2);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.confirmCancel:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.confirmDelete {
+  background: var(--accent-delete);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  padding: 5px var(--space-2);
+  font-size: 13px;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.confirmDelete:hover {
+  opacity: 0.85;
 }

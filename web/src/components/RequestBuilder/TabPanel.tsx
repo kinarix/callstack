@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import type { Request, KeyValue, FileAttachment } from '../../lib/types';
 import { KeyValueEditor } from './KeyValueEditor';
-import { BodyEditor } from './BodyEditor';
 import { FileUpload } from './FileUpload';
 import styles from './TabPanel.module.css';
+
+const BodyEditor = lazy(() => import('./BodyEditor').then(m => ({ default: m.BodyEditor })));
 
 type TabName = 'params' | 'headers' | 'body' | 'files';
 type PinnableTab = 'params' | 'headers' | 'files';
@@ -82,12 +83,19 @@ interface TabPanelProps {
 }
 
 export function TabPanel({ request, onRequestChange, files, onFilesChange }: TabPanelProps) {
-  const [activeTab, setActiveTab] = useState<TabName>('params');
   const [pinned, setPinned] = useState<Set<PinnableTab>>(() => request ? loadPinned(request.id) : new Set());
+  const [activeTab, setActiveTab] = useState<TabName>(() => {
+    const p = request ? loadPinned(request.id) : new Set<PinnableTab>();
+    return p.has('params') ? 'body' : 'params';
+  });
 
   useEffect(() => {
     if (request) {
-      setPinned(loadPinned(request.id));
+      const loaded = loadPinned(request.id);
+      setPinned(loaded);
+      setActiveTab(prev =>
+        PINNABLE.includes(prev as PinnableTab) && loaded.has(prev as PinnableTab) ? 'body' : prev
+      );
     }
   }, [request?.id]);
 
@@ -191,7 +199,6 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange }: Tab
           <div key={p} className={styles.pinnedPanel}>
             <div className={styles.pinnedHeader}>
               <span>{renderTabLabel(p)}</span>
-              <span className={styles.pinnedBadge}>pinned</span>
             </div>
             <div className={styles.pinnedContent}>
               {renderPinnedContent(p)}
@@ -214,12 +221,14 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange }: Tab
           />
         )}
         {activeTab === 'body' && (
-          <BodyEditor
-            body={request.body}
-            contentType={currentContentType}
-            onChange={handleBodyChange}
-            onContentTypeChange={handleContentTypeChange}
-          />
+          <Suspense fallback={null}>
+            <BodyEditor
+              body={request.body}
+              contentType={currentContentType}
+              onChange={handleBodyChange}
+              onContentTypeChange={handleContentTypeChange}
+            />
+          </Suspense>
         )}
         {activeTab === 'files' && (
           <FileUpload files={files} onChange={onFilesChange} />

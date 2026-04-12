@@ -16,20 +16,25 @@ interface FileUploadProps {
 export function FileUpload({ files, onChange }: FileUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files ?? []);
     if (!selected.length) return;
 
-    const attachments = selected.map((file): FileAttachment => {
-      const tauriFile = file as any;
-      const path = tauriFile.path || '';
-      return {
-        name: file.name,
-        size: file.size,
-        mime: file.type || 'application/octet-stream',
-        path,
-      };
-    });
+    const attachments = await Promise.all(
+      selected.map(async (file): Promise<FileAttachment> => {
+        const buf = await file.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        return {
+          name: file.name,
+          size: file.size,
+          mime: file.type || 'application/octet-stream',
+          path: '',
+          data: btoa(binary),
+        };
+      })
+    );
 
     onChange([...files, ...attachments]);
     e.target.value = '';

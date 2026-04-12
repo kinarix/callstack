@@ -1,6 +1,11 @@
 import { useEffect, useCallback, useState } from 'react';
 import { parseJwt } from '../lib/jwt';
-import type { User } from '../lib/types';
+
+export interface User {
+  email: string;
+  name: string;
+  picture: string;
+}
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
 

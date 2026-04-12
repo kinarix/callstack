@@ -1,13 +1,5 @@
 /// <reference types="vite/client" />
 
-interface ImportMetaEnv {
-  readonly VITE_GOOGLE_CLIENT_ID: string
-}
-
-interface ImportMeta {
-  readonly env: ImportMetaEnv
-}
-
 declare module 'sql.js' {
   export interface SqlJsStatic {
     Database: new (data?: Uint8Array) => Database

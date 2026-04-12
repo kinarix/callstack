@@ -5,12 +5,10 @@ export const AppContext = createContext<AppContextType | undefined>(undefined);
 
 function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
-    case 'SET_USER':
-      return { ...state, currentUser: action.payload };
     case 'SET_CURRENT_PROJECT':
       return { ...state, currentProjectId: action.payload };
     case 'SET_CURRENT_REQUEST':
-      return { ...state, currentRequestId: action.payload };
+      return { ...state, currentRequestId: action.payload, currentResponse: null };
     case 'SET_PROJECTS':
       return { ...state, projects: action.payload };
     case 'ADD_PROJECT':
@@ -133,20 +131,25 @@ function appReducer(state: AppState, action: AppAction): AppState {
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(appReducer, {
-    currentUser: null,
-    currentProjectId: null,
-    currentRequestId: null,
-    projects: [],
-    requests: [],
-    folders: [],
-    environments: [],
-    currentResponse: null,
-    isLoading: false,
-    executingRequestId: null,
-    expandedProjects: new Set<number>(),
-    expandedFolders: new Set<number>(),
-    logs: [],
+  const [state, dispatch] = useReducer(appReducer, undefined, () => {
+    const parseIds = (key: string) => {
+      try { return new Set<number>(JSON.parse(localStorage.getItem(key) || '[]')); }
+      catch { return new Set<number>(); }
+    };
+    return {
+      currentProjectId: null,
+      currentRequestId: null,
+      projects: [],
+      requests: [],
+      folders: [],
+      environments: [],
+      currentResponse: null,
+      isLoading: false,
+      executingRequestId: null,
+      expandedProjects: parseIds('callstack.expandedProjects'),
+      expandedFolders: parseIds('callstack.expandedFolders'),
+      logs: [],
+    };
   });
 
   return (

@@ -94,11 +94,11 @@ const appEditorTheme = EditorView.theme({
 });
 
 const appHighlight = HighlightStyle.define([
-  { tag: tags.propertyName, color: '#60a5fa' },
-  { tag: tags.string, color: '#34d399' },
-  { tag: [tags.number, tags.integer, tags.float], color: '#fb923c' },
-  { tag: [tags.bool, tags.null], color: '#a78bfa' },
-  { tag: tags.keyword, color: '#60a5fa' },
+  { tag: tags.propertyName, color: 'var(--syntax-key)' },
+  { tag: tags.string, color: 'var(--syntax-string)' },
+  { tag: [tags.number, tags.integer, tags.float], color: 'var(--syntax-number)' },
+  { tag: [tags.bool, tags.null], color: 'var(--syntax-bool)' },
+  { tag: tags.keyword, color: 'var(--syntax-key)' },
 ]);
 
 const appThemeExtension = [appEditorTheme, syntaxHighlighting(appHighlight)];

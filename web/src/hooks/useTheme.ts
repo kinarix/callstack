@@ -24,7 +24,8 @@ export function useTheme() {
     setTheme((current) => {
       let next: Theme;
       if (current === 'dark') next = 'light';
-      else if (current === 'light') next = 'system';
+      else if (current === 'light') next = 'dim';
+      else if (current === 'dim') next = 'system';
       else next = 'dark';
       applyTheme(next);
       return next;

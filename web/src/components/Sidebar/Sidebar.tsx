@@ -3,7 +3,6 @@ import { useApp } from '../../context/AppContext';
 import { useDatabase } from '../../hooks/useDatabase';
 import { useShortcuts } from '../../hooks/useShortcuts';
 import { ShortcutModal } from '../ShortcutModal/ShortcutModal';
-import { RequestItem } from './RequestItem';
 import { NewProjectModal } from './NewProjectModal';
 import { NewFolderModal } from './NewFolderModal';
 import { EnvModal } from '../EnvModal/EnvModal';
@@ -16,112 +15,9 @@ import { exportFolderAsPostman, exportProjectAsPostman } from '../../utils/postm
 import { invoke } from '@tauri-apps/api/core';
 import type { Environment, Request } from '../../lib/types';
 import { FilePickerModal } from '../FilePickerModal/FilePickerModal';
+import { ProjectRow } from './ProjectRow';
+import type { DragOver } from './ProjectRow';
 import styles from './Sidebar.module.css';
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function InlineNameInput({
-  initialValue,
-  className,
-  onCommit,
-  onCancel,
-}: {
-  initialValue: string;
-  className?: string;
-  onCommit: (value: string) => void;
-  onCancel: () => void;
-}) {
-  const [value, setValue] = useState(initialValue);
-  const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => { ref.current?.focus(); ref.current?.select(); }, []);
-  return (
-    <input
-      ref={ref}
-      className={className}
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') onCommit(value.trim() || initialValue);
-        else if (e.key === 'Escape') onCancel();
-        e.stopPropagation();
-      }}
-      onBlur={() => onCommit(value.trim() || initialValue)}
-      onClick={(e) => e.stopPropagation()}
-    />
-  );
-}
-
-function Chevron({ expanded }: { expanded: boolean }) {
-  return (
-    <svg
-      className={styles.chevron}
-      style={{ transform: expanded ? undefined : 'rotate(-90deg)' }}
-      width="13"
-      height="13"
-      viewBox="0 0 13 13"
-      fill="none"
-    >
-      <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function BinIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <path d="M2 3.5h9M5 3.5V2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M3.5 3.5l.5 7h5l.5-7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function PenIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-      <path d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function CopyIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-      <rect x="4" y="4" width="6.5" height="6.5" rx="1" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M3.5 8H2C1.72 8 1.5 7.78 1.5 7.5V2C1.5 1.72 1.72 1.5 2 1.5H7.5C7.78 1.5 8 1.72 8 2V3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function ProjectIcon() {
-  return (
-    <svg className={`${styles.treeIcon} ${styles.treeIconProject}`} width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <rect x="1.5" y="3.5" width="10" height="7.5" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
-      <path d="M4.5 3.5V2.5C4.5 2.22 4.72 2 5 2H8C8.28 2 8.5 2.22 8.5 2.5V3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function FolderIcon({ open }: { open: boolean }) {
-  return (
-    <svg className={`${styles.treeIcon} ${styles.treeIconFolder}`} width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <path
-        d="M1.5 4.5C1.5 3.95 1.95 3.5 2.5 3.5H5L6 4.5H10.5C11.05 4.5 11.5 4.95 11.5 5.5V9.5C11.5 10.05 11.05 10.5 10.5 10.5H2.5C1.95 10.5 1.5 10.05 1.5 9.5V4.5Z"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        fill={open ? 'currentColor' : 'none'}
-        fillOpacity={open ? 0.25 : 0}
-      />
-    </svg>
-  );
-}
-
-function EnvIcon() {
-  return (
-    <svg className={`${styles.treeIcon} ${styles.treeIconEnv}`} width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.3" />
-      <path d="M4.5 6.5H8.5M6 4.5L8.5 6.5L6 8.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -134,51 +30,12 @@ type PendingDelete =
 interface SidebarProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
-}
-
-type DragOver = {
-  type: 'project' | 'folder' | 'request-above' | 'request-below';
-  id: number;
-} | null;
-
-function ImportIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-      <path d="M6 1.5v6M3 5.5L6 8.5L9 5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M2 10h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function ExportIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-      <path d="M6 8V2M3 5L6 2L9 5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M2 10h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function ImportedFolderIcon() {
-  return (
-    <svg
-      width="10"
-      height="10"
-      viewBox="0 0 10 10"
-      fill="none"
-      aria-label="Imported"
-      style={{ flexShrink: 0, color: 'var(--text-tertiary)', opacity: 0.7, marginLeft: 4 }}
-    >
-      <title>Imported</title>
-      <path d="M5 1v5M2.5 4L5 6.5L7.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M1.5 8h7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
-  );
+  externalRenameRequestId?: number | null;
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
+export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId }: SidebarProps) {
   const { state, dispatch } = useApp();
   const {
     createProject,
@@ -190,7 +47,6 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
     deleteRequest,
     createFolder,
     deleteFolder,
-    getLastResponse,
     createEnvironment,
     updateEnvironment,
     deleteEnvironment,
@@ -251,12 +107,15 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
     setNewFolderId(null);
   }, [newFolderId, folders]);
 
-  if (collapsed) return null;
+  // Keyboard shortcut from App.tsx triggers inline rename
+  useEffect(() => {
+    if (externalRenameRequestId != null) setEditingRequestId(externalRenameRequestId);
+  }, [externalRenameRequestId]);
 
   // ─── Non-DnD handlers ──────────────────────────────────────────────────────
 
   const handleCreateNewProject = async (name: string, description: string) => {
-    const project = await createProject(state.currentUser?.email ?? null, name, description || null);
+    const project = await createProject(null, name, description || null);
     dispatch({ type: 'ADD_PROJECT', payload: project });
     dispatch({ type: 'TOGGLE_PROJECT', payload: project.id });
     setShowNewProjectModal(false);
@@ -264,7 +123,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
 
   const handleCreateRootRequest = async (projectId: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    const request = await createRequest(projectId, state.currentUser?.email ?? null, 'New Request', null);
+    const request = await createRequest(projectId, null, 'New Request', null);
     dispatch({ type: 'ADD_REQUEST', payload: request });
     dispatch({ type: 'SET_CURRENT_REQUEST', payload: request.id });
     setEditingRequestId(request.id);
@@ -272,16 +131,14 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
 
   const handleCreateFolderRequest = async (projectId: number, folderId: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    const request = await createRequest(projectId, state.currentUser?.email ?? null, 'New Request', folderId);
+    const request = await createRequest(projectId, null, 'New Request', folderId);
     dispatch({ type: 'ADD_REQUEST', payload: request });
     dispatch({ type: 'SET_CURRENT_REQUEST', payload: request.id });
     setEditingRequestId(request.id);
   };
 
-  const handleSelect = async (id: number) => {
+  const handleSelect = (id: number) => {
     dispatch({ type: 'SET_CURRENT_REQUEST', payload: id });
-    const response = await getLastResponse(id).catch(() => null);
-    dispatch({ type: 'SET_RESPONSE', payload: response });
   };
 
   const requestDeleteProject = (projectId: number, e: React.MouseEvent) => {
@@ -396,7 +253,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
     result.requests.forEach((r) => dispatch({ type: 'ADD_REQUEST', payload: r }));
   };
 
-  // ─── Import handlers ───────────────────────────────────────────────────────
+  // ─── Import handlers ────────────────────────────────────────────────────────
 
   const handleProjectImportClick = useCallback((e: React.MouseEvent, projectId: number) => {
     e.stopPropagation();
@@ -430,7 +287,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
             headers: JSON.stringify(r.headers),
             body: r.body,
           }));
-          const imported = await importRequests(projectId, folder.id, state.currentUser?.email ?? null, requestData);
+          const imported = await importRequests(projectId, folder.id, null, requestData);
           imported.forEach((req) => dispatch({ type: 'ADD_REQUEST', payload: req }));
         }
       } catch (err) {
@@ -440,7 +297,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
       const { folderId, projectId } = filePickerState;
       setImportModalState({ collectionName: collection.name, requests: collection.requests, folderId, projectId });
     }
-  }, [filePickerState, createFolder, importRequests, dispatch, expandedProjects, state.currentUser]);
+  }, [filePickerState, createFolder, importRequests, dispatch, expandedProjects]);
 
   const handleModalImport = useCallback(async (selected: ParsedRequest[]) => {
     const ctx = importModalState;
@@ -456,14 +313,14 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
         headers: JSON.stringify(r.headers),
         body: r.body,
       }));
-      const imported = await importRequests(ctx.projectId, ctx.folderId, state.currentUser?.email ?? null, requestData);
+      const imported = await importRequests(ctx.projectId, ctx.folderId, null, requestData);
       imported.forEach((req) => dispatch({ type: 'ADD_REQUEST', payload: req }));
     } catch (err) {
       console.error('Failed to import requests:', err);
     }
-  }, [importModalState, importRequests, dispatch, state.currentUser]);
+  }, [importModalState, importRequests, dispatch]);
 
-  // ─── Export handlers ──────────────────────────────────────────────────────
+  // ─── Export handlers ────────────────────────────────────────────────────────
 
   const handleProjectExportClick = useCallback((e: React.MouseEvent, projectId: number) => {
     e.stopPropagation();
@@ -520,7 +377,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
     }
   }, [exportModalState]);
 
-  // ─── Native DnD handlers ───────────────────────────────────────────────────
+  // ─── Native DnD handlers ────────────────────────────────────────────────────
 
   const applyRequestMove = async (
     requestId: number,
@@ -637,7 +494,9 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
     }
   };
 
-  // ─── Render ────────────────────────────────────────────────────────────────
+  // ─── Render ─────────────────────────────────────────────────────────────────
+
+  if (collapsed) return null;
 
   return (
     <>
@@ -778,354 +637,58 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
           {projects.length === 0 ? (
             <div className={styles.empty}>No projects yet. Click + to create one.</div>
           ) : (
-            projects.map((project) => {
-              const isExpanded = expandedProjects.has(project.id);
-              const projectFolders = folders
-                .filter((f) => f.project_id === project.id);
-              const rootRequests = requests
-                .filter((r) => r.project_id === project.id && !r.folder_id)
-                .sort((a, b) => a.position - b.position);
-              const projectEnvs = environments.filter((e) => e.project_id === project.id);
-              const isProjectDragOver = dragOver?.type === 'project' && dragOver.id === project.id;
-
-              return (
-                <div key={project.id} className={styles.project}>
-                  {/* Project header — drop target */}
-                  <div
-                    className={`${styles.projectRow}${isProjectDragOver ? ` ${styles.dragOver}` : ''}`}
-                    onClick={() => dispatch({ type: 'TOGGLE_PROJECT', payload: project.id })}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setDragOver({ type: 'project', id: project.id });
-                    }}
-                    onDragLeave={clearDragOverIfLeaving}
-                    onDrop={(e) => handleDropOnProject(e, project.id)}
-                  >
-                    <Chevron expanded={isExpanded} />
-                    <ProjectIcon />
-                    {editingProjectId === project.id ? (
-                      <InlineNameInput
-                        initialValue={project.name}
-                        className={styles.projectNameInput}
-                        onCommit={(name) => handleProjectRenameCommit(project.id, name)}
-                        onCancel={() => setEditingProjectId(null)}
-                      />
-                    ) : (
-                      <span
-                        className={styles.projectName}
-                        onDoubleClick={(e) => { e.stopPropagation(); setEditingProjectId(project.id); }}
-                      >
-                        {project.name}
-                      </span>
-                    )}
-                    <button
-                      className={`${styles.iconBtn} ${styles.folderAddBtn}`}
-                      onClick={(e) => handleCreateFolder(project.id, e)}
-                      title="Add folder"
-                    >
-                      +folder
-                    </button>
-                    <button
-                      className={styles.iconBtn}
-                      onClick={(e) => handleProjectImportClick(e, project.id)}
-                      title="Import Postman collection"
-                    >
-                      <ImportIcon />
-                    </button>
-                    <button
-                      className={styles.iconBtn}
-                      onClick={(e) => handleProjectExportClick(e, project.id)}
-                      title="Export as Postman collection"
-                    >
-                      <ExportIcon />
-                    </button>
-                    <button
-                      className={styles.iconBtn}
-                      onClick={(e) => handleCreateRootRequest(project.id, e)}
-                      title="Add request"
-                    >
-                      +
-                    </button>
-                    {editingProjectId !== project.id && (
-                      <button
-                        className={styles.iconBtn}
-                        onClick={(e) => { e.stopPropagation(); setEditingProjectId(project.id); }}
-                        title="Rename project"
-                      >
-                        <PenIcon />
-                      </button>
-                    )}
-                    <button
-                      className={`${styles.iconBtn} ${styles.deleteBtn}`}
-                      onClick={(e) => requestDeleteProject(project.id, e)}
-                      title="Delete project"
-                    >
-                      <BinIcon />
-                    </button>
-                  </div>
-
-                  {isExpanded && (
-                    <div className={styles.children}>
-                      {/* Folders */}
-                      {projectFolders.map((folder) => {
-                        const isFolderExpanded = expandedFolders.has(folder.id);
-                        const folderRequests = requests
-                          .filter((r) => r.folder_id === folder.id)
-                          .sort((a, b) => a.position - b.position);
-                        const isFolderDragOver = dragOver?.type === 'folder' && dragOver.id === folder.id;
-
-                        return (
-                          <div key={folder.id} className={styles.folder}>
-                            {/* Folder row — draggable + drop target */}
-                            <div
-                              id={`folder-row-${folder.id}`}
-                              className={`${styles.folderRow}${isFolderDragOver ? ` ${styles.dragOver}` : ''}`}
-                              draggable
-                              onDragStart={(e) => {
-                                dragging.current = { kind: 'folder', id: folder.id };
-                                e.dataTransfer.effectAllowed = 'move';
-                                e.stopPropagation();
-                              }}
-                              onDragEnd={() => {
-                                dragging.current = null;
-                                setDragOver(null);
-                              }}
-                              onDragOver={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setDragOver({ type: 'folder', id: folder.id });
-                              }}
-                              onDragLeave={clearDragOverIfLeaving}
-                              onDrop={(e) => handleDropOnFolder(e, folder)}
-                              onClick={() => dispatch({ type: 'TOGGLE_FOLDER', payload: folder.id })}
-                            >
-                              <Chevron expanded={isFolderExpanded} />
-                              <FolderIcon open={isFolderExpanded} />
-                              {editingFolderId === folder.id ? (
-                                <InlineNameInput
-                                  initialValue={folder.name}
-                                  className={styles.folderNameInput}
-                                  onCommit={(name) => handleFolderRenameCommit(folder.id, name)}
-                                  onCancel={() => setEditingFolderId(null)}
-                                />
-                              ) : (
-                                <span
-                                  className={styles.folderName}
-                                  onDoubleClick={(e) => { e.stopPropagation(); setEditingFolderId(folder.id); }}
-                                >
-                                  {folder.name}
-                                  {folder.imported && <ImportedFolderIcon />}
-                                </span>
-                              )}
-                              <button
-                                className={styles.iconBtn}
-                                onClick={(e) => { e.stopPropagation(); handleCreateFolderRequest(project.id, folder.id, e); }}
-                                title="Add request"
-                              >
-                                +
-                              </button>
-                              <button
-                                className={styles.iconBtn}
-                                onClick={(e) => handleFolderImportClick(e, folder.id, project.id)}
-                                title="Import Postman collection into folder"
-                              >
-                                <ImportIcon />
-                              </button>
-                              <button
-                                className={styles.iconBtn}
-                                onClick={(e) => handleFolderExportClick(e, folder.id)}
-                                title="Export folder as Postman collection"
-                              >
-                                <ExportIcon />
-                              </button>
-                              {editingFolderId !== folder.id && (
-                                <button
-                                  className={styles.iconBtn}
-                                  onClick={(e) => { e.stopPropagation(); setEditingFolderId(folder.id); }}
-                                  title="Rename folder"
-                                >
-                                  <PenIcon />
-                                </button>
-                              )}
-                              {editingFolderId !== folder.id && (
-                                <button
-                                  className={styles.iconBtn}
-                                  onClick={(e) => { e.stopPropagation(); handleDuplicateFolder(folder.id); }}
-                                  title="Duplicate folder"
-                                >
-                                  <CopyIcon />
-                                </button>
-                              )}
-                              <button
-                                className={`${styles.iconBtn} ${styles.deleteBtn}`}
-                                onClick={(e) => { e.stopPropagation(); requestDeleteFolder(folder.id, e); }}
-                                title="Delete folder"
-                              >
-                                <BinIcon />
-                              </button>
-                            </div>
-
-                            {isFolderExpanded && (
-                              <div className={styles.folderChildren}>
-                                {folderRequests.length === 0 ? (
-                                  <div className={`${styles.treeRow} ${styles.emptyRow}`}>No requests</div>
-                                ) : (
-                                  folderRequests.map((request) => (
-                                    <div key={request.id} className={styles.requestRowWrap}>
-                                      {dragOver?.id === request.id && dragOver.type === 'request-above' && (
-                                        <div className={`${styles.dropLine} ${styles.dropAbove}`} />
-                                      )}
-                                      <div
-                                        className={styles.treeRow}
-                                        draggable
-                                        onDragStart={(e) => {
-                                          dragging.current = { kind: 'request', id: request.id };
-                                          e.dataTransfer.effectAllowed = 'move';
-                                          e.stopPropagation();
-                                        }}
-                                        onDragEnd={() => {
-                                          dragging.current = null;
-                                          setDragOver(null);
-                                        }}
-                                        onDragOver={(e) => onRequestDragOver(e, request)}
-                                        onDragLeave={clearDragOverIfLeaving}
-                                        onDrop={(e) => handleDropOnRequest(e, request)}
-                                      >
-                                        <RequestItem
-                                          request={request}
-                                          isSelected={currentRequestId === request.id}
-                                          isEditing={editingRequestId === request.id}
-                                          isExecuting={state.executingRequestId === request.id}
-                                          onSelect={handleSelect}
-                                          onDelete={requestDeleteRequest}
-                                          onRenameCommit={handleRenameCommit}
-                                          onRenameCancel={() => setEditingRequestId(null)}
-                                          onRenameStart={() => setEditingRequestId(request.id)}
-                                          onDuplicate={() => handleDuplicateRequest(request.id)}
-                                          assignedShortcut={getShortcutForRequest(request.id)}
-                                          onOpenShortcutModal={() => setShortcutModalRequestId(request.id)}
-                                        />
-                                      </div>
-                                      {dragOver?.id === request.id && dragOver.type === 'request-below' && (
-                                        <div className={`${styles.dropLine} ${styles.dropBelow}`} />
-                                      )}
-                                    </div>
-                                  ))
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-
-                      {/* Root-level requests */}
-                      <div>
-                        {rootRequests.length === 0 && projectFolders.length === 0 ? (
-                          <div className={`${styles.treeRow} ${styles.emptyRow}`}>No requests</div>
-                        ) : (
-                          rootRequests.map((request) => (
-                            <div key={request.id} className={styles.requestRowWrap}>
-                              {dragOver?.id === request.id && dragOver.type === 'request-above' && (
-                                <div className={`${styles.dropLine} ${styles.dropAbove}`} />
-                              )}
-                              <div
-                                className={styles.treeRow}
-                                draggable
-                                onDragStart={(e) => {
-                                  dragging.current = { kind: 'request', id: request.id };
-                                  e.dataTransfer.effectAllowed = 'move';
-                                  e.stopPropagation();
-                                }}
-                                onDragEnd={() => {
-                                  dragging.current = null;
-                                  setDragOver(null);
-                                }}
-                                onDragOver={(e) => onRequestDragOver(e, request)}
-                                onDragLeave={clearDragOverIfLeaving}
-                                onDrop={(e) => handleDropOnRequest(e, request)}
-                              >
-                                <RequestItem
-                                  request={request}
-                                  isSelected={currentRequestId === request.id}
-                                  isEditing={editingRequestId === request.id}
-                                  isExecuting={state.executingRequestId === request.id}
-                                  onSelect={handleSelect}
-                                  onDelete={requestDeleteRequest}
-                                  onRenameCommit={handleRenameCommit}
-                                  onRenameCancel={() => setEditingRequestId(null)}
-                                  onRenameStart={() => setEditingRequestId(request.id)}
-                                  onDuplicate={() => handleDuplicateRequest(request.id)}
-                                  assignedShortcut={getShortcutForRequest(request.id)}
-                                  onOpenShortcutModal={() => setShortcutModalRequestId(request.id)}
-                                />
-                              </div>
-                              {dragOver?.id === request.id && dragOver.type === 'request-below' && (
-                                <div className={`${styles.dropLine} ${styles.dropBelow}`} />
-                              )}
-                            </div>
-                          ))
-                        )}
-                      </div>
-
-                      {/* Environments group */}
-                      {(() => {
-                        const envsExpanded = expandedEnvSections.has(project.id);
-                        return (
-                          <div className={styles.folder}>
-                            <div
-                              className={styles.folderRow}
-                              onClick={() => setExpandedEnvSections((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(project.id)) next.delete(project.id);
-                                else next.add(project.id);
-                                return next;
-                              })}
-                            >
-                              <Chevron expanded={envsExpanded} />
-                              <EnvIcon />
-                              <span className={styles.folderName}>Environments</span>
-                              <button
-                                className={`${styles.iconBtn} ${styles.folderAddBtn}`}
-                                onClick={(e) => handleCreateEnvironment(project.id, e)}
-                                title="Add environment"
-                              >
-                                +env
-                              </button>
-                            </div>
-                            {envsExpanded && (
-                              <div className={styles.folderChildren}>
-                                {projectEnvs.length === 0 ? (
-                                  <div className={`${styles.treeRow} ${styles.emptyRow}`}>No environments</div>
-                                ) : (
-                                  projectEnvs.map((env) => (
-                                    <div
-                                      key={env.id}
-                                      className={`${styles.treeRow} ${styles.envRow}`}
-                                      onClick={() => setEnvModalEnv(env)}
-                                    >
-                                      <EnvIcon />
-                                      <span className={styles.envName}>{env.name}</span>
-                                      <button
-                                        className={`${styles.iconBtn} ${styles.deleteBtn}`}
-                                        onClick={(e) => requestDeleteEnv(env.id, env.name, e)}
-                                        title="Delete environment"
-                                      >
-                                        <BinIcon />
-                                      </button>
-                                    </div>
-                                  ))
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
-                </div>
-              );
-            })
+            projects.map((project) => (
+              <ProjectRow
+                key={project.id}
+                project={project}
+                folders={folders.filter((f) => f.project_id === project.id)}
+                projectRequests={requests.filter((r) => r.project_id === project.id)}
+                projectEnvs={environments.filter((e) => e.project_id === project.id)}
+                isExpanded={expandedProjects.has(project.id)}
+                expandedFolders={expandedFolders}
+                expandedEnvSections={expandedEnvSections}
+                setExpandedEnvSections={setExpandedEnvSections}
+                editingProjectId={editingProjectId}
+                onEditProject={setEditingProjectId}
+                editingFolderId={editingFolderId}
+                onEditFolder={setEditingFolderId}
+                editingRequestId={editingRequestId}
+                onEditRequest={setEditingRequestId}
+                currentRequestId={currentRequestId}
+                executingRequestId={state.executingRequestId}
+                dragOver={dragOver}
+                dragging={dragging}
+                setDragOver={setDragOver}
+                onSelect={handleSelect}
+                onCreateRootRequest={handleCreateRootRequest}
+                onCreateFolderRequest={handleCreateFolderRequest}
+                onCreateFolder={handleCreateFolder}
+                onCreateEnvironment={handleCreateEnvironment}
+                onProjectRenameCommit={handleProjectRenameCommit}
+                onFolderRenameCommit={handleFolderRenameCommit}
+                onRenameCommit={handleRenameCommit}
+                onDuplicateRequest={handleDuplicateRequest}
+                onDuplicateFolder={handleDuplicateFolder}
+                onDeleteProject={requestDeleteProject}
+                onDeleteFolder={requestDeleteFolder}
+                onDeleteRequest={requestDeleteRequest}
+                onDeleteEnv={requestDeleteEnv}
+                onProjectImport={handleProjectImportClick}
+                onFolderImport={handleFolderImportClick}
+                onProjectExport={handleProjectExportClick}
+                onFolderExport={handleFolderExportClick}
+                getShortcutForRequest={getShortcutForRequest}
+                onOpenShortcutModal={setShortcutModalRequestId}
+                onEnvClick={setEnvModalEnv}
+                onToggleProject={() => dispatch({ type: 'TOGGLE_PROJECT', payload: project.id })}
+                onToggleFolder={(id) => dispatch({ type: 'TOGGLE_FOLDER', payload: id })}
+                onDropOnProject={handleDropOnProject}
+                onDropOnFolder={handleDropOnFolder}
+                onDropOnRequest={handleDropOnRequest}
+                onRequestDragOver={onRequestDragOver}
+                clearDragOverIfLeaving={clearDragOverIfLeaving}
+              />
+            ))
           )}
         </div>
       </div>
