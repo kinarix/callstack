@@ -15,6 +15,7 @@ dev:
 	cd src-tauri && cargo tauri dev
 
 build:
+	npm --prefix web run build
 	cd src-tauri && cargo tauri build
 
 web-dev:
