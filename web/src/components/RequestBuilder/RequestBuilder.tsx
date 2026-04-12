@@ -8,6 +8,7 @@ import { useApp } from '../../context/AppContext';
 import { useHttpClient } from '../../hooks/useHttpClient';
 import { useDatabase } from '../../hooks/useDatabase';
 import { resolveTemplate } from '../../lib/template';
+import { runScript } from '../../hooks/useScriptRunner';
 
 interface RequestBuilderProps {
   request: Request | null;
@@ -161,10 +162,11 @@ function getActiveEnvKey(projectId: number | null) {
 export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, copyFlash }: RequestBuilderProps) {
   const { state, dispatch } = useApp();
   const { send, cancelRequest } = useHttpClient();
-  const { updateRequest, saveResponse } = useDatabase();
+  const { updateRequest, saveResponse, updateEnvironment } = useDatabase();
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [bodyError, setBodyError] = useState<string | null>(null);
   const [urlError, setUrlError] = useState<UrlError | null>(null);
+  const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
   const [followRedirects, setFollowRedirects] = useState(true);
   const [files, setFiles] = useState<FileAttachment[]>(() => request?.files ?? []);
   const [activeEnvId, setActiveEnvId] = useState<number | null>(() => {
@@ -218,6 +220,8 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         if (changes.headers !== undefined) fields.headers = JSON.stringify(changes.headers);
         if (changes.body !== undefined) fields.body = changes.body;
         if (changes.files !== undefined) fields.attachments = JSON.stringify(changes.files);
+        if (changes.pre_script !== undefined) fields.pre_script = changes.pre_script;
+        if (changes.post_script !== undefined) fields.post_script = changes.post_script;
         updateRequest(id, fields);
       }, 300);
     },
@@ -276,20 +280,111 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
   const activeEnv = projectEnvironments.find((e) => e.id === activeEnvId) ?? null;
   const envVars = activeEnv?.variables ?? [];
 
+  const applyEnvMutations = useCallback(async (mutations: { set: Record<string, string>; unset: string[] }) => {
+    if (!activeEnv || (Object.keys(mutations.set).length === 0 && mutations.unset.length === 0)) return;
+    const updatedVars = activeEnv.variables
+      .filter((v) => !mutations.unset.includes(v.key))
+      .map((v) => mutations.set[v.key] !== undefined ? { ...v, value: mutations.set[v.key] } : v);
+    for (const [key, value] of Object.entries(mutations.set)) {
+      if (!updatedVars.find((v) => v.key === key)) {
+        updatedVars.push({ key, value, enabled: true });
+      }
+    }
+    const updated = await updateEnvironment(activeEnv.id, activeEnv.name, updatedVars);
+    dispatch({ type: 'UPDATE_ENVIRONMENT', payload: updated });
+  }, [activeEnv, updateEnvironment, dispatch]);
+
+  const handleScriptTest = useCallback((script: string, isPost: boolean) => {
+    if (!script.trim()) return;
+    setConsoleLogs([]);
+    const result = runScript(script, {
+      request: request ?? undefined,
+      response: isPost ? (state.currentResponse ?? undefined) : undefined,
+      envVars,
+    });
+
+    // Append test result summaries to console output
+    const testLines: string[] = [];
+    if (result.testResults.length > 0) {
+      testLines.push('');
+      for (const r of result.testResults) {
+        const icon = r.passed ? '✓' : '✗';
+        const detail = r.passed ? (r.message ? ` — ${r.message}` : '') : (r.error ? ` — ${r.error}` : '');
+        testLines.push(`${icon} ${r.description}${detail}`);
+      }
+      const passed = result.testResults.filter(r => r.passed).length;
+      testLines.push(`\n${passed}/${result.testResults.length} passed`);
+    }
+    setConsoleLogs([...result.logs, ...testLines]);
+
+    if (isPost && result.envMutations) applyEnvMutations(result.envMutations);
+
+    // Update response panel with test results if a real response exists
+    if (isPost && state.currentResponse) {
+      let testResults: import('../../lib/types').TestResult[] | undefined;
+      let testStatus: import('../../lib/types').TestStatus | undefined;
+
+      if (result.testResults.length > 0) {
+        testResults = result.testResults;
+        const passed = testResults.filter((t) => t.passed).length;
+        testStatus = passed === testResults.length ? 'PASS' : passed === 0 ? 'FAIL' : 'PARTIAL';
+      }
+
+      dispatch({
+        type: 'SET_RESPONSE',
+        payload: {
+          ...state.currentResponse,
+          testResults,
+          testStatus,
+        },
+      });
+    }
+  }, [request, state.currentResponse, envVars, applyEnvMutations, dispatch]);
+
   const handleSend = async () => {
     if (!request || !request.url) return;
 
+    // Clear console on each send
+    setConsoleLogs([]);
+
     // Apply template resolution using active env variables
-    const resolvedUrl = resolveTemplate(request.url, envVars);
-    const resolvedBody = resolveTemplate(request.body, envVars);
-    const resolvedParams = request.params.map((p) => ({
+    let resolvedUrl = resolveTemplate(request.url, envVars);
+    let resolvedBody = resolveTemplate(request.body, envVars);
+    let resolvedParams = request.params.map((p) => ({
       ...p,
       value: resolveTemplate(p.value, envVars),
     }));
-    const resolvedHeaders = request.headers.map((h) => ({
+    let resolvedHeaders = request.headers.map((h) => ({
       ...h,
       value: resolveTemplate(h.value, envVars),
     }));
+
+    // Run pre-request script
+    let testResults: import('../../lib/types').TestResult[] | undefined;
+    let testStatus: import('../../lib/types').TestStatus | undefined;
+    if (request.pre_script?.trim()) {
+      const preResult = runScript(request.pre_script, {
+        request: {
+          method: request.method,
+          url: resolvedUrl,
+          headers: resolvedHeaders,
+          params: resolvedParams,
+          body: resolvedBody,
+        },
+        envVars,
+      });
+      setConsoleLogs(preResult.logs);
+      if (preResult.envMutations) await applyEnvMutations(preResult.envMutations);
+      if (preResult.mutatedRequest) {
+        resolvedUrl = preResult.mutatedRequest.url;
+        resolvedBody = preResult.mutatedRequest.body;
+        resolvedParams = preResult.mutatedRequest.params;
+        resolvedHeaders = preResult.mutatedRequest.headers;
+      }
+      if (preResult.testResults.length > 0) {
+        testResults = preResult.testResults;
+      }
+    }
 
     // Normalize URL (lowercase scheme + host) — only write back if the original URL
     // itself changed, not because template variables were resolved.
@@ -333,6 +428,24 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         attachments: files,
       });
 
+      // Run post-request script
+      if (request.post_script?.trim()) {
+        const postResult = runScript(request.post_script, {
+          request: { method: request.method, url: normalizedUrl, headers: resolvedHeaders, params: resolvedParams, body: resolvedBody },
+          response: { status: result.status, statusText: result.statusText, headers: result.headers, body: result.body, time: result.timeMs },
+          envVars,
+        });
+        setConsoleLogs((prev) => [...prev, ...postResult.logs]);
+        if (postResult.envMutations) await applyEnvMutations(postResult.envMutations);
+        if (postResult.testResults.length > 0) {
+          testResults = [...(testResults ?? []), ...postResult.testResults];
+        }
+      }
+      if (testResults && testResults.length > 0) {
+        const passed = testResults.filter((t) => t.passed).length;
+        testStatus = passed === testResults.length ? 'PASS' : passed === 0 ? 'FAIL' : 'PARTIAL';
+      }
+
       dispatch({
         type: 'SET_RESPONSE',
         payload: {
@@ -345,6 +458,8 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
           time: result.timeMs,
           size: result.size,
           timestamp: sentAt,
+          testResults: testResults && testResults.length > 0 ? testResults : undefined,
+          testStatus: testStatus || undefined,
         },
       });
 
@@ -448,6 +563,10 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
             onRequestChange={handleRequestChange}
             files={files}
             onFilesChange={handleFilesChange}
+            consoleLogs={consoleLogs}
+            onClearLogs={() => setConsoleLogs([])}
+            envVars={envVars}
+            onScriptTest={handleScriptTest}
           />
         </div>
         <div className={styles.splitHandle} onMouseDown={startPanelResize} />

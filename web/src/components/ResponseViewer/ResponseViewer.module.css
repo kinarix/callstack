@@ -418,3 +418,122 @@
   display: block;
   border-radius: var(--radius-md);
 }
+
+/* ── Tests pane ───────────────────────────────────────── */
+
+.testsPane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.testsSummary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px var(--space-2);
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  font-size: 12px;
+  font-family: 'Outfit', sans-serif;
+  flex-shrink: 0;
+}
+
+.testsSummaryPass {
+  font-weight: 600;
+  color: var(--accent-get);
+}
+
+.testsSummaryFail {
+  font-weight: 600;
+  color: #ef4444;
+}
+
+.testsSummarySep {
+  color: var(--text-tertiary);
+}
+
+.testsSummaryTotal {
+  color: var(--text-tertiary);
+  margin-left: 2px;
+}
+
+.testsTable {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-1) var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.testsRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  padding: 6px var(--space-1);
+  border-radius: var(--radius-sm);
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.testsRow:last-child {
+  border-bottom: none;
+}
+
+.testsRowPass {
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.testsRowFail {
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.testsIcon {
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+  width: 18px;
+  padding-top: 1px;
+}
+
+.testsRowPass .testsIcon {
+  color: var(--accent-get);
+}
+
+.testsRowFail .testsIcon {
+  color: #ef4444;
+}
+
+.testsDetail {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.testsDesc {
+  font-size: 13px;
+  font-family: 'Outfit', sans-serif;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.testsSuccess {
+  font-size: 11.5px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--accent-get);
+  white-space: pre-wrap;
+  word-break: break-word;
+  opacity: 0.85;
+}
+
+.testsError {
+  font-size: 11.5px;
+  font-family: 'JetBrains Mono', monospace;
+  color: #ef4444;
+  white-space: pre-wrap;
+  word-break: break-word;
+  opacity: 0.85;
+}

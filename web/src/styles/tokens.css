@@ -35,11 +35,15 @@
   --status-warning: #f59e0b;
 
   /* Syntax highlighting */
-  --syntax-key:    #60a5fa;
-  --syntax-string: #34d399;
-  --syntax-number: #fb923c;
-  --syntax-bool:   #a78bfa;
-  --syntax-null:   #94a3b8;
+  --syntax-key:      #60a5fa;
+  --syntax-string:   #34d399;
+  --syntax-number:   #fb923c;
+  --syntax-bool:     #a78bfa;
+  --syntax-null:     #94a3b8;
+  --syntax-keyword:  #c792ea;
+  --syntax-function: #82aaff;
+  --syntax-property: #f07178;
+  --syntax-comment:  #546e7a;
 
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -84,11 +88,15 @@
   --border-secondary: #e8e8eb;
 
   /* Syntax highlighting */
-  --syntax-key:    #1d6fd8;
-  --syntax-string: #0e7a5b;
-  --syntax-number: #c2610a;
-  --syntax-bool:   #7c3aed;
-  --syntax-null:   #6b7280;
+  --syntax-key:      #1d6fd8;
+  --syntax-string:   #0e7a5b;
+  --syntax-number:   #c2610a;
+  --syntax-bool:     #7c3aed;
+  --syntax-null:     #6b7280;
+  --syntax-keyword:  #7c3aed;
+  --syntax-function: #1d5faf;
+  --syntax-property: #b91c1c;
+  --syntax-comment:  #6b7280;
 }
 
 /* Dim theme — warm, low-contrast, easy on the eyes */
@@ -111,11 +119,15 @@
   --border-secondary: #2e2b23;
 
   /* Syntax highlighting — muted, warm */
-  --syntax-key:    #7bafd4;
-  --syntax-string: #7ab89a;
-  --syntax-number: #c9956a;
-  --syntax-bool:   #a98bc7;
-  --syntax-null:   #7a7870;
+  --syntax-key:      #7bafd4;
+  --syntax-string:   #7ab89a;
+  --syntax-number:   #c9956a;
+  --syntax-bool:     #a98bc7;
+  --syntax-null:     #7a7870;
+  --syntax-keyword:  #b094c9;
+  --syntax-function: #7bafd4;
+  --syntax-property: #c47a7e;
+  --syntax-comment:  #6b6860;
 }
 
 /* System theme (respects prefers-color-scheme) */
@@ -136,11 +148,15 @@
     --border-secondary: #e8e8eb;
 
     /* Syntax highlighting */
-    --syntax-key:    #1d6fd8;
-    --syntax-string: #0e7a5b;
-    --syntax-number: #c2610a;
-    --syntax-bool:   #7c3aed;
-    --syntax-null:   #6b7280;
+    --syntax-key:      #1d6fd8;
+    --syntax-string:   #0e7a5b;
+    --syntax-number:   #c2610a;
+    --syntax-bool:     #7c3aed;
+    --syntax-null:     #6b7280;
+    --syntax-keyword:  #7c3aed;
+    --syntax-function: #1d5faf;
+    --syntax-property: #b91c1c;
+    --syntax-comment:  #6b7280;
   }
 }
 

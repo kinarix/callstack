@@ -18,9 +18,10 @@ function PinIcon({ pinned }: { pinned: boolean }) {
     </svg>
   );
 }
-import type { Response } from '../../lib/types';
+import type { Response, TestResult } from '../../lib/types';
 import { getStatusColor, formatBytes } from '../../lib/utils';
 import styles from './ResponseViewer.module.css';
+
 
 function formatTimestamp(ts: number): string {
   const d = new Date(ts);
@@ -126,13 +127,15 @@ function isPreviewable(contentType: string): boolean {
 }
 
 export function ResponseViewer({ response, requestName, copyFlash, onClear }: ResponseViewerProps) {
-  const [tab, setTab] = useState<'body' | 'headers' | 'preview'>('body');
+  const [tab, setTab] = useState<'body' | 'headers' | 'preview' | 'tests'>('body');
   const [headersPinned, setHeadersPinned] = useState(false);
 
   useEffect(() => {
     if (response) {
       const contentType = getContentType(response.headers);
-      if (isPreviewable(contentType)) {
+      if (response.testResults && response.testResults.length > 0) {
+        setTab('tests');
+      } else if (isPreviewable(contentType)) {
         setTab('preview');
       } else if (tab === 'preview') {
         setTab('body');
@@ -254,6 +257,23 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear }: Re
             <PinIcon pinned={headersPinned} />
           </button>
         </div>
+        {response.testResults && response.testResults.length > 0 && (() => {
+          const passed = response.testResults.filter(r => r.passed).length;
+          const failed = response.testResults.length - passed;
+          const statusColor = failed === 0 ? 'var(--accent-get)' : passed === 0 ? '#ef4444' : '#f59e0b';
+          return (
+            <button
+              className={`${styles.tab} ${tab === 'tests' ? styles.tabActive : ''}`}
+              onClick={() => setTab('tests')}
+              style={tab === 'tests' ? { color: statusColor, borderBottomColor: statusColor } : {}}
+            >
+              Tests
+              <span className={styles.tabCount} style={{ background: `${statusColor}22`, color: statusColor }}>
+                {failed === 0 ? `${passed} passed` : passed === 0 ? `${failed} failed` : `${passed}/${response.testResults.length}`}
+              </span>
+            </button>
+          );
+        })()}
       </div>
 
       {/* Pinned headers — shown above body when pinned and body tab is active */}
@@ -363,6 +383,42 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear }: Re
               );
             }
             return null;
+          })()}
+        </div>
+      )}
+
+      {tab === 'tests' && response.testResults && (
+        <div className={styles.testsPane}>
+          {(() => {
+            const results = response.testResults;
+            const passed = results.filter(r => r.passed).length;
+            const failed = results.length - passed;
+            return (
+              <>
+                <div className={styles.testsSummary}>
+                  {passed > 0 && <span className={styles.testsSummaryPass}>{passed} passed</span>}
+                  {passed > 0 && failed > 0 && <span className={styles.testsSummarySep}>·</span>}
+                  {failed > 0 && <span className={styles.testsSummaryFail}>{failed} failed</span>}
+                  <span className={styles.testsSummaryTotal}>of {results.length}</span>
+                </div>
+                <div className={styles.testsTable}>
+                  {results.map((r, i) => (
+                    <div key={i} className={`${styles.testsRow} ${r.passed ? styles.testsRowPass : styles.testsRowFail}`}>
+                      <span className={styles.testsIcon}>{r.passed ? '✓' : '✗'}</span>
+                      <div className={styles.testsDetail}>
+                        <span className={styles.testsDesc}>{r.description}</span>
+                        {r.passed && r.message && (
+                          <span className={styles.testsSuccess}>{r.message}</span>
+                        )}
+                        {!r.passed && r.error && (
+                          <span className={styles.testsError}>{r.error}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            );
           })()}
         </div>
       )}
