@@ -42,11 +42,6 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
-      - name: Install Node.js 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
       - name: install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04' # This must match the platform value defined above.
         run: |
@@ -57,7 +52,7 @@ jobs:
         working-directory: web
         run: npm install
       
-       - name: Build frontend
+      - name: Build frontend
         working-directory: web
         run: npm run build
 
