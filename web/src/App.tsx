@@ -54,6 +54,23 @@ function AppContent() {
     });
   }, [state.currentUser?.email, dispatch, loadUserProjects, loadUserRequests, loadFolders, listEnvironments]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!/^F([1-9]|1[0-2])$/.test(e.key)) return;
+      try {
+        const raw = localStorage.getItem('callstack.shortcuts');
+        const shortcuts: { [fkey: string]: number } = raw ? JSON.parse(raw) : {};
+        const requestId = shortcuts[e.key];
+        if (requestId != null) {
+          e.preventDefault();
+          dispatch({ type: 'SET_CURRENT_REQUEST', payload: requestId });
+        }
+      } catch {}
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [dispatch]);
+
   const currentRequest = state.requests.find((r) => r.id === state.currentRequestId) || null;
 
   const gridCols = sidebarCollapsed ? `0px 0px 1fr` : `${sidebarWidth}px 4px 1fr`;

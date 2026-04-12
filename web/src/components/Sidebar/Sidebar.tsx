@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useDatabase } from '../../hooks/useDatabase';
+import { useShortcuts } from '../../hooks/useShortcuts';
+import { ShortcutModal } from '../ShortcutModal/ShortcutModal';
 import { RequestItem } from './RequestItem';
 import { NewProjectModal } from './NewProjectModal';
 import { NewFolderModal } from './NewFolderModal';
@@ -211,6 +213,8 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
   const [envModalEnv, setEnvModalEnv] = useState<Environment | null>(null);
   const [expandedEnvSections, setExpandedEnvSections] = useState<Set<number>>(new Set());
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+  const [shortcutModalRequestId, setShortcutModalRequestId] = useState<number | null>(null);
+  const { shortcuts, assignShortcut, removeShortcut, getShortcutForRequest } = useShortcuts();
   const [importModalState, setImportModalState] = useState<{
     collectionName: string;
     requests: ParsedCollection['requests'];
@@ -325,6 +329,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
         console.log('Deleting request:', pd.id);
         await deleteRequest(pd.id);
         console.log('Request deleted successfully');
+        removeShortcut(pd.id);
         dispatch({ type: 'DELETE_REQUEST', payload: pd.id });
       } else if (pd.type === 'env') {
         console.log('Deleting environment:', pd.id);
@@ -335,7 +340,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
       console.error('Delete failed:', error);
       setPendingDelete(pd);
     }
-  }, [pendingDelete, deleteProject, deleteFolder, deleteRequest, deleteEnvironment, dispatch]);
+  }, [pendingDelete, deleteProject, deleteFolder, deleteRequest, deleteEnvironment, removeShortcut, dispatch]);
 
   const handleCreateFolder = (projectId: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -739,6 +744,23 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
         </ConfirmModal>
       )}
 
+      {shortcutModalRequestId !== null && (
+        <ShortcutModal
+          requestId={shortcutModalRequestId}
+          shortcuts={shortcuts}
+          requests={state.requests}
+          onAssign={(fkey) => {
+            assignShortcut(fkey, shortcutModalRequestId);
+            setShortcutModalRequestId(null);
+          }}
+          onRemove={() => {
+            removeShortcut(shortcutModalRequestId);
+            setShortcutModalRequestId(null);
+          }}
+          onClose={() => setShortcutModalRequestId(null)}
+        />
+      )}
+
       <div className={styles.sidebar}>
         <div className={styles.header}>
           <span className={styles.title}>Explorer</span>
@@ -981,6 +1003,8 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                           onRenameCancel={() => setEditingRequestId(null)}
                                           onRenameStart={() => setEditingRequestId(request.id)}
                                           onDuplicate={() => handleDuplicateRequest(request.id)}
+                                          assignedShortcut={getShortcutForRequest(request.id)}
+                                          onOpenShortcutModal={() => setShortcutModalRequestId(request.id)}
                                         />
                                       </div>
                                       {dragOver?.id === request.id && dragOver.type === 'request-below' && (
@@ -1032,6 +1056,8 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                   onRenameCancel={() => setEditingRequestId(null)}
                                   onRenameStart={() => setEditingRequestId(request.id)}
                                   onDuplicate={() => handleDuplicateRequest(request.id)}
+                                  assignedShortcut={getShortcutForRequest(request.id)}
+                                  onOpenShortcutModal={() => setShortcutModalRequestId(request.id)}
                                 />
                               </div>
                               {dragOver?.id === request.id && dragOver.type === 'request-below' && (

@@ -1,55 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Request } from '../../lib/types';
-import { MethodBadge } from '../MethodBadge/MethodBadge';
+import { getMethodColor, getMethodIcon } from '../../lib/utils';
 import styles from './RequestItem.module.css';
 
 function MethodIcon({ method }: { method: string }) {
-  const baseProps = { width: '11', height: '13', viewBox: '0 0 11 13', fill: 'none', className: styles.fileIcon, 'aria-hidden': true };
-
-  switch (method) {
-    case 'GET':
-      return (
-        <svg {...baseProps}>
-          <path d="M1.5 6.5L5 10L9.5 5.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M9.5 5.5V1.5H1.5V11.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      );
-    case 'POST':
-      return (
-        <svg {...baseProps}>
-          <path d="M5.5 2V10M2 5.5H9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-          <rect x="1.5" y="1.5" width="8" height="10" rx="1" stroke="currentColor" strokeWidth="1.2" />
-        </svg>
-      );
-    case 'PUT':
-      return (
-        <svg {...baseProps}>
-          <path d="M2 3.5H9M2 6.5H9M2 9.5H9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-          <rect x="1.5" y="1.5" width="8" height="10" rx="1" stroke="currentColor" strokeWidth="1.2" />
-        </svg>
-      );
-    case 'DELETE':
-      return (
-        <svg {...baseProps}>
-          <path d="M3.5 4.5L7.5 8.5M7.5 4.5L3.5 8.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-          <circle cx="5.5" cy="6.5" r="4" stroke="currentColor" strokeWidth="1.2" />
-        </svg>
-      );
-    case 'PATCH':
-      return (
-        <svg {...baseProps}>
-          <circle cx="5.5" cy="6.5" r="3.5" stroke="currentColor" strokeWidth="1.2" />
-          <path d="M5.5 4.5V8.5M3.5 6.5H7.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-        </svg>
-      );
-    default:
-      return (
-        <svg {...baseProps}>
-          <path d="M2 1.5H6.5L9 4V11.5C9 11.78 8.78 12 8.5 12H2C1.72 12 1.5 11.78 1.5 11.5V2C1.5 1.72 1.72 1.5 2 1.5Z" stroke="currentColor" strokeWidth="1.2" />
-          <path d="M6.5 1.5V4H9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      );
-  }
+  return (
+    <span
+      className={styles.fileIcon}
+      style={{ color: getMethodColor(method as any) }}
+      aria-hidden
+    >
+      {getMethodIcon(method as any)}
+    </span>
+  );
 }
 
 function PenIcon() {
@@ -65,6 +28,15 @@ function CopyIcon() {
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
       <rect x="4" y="4" width="6.5" height="6.5" rx="1" stroke="currentColor" strokeWidth="1.2" />
       <path d="M3.5 8H2C1.72 8 1.5 7.78 1.5 7.5V2C1.5 1.72 1.72 1.5 2 1.5H7.5C7.78 1.5 8 1.72 8 2V3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function KeyboardIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden>
+      <rect x="1" y="3" width="11" height="7" rx="1.2" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M3.5 6.5h1M6 6.5h1M8.5 6.5h1M3.5 8.5h6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
   );
 }
@@ -97,6 +69,8 @@ interface RequestItemProps {
   onRenameCancel?: () => void;
   onRenameStart?: () => void;
   onDuplicate?: () => void;
+  assignedShortcut?: string | null;
+  onOpenShortcutModal?: () => void;
 }
 
 export function RequestItem({
@@ -110,6 +84,8 @@ export function RequestItem({
   onRenameCancel,
   onRenameStart,
   onDuplicate,
+  assignedShortcut,
+  onOpenShortcutModal,
 }: RequestItemProps) {
   const [draftName, setDraftName] = useState(request.name);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -147,7 +123,6 @@ export function RequestItem({
       {isExecuting
         ? <span className={styles.executingDot} aria-label="Executing" />
         : <MethodIcon method={request.method} />}
-      <MethodBadge method={request.method as any} />
       <div className={styles.content}>
         {isEditing ? (
           <input
@@ -167,11 +142,19 @@ export function RequestItem({
           <div className={styles.name}>
             {request.name}
             {request.imported && <ImportedIcon />}
+            {assignedShortcut && <span className={styles.shortcutBadge}>{assignedShortcut}</span>}
           </div>
         )}
       </div>
       {!isEditing && (
         <>
+          <button
+            className={styles.keyboardBtn}
+            onClick={(e) => { e.stopPropagation(); onOpenShortcutModal?.(); }}
+            title="Assign shortcut"
+          >
+            <KeyboardIcon />
+          </button>
           <button
             className={styles.editBtn}
             onClick={(e) => { e.stopPropagation(); onRenameStart?.(); }}

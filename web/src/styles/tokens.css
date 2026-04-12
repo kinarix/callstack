@@ -26,6 +26,8 @@
   --accent-put: #f59e0b;      /* amber */
   --accent-delete: #ef4444;   /* red */
   --accent-patch: #a855f7;    /* purple */
+  --accent-head: #6b7280;     /* gray */
+  --accent-options: #0ea5e9;  /* sky blue */
 
   /* Status colors */
   --status-success: #10b981;
