@@ -2,6 +2,7 @@ mod database;
 mod http_client;
 
 use database::Database;
+use tauri::Manager;
 
 #[tauri::command]
 async fn save_file(filename: String, content: String) -> Result<bool, String> {
@@ -36,6 +37,12 @@ pub fn run() {
     let db = Database::new().expect("Failed to initialize database");
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_shell::init())
         .manage(db)
         .invoke_handler(tauri::generate_handler![
