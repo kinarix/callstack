@@ -156,3 +156,17 @@
   color: var(--text-primary);
   transform: scale(1.2);
 }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.executingDot {
+  flex-shrink: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: var(--accent-put);
+  animation: spin 0.7s linear infinite;
+}

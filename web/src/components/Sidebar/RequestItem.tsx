@@ -90,6 +90,7 @@ interface RequestItemProps {
   request: Request;
   isSelected: boolean;
   isEditing?: boolean;
+  isExecuting?: boolean;
   onSelect: (id: number) => void;
   onDelete: (id: number, e: React.MouseEvent) => void;
   onRenameCommit?: (id: number, name: string) => void;
@@ -102,6 +103,7 @@ export function RequestItem({
   request,
   isSelected,
   isEditing,
+  isExecuting,
   onSelect,
   onDelete,
   onRenameCommit,
@@ -142,7 +144,9 @@ export function RequestItem({
       className={`${styles.item} ${isSelected ? styles.selected : ''}`}
       onClick={() => !isEditing && onSelect(request.id)}
     >
-      <MethodIcon method={request.method} />
+      {isExecuting
+        ? <span className={styles.executingDot} aria-label="Executing" />
+        : <MethodIcon method={request.method} />}
       <MethodBadge method={request.method as any} />
       <div className={styles.content}>
         {isEditing ? (

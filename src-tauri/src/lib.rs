@@ -4,6 +4,8 @@ mod http_client;
 use database::Database;
 use tauri::Manager;
 
+pub struct CancelHandle(pub tokio::sync::Mutex<Option<tokio::task::AbortHandle>>);
+
 #[tauri::command]
 async fn save_file(filename: String, content: String) -> Result<bool, String> {
     let ext = std::path::Path::new(&filename)
@@ -32,9 +34,19 @@ async fn save_file(filename: String, content: String) -> Result<bool, String> {
     }
 }
 
+#[tauri::command]
+async fn cancel_request(state: tauri::State<'_, CancelHandle>) -> Result<(), String> {
+    let guard = state.0.lock().await;
+    if let Some(handle) = guard.as_ref() {
+        handle.abort();
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let db = Database::new().expect("Failed to initialize database");
+    let cancel_handle = CancelHandle(tokio::sync::Mutex::new(None));
 
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -45,6 +57,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_shell::init())
         .manage(db)
+        .manage(cancel_handle)
         .invoke_handler(tauri::generate_handler![
             http_client::send_request,
             database::list_projects,
@@ -65,6 +78,7 @@ pub fn run() {
             database::duplicate_request,
             database::duplicate_folder,
         database::import_requests,
+            cancel_request,
             database::save_response,
             database::get_last_response,
             database::list_environments,

@@ -118,4 +118,4 @@ environments (id, project_id, name, variables, created_at, updated_at)
 
 ## License
 
-MIT
+Apache License Version 2.0

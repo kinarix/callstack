@@ -12,6 +12,7 @@ interface UrlError {
 interface UrlBarProps {
   request: Request | null;
   isLoading: boolean;
+  isBlocked?: boolean;
   urlError?: UrlError | null;
   showExpandBtn?: boolean;
   onExpand?: () => void;
@@ -19,6 +20,7 @@ interface UrlBarProps {
   onUrlChange: (url: string) => void;
   onNameChange: (name: string) => void;
   onSend: () => void;
+  onCancel?: () => void;
   followRedirects: boolean;
   onFollowRedirectsChange: (value: boolean) => void;
   environments: Environment[];
@@ -45,6 +47,7 @@ function renderUrlSegments(url: string, error: UrlError) {
 export function UrlBar({
   request,
   isLoading,
+  isBlocked,
   urlError,
   showExpandBtn,
   onExpand,
@@ -52,6 +55,7 @@ export function UrlBar({
   onUrlChange,
   onNameChange,
   onSend,
+  onCancel,
   followRedirects,
   onFollowRedirectsChange,
   environments,
@@ -129,12 +133,18 @@ export function UrlBar({
         </label>
       </div>
       <button
-        className={styles.sendBtn}
-        onClick={onSend}
-        disabled={isLoading || !url}
-        title="Send request (Enter)"
+        className={isLoading ? `${styles.sendBtn} ${styles.sendBtnCancel}` : styles.sendBtn}
+        onClick={isLoading ? onCancel : onSend}
+        disabled={isBlocked || (!isLoading && !url)}
+        title={isLoading ? 'Cancel request' : isBlocked ? 'Another request is in progress' : 'Send request (Enter)'}
       >
-        {isLoading ? '⟳' : '→'}
+        {isLoading ? (
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+            <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        ) : (
+          '→'
+        )}
       </button>
     </div>
   );

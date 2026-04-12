@@ -33,8 +33,7 @@ pub struct SendResponse {
     pub is_base64: bool,
 }
 
-#[tauri::command]
-pub async fn send_request(
+async fn execute_request(
     method: String,
     url: String,
     params: Vec<KeyValueParam>,
@@ -174,6 +173,36 @@ pub async fn send_request(
         }
         Err(e) => Err(friendly_network_error(&e, elapsed)),
     }
+}
+
+#[tauri::command]
+pub async fn send_request(
+    cancel_state: tauri::State<'_, crate::CancelHandle>,
+    method: String,
+    url: String,
+    params: Vec<KeyValueParam>,
+    headers: Vec<KeyValueParam>,
+    body: String,
+    follow_redirects: bool,
+    attachments: Vec<FileAttachment>,
+) -> Result<SendResponse, String> {
+    let handle = tokio::spawn(execute_request(
+        method, url, params, headers, body, follow_redirects, attachments,
+    ));
+    {
+        let mut g = cancel_state.0.lock().await;
+        *g = Some(handle.abort_handle());
+    }
+    let result = match handle.await {
+        Ok(r) => r,
+        Err(e) if e.is_cancelled() => Err("Request cancelled".to_string()),
+        Err(e) => Err(format!("Task error: {e}")),
+    };
+    {
+        let mut g = cancel_state.0.lock().await;
+        *g = None;
+    }
+    result
 }
 
 fn friendly_network_error(e: &reqwest::Error, elapsed: u128) -> String {

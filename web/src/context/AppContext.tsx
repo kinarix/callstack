@@ -72,6 +72,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, currentResponse: action.payload };
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
+    case 'SET_EXECUTING_REQUEST':
+      return { ...state, executingRequestId: action.payload };
     case 'TOGGLE_PROJECT':
       return {
         ...state,
@@ -141,6 +143,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     environments: [],
     currentResponse: null,
     isLoading: false,
+    executingRequestId: null,
     expandedProjects: new Set<number>(),
     expandedFolders: new Set<number>(),
     logs: [],

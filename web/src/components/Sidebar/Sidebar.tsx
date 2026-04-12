@@ -974,6 +974,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                           request={request}
                                           isSelected={currentRequestId === request.id}
                                           isEditing={editingRequestId === request.id}
+                                          isExecuting={state.executingRequestId === request.id}
                                           onSelect={handleSelect}
                                           onDelete={requestDeleteRequest}
                                           onRenameCommit={handleRenameCommit}
@@ -1024,6 +1025,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                   request={request}
                                   isSelected={currentRequestId === request.id}
                                   isEditing={editingRequestId === request.id}
+                                  isExecuting={state.executingRequestId === request.id}
                                   onSelect={handleSelect}
                                   onDelete={requestDeleteRequest}
                                   onRenameCommit={handleRenameCommit}

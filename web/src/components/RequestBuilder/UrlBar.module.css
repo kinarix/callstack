@@ -194,3 +194,14 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.sendBtnCancel {
+  background: var(--accent-put);
+  border-color: var(--accent-put);
+  color: #fff;
+}
+
+.sendBtnCancel:hover:not(:disabled) {
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+  transform: scale(1.1);
+}
