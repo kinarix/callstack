@@ -14,11 +14,13 @@
   border: 1px solid var(--border-subtle);
   border-radius: 4px;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 700;
   font-family: 'Outfit', sans-serif;
   cursor: pointer;
-  padding: 0 9px;
+  padding: 0 12px;
   white-space: nowrap;
+  min-width: 116px;
   transition: border-color 0.15s, color 0.15s;
 }
 

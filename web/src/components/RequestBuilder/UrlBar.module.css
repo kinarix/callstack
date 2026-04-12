@@ -55,26 +55,93 @@
   text-overflow: clip;
 }
 
-.methodSelect {
+.methodWrapper {
+  position: relative;
   flex-shrink: 0;
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--border-secondary);
-  border-radius: var(--radius-md);
+  display: flex;
+  align-items: stretch;
+}
+
+.methodPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: stretch;
+  background: var(--bg-tertiary);
+  border: 1px solid;
+  border-radius: 4px;
   font-size: 12px;
-  font-weight: 600;
-  color: var(--bg-primary);
+  font-weight: 700;
+  font-family: 'Outfit', sans-serif;
   cursor: pointer;
-  transition: all var(--transition-base);
-  min-width: 80px;
+  padding: 0 10px;
+  white-space: nowrap;
+  transition: filter 0.15s;
+  width: 116px;
 }
 
-.methodSelect:hover {
-  transform: scale(1.05);
+.methodPill:hover {
+  filter: brightness(1.15);
 }
 
-.methodSelect:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--border-secondary);
+.methodPillIcon {
+  font-size: 12px;
+  font-weight: 700;
+  -webkit-text-stroke: 0.4px currentColor;
+}
+
+.methodChevron {
+  opacity: 0.6;
+  margin-left: 2px;
+}
+
+.methodDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  min-width: 120px;
+  z-index: 100;
+  overflow: hidden;
+  padding: 4px;
+}
+
+.methodOption {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'Outfit', sans-serif;
+  cursor: pointer;
+  padding: 6px 8px;
+  text-align: left;
+  transition: background 0.1s, color 0.1s;
+}
+
+.methodOption:hover {
+  background: var(--bg-hover);
+  color: var(--method-color);
+}
+
+.methodOptionActive {
+  color: var(--method-color);
+  font-weight: 600;
+}
+
+.methodOptionIcon {
+  font-size: 12px;
+  font-weight: 700;
+  -webkit-text-stroke: 0.4px currentColor;
+  color: var(--method-color);
 }
 
 .urlInputWrapper {
@@ -193,4 +260,15 @@
 .sendBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.sendBtnCancel {
+  background: var(--accent-put);
+  border-color: var(--accent-put);
+  color: #fff;
+}
+
+.sendBtnCancel:hover:not(:disabled) {
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+  transform: scale(1.1);
 }

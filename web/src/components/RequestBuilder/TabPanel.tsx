@@ -98,7 +98,13 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange }: Tab
   const togglePin = (panel: PinnableTab) => {
     setPinned(prev => {
       const next = new Set(prev);
-      next.has(panel) ? next.delete(panel) : next.add(panel);
+      if (next.has(panel)) {
+        next.delete(panel);
+      } else {
+        next.add(panel);
+        // If pinning the currently active tab, move to body
+        if (activeTab === panel) setActiveTab('body');
+      }
       savePinned(request.id, next);
       return next;
     });
@@ -155,8 +161,9 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange }: Tab
           return (
             <div key={tab.name} className={styles.tabGroup}>
               <button
-                className={`${styles.tab} ${activeTab === tab.name ? styles.active : ''}`}
-                onClick={() => setActiveTab(tab.name)}
+                className={`${styles.tab} ${activeTab === tab.name ? styles.active : ''} ${isPinned ? styles.tabPinned : ''}`}
+                onClick={() => !isPinned && setActiveTab(tab.name)}
+                disabled={isPinned}
               >
                 {tab.label}
                 {tab.count != null && (

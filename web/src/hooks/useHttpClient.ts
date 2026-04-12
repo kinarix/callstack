@@ -26,5 +26,9 @@ export function useHttpClient() {
     return invoke<SendResult>('send_request', { ...options });
   }, []);
 
-  return { send };
+  const cancelRequest = useCallback(async () => {
+    await invoke('cancel_request');
+  }, []);
+
+  return { send, cancelRequest };
 }

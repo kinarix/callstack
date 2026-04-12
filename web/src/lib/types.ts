@@ -1,4 +1,4 @@
-export type HTTPMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+export type HTTPMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS';
 export type Theme = 'dark' | 'light' | 'system';
 
 export interface KeyValue {
@@ -101,6 +101,7 @@ export interface AppState {
   environments: Environment[];
   currentResponse: Response | null;
   isLoading: boolean;
+  executingRequestId: number | null;
   expandedProjects: Set<number>;
   expandedFolders: Set<number>;
   logs: LogEntry[];
@@ -127,6 +128,7 @@ export type AppAction =
   | { type: 'MOVE_FOLDER'; payload: { folderId: number; projectId: number } }
   | { type: 'SET_RESPONSE'; payload: Response | null }
   | { type: 'SET_LOADING'; payload: boolean }
+| { type: 'SET_EXECUTING_REQUEST'; payload: number | null }
   | { type: 'TOGGLE_PROJECT'; payload: number }
   | { type: 'SET_FOLDERS'; payload: Folder[] }
   | { type: 'ADD_FOLDER'; payload: Folder }

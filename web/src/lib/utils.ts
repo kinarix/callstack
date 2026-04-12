@@ -7,6 +7,8 @@ export function getMethodColor(method: HTTPMethod): string {
     PUT: 'var(--accent-put)',
     DELETE: 'var(--accent-delete)',
     PATCH: 'var(--accent-patch)',
+    HEAD: 'var(--accent-head)',
+    OPTIONS: 'var(--accent-options)',
   };
   return colors[method] || 'var(--text-tertiary)';
 }
@@ -18,6 +20,8 @@ export function getMethodIcon(method: HTTPMethod): string {
     PUT: '↔',      // Replace/update
     DELETE: '✕',   // Delete/remove
     PATCH: '◐',    // Partial/patch
+    HEAD: '⌒',     // Head/metadata
+    OPTIONS: '⊕',  // Options/capabilities
   };
   return icons[method] || '?';
 }

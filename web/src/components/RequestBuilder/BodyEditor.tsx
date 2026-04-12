@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
 import { xml } from '@codemirror/lang-xml';
+import { EditorView } from '@codemirror/view';
+import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
+import { tags } from '@lezer/highlight';
 import styles from './BodyEditor.module.css';
 
 function validateBodyContent(body: string, contentType: string): { valid: boolean; error?: string } {
@@ -34,6 +37,14 @@ function validateBodyContent(body: string, contentType: string): { valid: boolea
   return { valid: true };
 }
 
+function formatBodySize(body: string): string {
+  const bytes = new TextEncoder().encode(body).length;
+  if (bytes === 0) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
 const PRESETS = [
   'application/json',
   'application/xml',
@@ -49,24 +60,48 @@ function getLanguage(contentType: string) {
   return null;
 }
 
-function resolveTheme(): 'dark' | 'light' {
-  const attr = document.documentElement.getAttribute('data-theme');
-  if (attr === 'dark') return 'dark';
-  if (attr === 'light') return 'light';
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
+const appEditorTheme = EditorView.theme({
+  '&': {
+    backgroundColor: 'var(--bg-secondary)',
+    color: 'var(--text-primary)',
+  },
+  '.cm-content': {
+    caretColor: 'var(--text-primary)',
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: '12px',
+    lineHeight: '1.6',
+    padding: '8px 0',
+  },
+  '.cm-gutters': {
+    backgroundColor: 'var(--bg-secondary)',
+    border: 'none',
+    borderRight: '1px solid var(--border-secondary)',
+    color: 'var(--text-tertiary)',
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: '11px',
+  },
+  '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--accent-get)' },
+  '&.cm-focused .cm-selectionBackground, .cm-selectionBackground': {
+    backgroundColor: 'rgba(59, 130, 246, 0.25)',
+  },
+  '.cm-activeLine': { backgroundColor: 'var(--bg-hover, rgba(255,255,255,0.03))' },
+  '.cm-activeLineGutter': { backgroundColor: 'var(--bg-hover, rgba(255,255,255,0.03))' },
+  '.cm-foldPlaceholder': {
+    backgroundColor: 'transparent',
+    border: 'none',
+    color: 'var(--text-tertiary)',
+  },
+});
 
-function useResolvedTheme(): 'dark' | 'light' {
-  const [theme, setTheme] = useState<'dark' | 'light'>(resolveTheme);
+const appHighlight = HighlightStyle.define([
+  { tag: tags.propertyName, color: '#60a5fa' },
+  { tag: tags.string, color: '#34d399' },
+  { tag: [tags.number, tags.integer, tags.float], color: '#fb923c' },
+  { tag: [tags.bool, tags.null], color: '#a78bfa' },
+  { tag: tags.keyword, color: '#60a5fa' },
+]);
 
-  useEffect(() => {
-    const observer = new MutationObserver(() => setTheme(resolveTheme()));
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    return () => observer.disconnect();
-  }, []);
-
-  return theme;
-}
+const appThemeExtension = [appEditorTheme, syntaxHighlighting(appHighlight)];
 
 interface BodyEditorProps {
   body: string;
@@ -85,8 +120,10 @@ export function BodyEditor({
 }: BodyEditorProps) {
   const [validation, setValidation] = useState<{ valid: boolean; error?: string }>({ valid: true });
   const isPreset = PRESETS.includes(contentType);
-  const theme = useResolvedTheme();
-  const lang = getLanguage(contentType);
+  const extensions = useMemo(() => {
+    const lang = getLanguage(contentType);
+    return lang ? [...appThemeExtension, lang] : appThemeExtension;
+  }, [contentType]);
 
   useEffect(() => {
     setValidation(validateBodyContent(body, contentType));
@@ -127,17 +164,21 @@ export function BodyEditor({
             )}
           </div>
         )}
-        <div className={`${styles.validationTag} ${validation.valid ? styles.validationTagValid : styles.validationTagInvalid}`} title={validation.error}>
-          {validation.valid ? '✓ Valid' : `✗ ${validation.error || 'Invalid'}`}
+        <div className={styles.rightTags}>
+          {body.trim() && (
+            <span className={styles.sizeTag}>{formatBodySize(body)}</span>
+          )}
+          <div className={`${styles.validationTag} ${validation.valid ? styles.validationTagValid : styles.validationTagInvalid}`} title={validation.error}>
+            {validation.valid ? '✓ Valid' : `✗ ${validation.error || 'Invalid'}`}
+          </div>
         </div>
       </div>
       <div className={`${styles.editorWrap} ${!validation.valid ? styles.editorWrapInvalid : ''}`}>
         <CodeMirror
           value={body}
           onChange={onChange}
-          extensions={lang ? [lang] : []}
-          theme={theme}
-          height="100%"
+          extensions={extensions}
+          theme="none"
           readOnly={readOnly}
           basicSetup={{
             lineNumbers: true,
@@ -146,6 +187,7 @@ export function BodyEditor({
             closeBrackets: true,
             autocompletion: true,
           }}
+          style={{ height: 'auto' }}
         />
       </div>
     </div>

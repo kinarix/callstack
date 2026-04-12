@@ -158,7 +158,7 @@ function getActiveEnvKey(projectId: number | null) {
 
 export function RequestBuilder({ request, showExpandBtn, onExpand }: RequestBuilderProps) {
   const { state, dispatch } = useApp();
-  const { send } = useHttpClient();
+  const { send, cancelRequest } = useHttpClient();
   const { updateRequest, saveResponse } = useDatabase();
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [bodyError, setBodyError] = useState<string | null>(null);
@@ -316,6 +316,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand }: RequestBuil
     setBodyError(null);
 
     dispatch({ type: 'SET_LOADING', payload: true });
+    dispatch({ type: 'SET_EXECUTING_REQUEST', payload: request.id });
     const sentAt = Date.now();
     const curl = buildCurl(request.method, normalizedUrl, resolvedParams, resolvedHeaders, resolvedBody);
 
@@ -396,6 +397,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand }: RequestBuil
       dispatch({ type: 'ADD_LOG', payload: log });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
+    dispatch({ type: 'SET_EXECUTING_REQUEST', payload: null });
     }
   };
 
@@ -403,7 +405,8 @@ export function RequestBuilder({ request, showExpandBtn, onExpand }: RequestBuil
     <div className={styles.builder}>
       <UrlBar
         request={request}
-        isLoading={state.isLoading}
+        isLoading={state.isLoading && state.executingRequestId === request?.id}
+        isBlocked={state.isLoading && state.executingRequestId !== request?.id}
         urlError={urlError}
         showExpandBtn={showExpandBtn}
         onExpand={onExpand}
@@ -411,6 +414,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand }: RequestBuil
         onUrlChange={handleUrlChange}
         onNameChange={(name) => handleRequestChange({ name })}
         onSend={handleSend}
+        onCancel={cancelRequest}
         followRedirects={followRedirects}
         onFollowRedirectsChange={setFollowRedirects}
         environments={projectEnvironments}
