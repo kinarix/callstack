@@ -155,19 +155,18 @@
   width: 20px;
   height: 20px;
   border-radius: var(--radius-sm);
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   font-size: 14px;
   color: var(--text-secondary);
-  opacity: 0;
-  transition: opacity var(--transition-base), color var(--transition-base), background var(--transition-base);
+  transition: color var(--transition-base), background var(--transition-base);
   padding: 0;
   line-height: 1;
 }
 
 .projectRow:hover .iconBtn {
-  opacity: 1;
+  display: flex;
 }
 
 .iconBtn:hover {
@@ -175,9 +174,12 @@
   color: var(--text-primary);
 }
 
-.iconBtn.deleteBtn:hover {
-  color: var(--status-error);
-}
+.iconBtn.deleteBtn:hover    { color: var(--status-error);  }
+.iconBtn.renameBtn:hover    { color: var(--accent-put);    }
+.iconBtn.duplicateBtn:hover { color: var(--accent-get);    }
+.iconBtn.importBtn:hover    { color: var(--accent-post);   }
+.iconBtn.exportBtn:hover    { color: var(--accent-patch);  }
+.iconBtn.addBtn:hover       { color: var(--accent-get);    }
 
 .folderAddBtn {
   width: auto;
@@ -271,7 +273,7 @@
 }
 
 .folderRow:hover .iconBtn {
-  opacity: 1;
+  display: flex;
 }
 
 .folderName {
@@ -328,7 +330,7 @@
 }
 
 .envRow:hover .iconBtn {
-  opacity: 1;
+  display: flex;
 }
 
 .envName {

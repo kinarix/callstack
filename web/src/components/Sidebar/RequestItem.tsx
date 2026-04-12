@@ -140,7 +140,7 @@ export function RequestItem({
           />
         ) : (
           <div className={styles.name}>
-            {request.name}
+            <span className={styles.nameText}>{request.name}</span>
             {request.imported && <ImportedIcon />}
             {assignedShortcut && <span className={styles.shortcutBadge}>{assignedShortcut}</span>}
           </div>

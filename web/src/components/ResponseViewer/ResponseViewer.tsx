@@ -36,6 +36,7 @@ function formatTimestamp(ts: number): string {
 interface ResponseViewerProps {
   response: Response | null;
   requestName?: string;
+  copyFlash?: boolean;
   onClear?: () => void;
 }
 
@@ -124,21 +125,19 @@ function isPreviewable(contentType: string): boolean {
   return contentType.includes('html') || contentType.includes('image/') || contentType.includes('video/') || contentType.includes('audio/');
 }
 
-export function ResponseViewer({ response, requestName, onClear }: ResponseViewerProps) {
+export function ResponseViewer({ response, requestName, copyFlash, onClear }: ResponseViewerProps) {
   const [tab, setTab] = useState<'body' | 'headers' | 'preview'>('body');
   const [headersPinned, setHeadersPinned] = useState(false);
 
   useEffect(() => {
     if (response) {
       const contentType = getContentType(response.headers);
-      // Reset to body if current tab (preview) is no longer valid
-      if (tab === 'preview' && !isPreviewable(contentType)) {
+      if (isPreviewable(contentType)) {
+        setTab('preview');
+      } else if (tab === 'preview') {
         setTab('body');
-      } else if (!tab || tab === 'body' || tab === 'headers') {
-        // Keep current tab selection if valid
-        if (!response.body.trim() && tab === 'body') {
-          setTab('headers');
-        }
+      } else if (!response.body.trim() && tab === 'body') {
+        setTab('headers');
       }
       setHeadersPinned(false);
     }
@@ -233,8 +232,9 @@ export function ResponseViewer({ response, requestName, onClear }: ResponseViewe
         )}
         <div className={styles.tabGroup}>
           <button
-            className={`${styles.tab} ${tab === 'headers' ? styles.tabActive : ''}`}
-            onClick={() => setTab('headers')}
+            className={`${styles.tab} ${tab === 'headers' ? styles.tabActive : ''} ${headersPinned ? styles.tabDisabled : ''}`}
+            onClick={() => !headersPinned && setTab('headers')}
+            disabled={headersPinned}
           >
             Headers
             {response.headers?.length > 0 && (
@@ -243,7 +243,12 @@ export function ResponseViewer({ response, requestName, onClear }: ResponseViewe
           </button>
           <button
             className={`${styles.pinBtn} ${headersPinned ? styles.pinActive : ''}`}
-            onClick={() => setHeadersPinned(p => !p)}
+            onClick={() => {
+              setHeadersPinned(p => {
+                if (!p) setTab('body');
+                return !p;
+              });
+            }}
             title={headersPinned ? 'Unpin Headers' : 'Pin Headers (always visible)'}
           >
             <PinIcon pinned={headersPinned} />
@@ -285,11 +290,14 @@ export function ResponseViewer({ response, requestName, onClear }: ResponseViewe
             </div>
             {html ? (
               <pre
-                className={styles.pre}
+                className={`${styles.pre}${copyFlash ? ` ${styles.flashCopy}` : ''}`}
                 dangerouslySetInnerHTML={{ __html: content }}
               />
             ) : (
-              <pre className={styles.pre}>{content}</pre>
+              <pre className={`${styles.pre}${copyFlash ? ` ${styles.flashCopy}` : ''}`}>{content}</pre>
+            )}
+            {copyFlash && (
+              <div className={styles.copyToast}>Copied to clipboard</div>
             )}
           </div>
         </div>
@@ -298,11 +306,6 @@ export function ResponseViewer({ response, requestName, onClear }: ResponseViewe
       {tab === 'headers' && (
         <div className={styles.headerList}>
           <div className={styles.headersWrapper}>
-            <div className={styles.floatingButtons}>
-              <button className={styles.floatingBtn} onClick={handleCopy} title="Copy response body">Copy</button>
-              <button className={styles.floatingBtn} onClick={handleSave} title="Save response to file">Save</button>
-              <button className={styles.floatingBtn} onClick={handleClear} title="Clear response">Clear</button>
-            </div>
             {response.headers?.length > 0 ? (
               <div className={styles.headers}>
                 {response.headers.map((header, i) => (

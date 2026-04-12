@@ -1,5 +1,5 @@
 export type HTTPMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS';
-export type Theme = 'dark' | 'light' | 'system';
+export type Theme = 'dark' | 'light' | 'dim' | 'system';
 
 export interface KeyValue {
   key: string;
@@ -61,6 +61,7 @@ export interface FileAttachment {
   size: number;
   mime: string;
   path: string;
+  data?: string; // base64-encoded file contents
 }
 
 export interface Environment {
@@ -70,12 +71,6 @@ export interface Environment {
   variables: KeyValue[];
   created_at: string;
   updated_at: string;
-}
-
-export interface User {
-  email: string;
-  name: string;
-  picture: string;
 }
 
 export interface LogEntry {
@@ -92,7 +87,6 @@ export interface LogEntry {
 }
 
 export interface AppState {
-  currentUser: User | null;
   currentRequestId: number | null;
   currentProjectId: number | null;
   projects: Project[];
@@ -113,7 +107,6 @@ export interface AppContextType {
 }
 
 export type AppAction =
-  | { type: 'SET_USER'; payload: User | null }
   | { type: 'SET_CURRENT_PROJECT'; payload: number | null }
   | { type: 'SET_CURRENT_REQUEST'; payload: number | null }
   | { type: 'SET_PROJECTS'; payload: Project[] }

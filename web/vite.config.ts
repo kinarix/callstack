@@ -6,6 +6,19 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    rollupOptions: {                                                                                       
+      output: {
+        manualChunks(id) {                                                                                 
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            return 'react';
+          }
+          if (id.includes('@codemirror') || id.includes('@uiw/react-codemirror') || id.includes('@lezer'))
+    {
+            return 'codemirror';
+          }
+        },
+      },
+    },
   },
   server: {
     port: 5173,

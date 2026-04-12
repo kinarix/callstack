@@ -34,6 +34,13 @@
   --status-error: #ef4444;
   --status-warning: #f59e0b;
 
+  /* Syntax highlighting */
+  --syntax-key:    #60a5fa;
+  --syntax-string: #34d399;
+  --syntax-number: #fb923c;
+  --syntax-bool:   #a78bfa;
+  --syntax-null:   #94a3b8;
+
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -75,11 +82,45 @@
   /* Borders */
   --border-primary: #dcdce0;
   --border-secondary: #e8e8eb;
+
+  /* Syntax highlighting */
+  --syntax-key:    #1d6fd8;
+  --syntax-string: #0e7a5b;
+  --syntax-number: #c2610a;
+  --syntax-bool:   #7c3aed;
+  --syntax-null:   #6b7280;
+}
+
+/* Dim theme — warm, low-contrast, easy on the eyes */
+[data-theme='dim'] {
+  color-scheme: dark;
+
+  /* Background — warm dark brown/sepia tones */
+  --bg-primary: #1a1713;
+  --bg-secondary: #211e19;
+  --bg-tertiary: #2a261f;
+  --bg-hover: #33302a;
+
+  /* Text — warm off-white, reduced contrast */
+  --text-primary: #cec9be;
+  --text-secondary: #96917f;
+  --text-tertiary: #635f52;
+
+  /* Borders — subtle warm tones */
+  --border-primary: #38342c;
+  --border-secondary: #2e2b23;
+
+  /* Syntax highlighting — muted, warm */
+  --syntax-key:    #7bafd4;
+  --syntax-string: #7ab89a;
+  --syntax-number: #c9956a;
+  --syntax-bool:   #a98bc7;
+  --syntax-null:   #7a7870;
 }
 
 /* System theme (respects prefers-color-scheme) */
 @media (prefers-color-scheme: light) {
-  :root:not([data-theme='dark']) {
+  :root:not([data-theme]) {
     color-scheme: light;
 
     --bg-primary: #fafafa;
@@ -93,11 +134,18 @@
 
     --border-primary: #dcdce0;
     --border-secondary: #e8e8eb;
+
+    /* Syntax highlighting */
+    --syntax-key:    #1d6fd8;
+    --syntax-string: #0e7a5b;
+    --syntax-number: #c2610a;
+    --syntax-bool:   #7c3aed;
+    --syntax-null:   #6b7280;
   }
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
+  :root:not([data-theme]) {
     color-scheme: dark;
   }
 }

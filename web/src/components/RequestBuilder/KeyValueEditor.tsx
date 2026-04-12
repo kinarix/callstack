@@ -1,4 +1,6 @@
+import { useRef, useEffect } from 'react';
 import type { KeyValue } from '../../lib/types';
+import { BinIcon } from '../Sidebar/SidebarIcons';
 import styles from './KeyValueEditor.module.css';
 
 interface KeyValueEditorProps {
@@ -30,6 +32,16 @@ export function KeyValueEditor({
     onChange(updated);
   };
 
+  const newValueRef = useRef<HTMLInputElement | null>(null);
+  const prevLengthRef = useRef(items.length);
+
+  useEffect(() => {
+    if (items.length > prevLengthRef.current) {
+      newValueRef.current?.focus();
+    }
+    prevLengthRef.current = items.length;
+  }, [items.length]);
+
   const handleAdd = () => {
     onChange([...items, { key: '', value: '', enabled: true }]);
   };
@@ -52,6 +64,7 @@ export function KeyValueEditor({
                 className={`${styles.checkbox} ${item.enabled ?? true ? styles.checked : ''}`}
                 onClick={() => handleEnabledToggle(index)}
                 title="Toggle item"
+                tabIndex={-1}
               >
                 ✓
               </button>
@@ -79,23 +92,27 @@ export function KeyValueEditor({
               autoCorrect="off"
               autoCapitalize="off"
               spellCheck={false}
+              ref={index === items.length - 1 ? newValueRef : null}
             />
             {!readOnly && (
               <button
                 className={styles.deleteBtn}
                 onClick={() => handleRemove(index)}
                 title="Delete"
+                tabIndex={-1}
               >
-                ×
+                <BinIcon />
               </button>
             )}
           </div>
         ))}
       </div>
       {!readOnly && (
-        <button className={styles.addBtn} onClick={handleAdd}>
-          + Add
-        </button>
+        <div className={styles.addRow}>
+          <button className={styles.addBtn} onClick={handleAdd}>
+            + Add
+          </button>
+        </div>
       )}
     </div>
   );

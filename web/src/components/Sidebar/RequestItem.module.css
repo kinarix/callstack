@@ -61,6 +61,12 @@
   font-size: 12px;
   font-weight: 500;
   color: var(--text-primary);
+  overflow: hidden;
+}
+
+.nameText {
+  flex-shrink: 1;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -96,22 +102,21 @@
   border: none;
   color: var(--text-tertiary);
   cursor: pointer;
-  opacity: 0;
   transition: all var(--transition-base);
   padding: 0;
   width: 24px;
   height: 24px;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
 }
 
 .item:hover .deleteBtn {
-  opacity: 1;
-  color: var(--status-error);
+  display: flex;
 }
 
 .deleteBtn:hover {
+  color: var(--status-error);
   transform: scale(1.2);
 }
 
@@ -121,22 +126,21 @@
   border: none;
   color: var(--text-tertiary);
   cursor: pointer;
-  opacity: 0;
   transition: all var(--transition-base);
   padding: 0;
   width: 24px;
   height: 24px;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
 }
 
 .item:hover .editBtn {
-  opacity: 1;
+  display: flex;
 }
 
 .editBtn:hover {
-  color: var(--text-primary);
+  color: var(--accent-put);
   transform: scale(1.2);
 }
 
@@ -146,22 +150,21 @@
   border: none;
   color: var(--text-tertiary);
   cursor: pointer;
-  opacity: 0;
   transition: all var(--transition-base);
   padding: 0;
   width: 24px;
   height: 24px;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
 }
 
 .item:hover .copyBtn {
-  opacity: 1;
+  display: flex;
 }
 
 .copyBtn:hover {
-  color: var(--text-primary);
+  color: var(--accent-get);
   transform: scale(1.2);
 }
 
@@ -171,22 +174,21 @@
   border: none;
   color: var(--text-tertiary);
   cursor: pointer;
-  opacity: 0;
   transition: all var(--transition-base);
   padding: 0;
   width: 24px;
   height: 24px;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
 }
 
 .item:hover .keyboardBtn {
-  opacity: 1;
+  display: flex;
 }
 
 .keyboardBtn:hover {
-  color: var(--text-primary);
+  color: var(--accent-patch);
   transform: scale(1.2);
 }
 

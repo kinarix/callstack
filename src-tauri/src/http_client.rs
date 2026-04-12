@@ -13,6 +13,7 @@ pub struct FileAttachment {
     pub name: String,
     pub mime: String,
     pub path: String,
+    pub data: Option<String>, // base64-encoded contents from the frontend
 }
 
 #[derive(Debug, Serialize)]
@@ -108,9 +109,17 @@ async fn execute_request(
     if can_have_body && !attachments.is_empty() {
         let mut form = reqwest::multipart::Form::new();
         for att in attachments {
-            let bytes = tokio::fs::read(&att.path)
-                .await
-                .map_err(|e| format!("File not found: {} ({})", att.path, e))?;
+            let bytes = if let Some(ref b64) = att.data {
+                general_purpose::STANDARD
+                    .decode(b64)
+                    .map_err(|e| format!("Failed to decode file data for '{}': {e}", att.name))?
+            } else if !att.path.is_empty() {
+                tokio::fs::read(&att.path)
+                    .await
+                    .map_err(|e| format!("File not found: {} ({})", att.path, e))?
+            } else {
+                return Err(format!("No data provided for file '{}'", att.name));
+            };
             let part = reqwest::multipart::Part::bytes(bytes)
                 .file_name(att.name.clone())
                 .mime_str(&att.mime)

@@ -25,24 +25,24 @@
   gap: var(--space-2);
 }
 
-.userInfo {
+.settingsBtn {
+  background: transparent;
+  border: none;
+  color: var(--accent-patch);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  justify-content: center;
+  transition: background var(--transition-base), color var(--transition-base), transform var(--transition-base);
+  padding: 0;
+  opacity: 0.8;
 }
 
-.avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--bg-tertiary);
-}
-
-.userName {
-  font-size: 12px;
-  color: var(--text-secondary);
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.settingsBtn:hover {
+  background: var(--bg-hover);
+  opacity: 1;
+  transform: rotate(30deg);
 }
