@@ -14,6 +14,8 @@ interface RawRequest {
   headers: string;
   body: string;
   attachments: string;
+  preScript: string;
+  postScript: string;
   position: number;
   createdAt: string;
   updatedAt: string;
@@ -33,6 +35,8 @@ function parseRequest(raw: RawRequest): Request {
     headers: JSON.parse(raw.headers || '[]'),
     body: raw.body,
     files: JSON.parse(raw.attachments || '[]'),
+    pre_script: raw.preScript ?? '',
+    post_script: raw.postScript ?? '',
     position: raw.position,
     created_at: raw.createdAt,
     updated_at: raw.updatedAt,
@@ -139,9 +143,17 @@ export function useDatabase() {
         headers?: string;
         body?: string;
         attachments?: string;
+        pre_script?: string;
+        post_script?: string;
       }
     ): Promise<Request> => {
-      const raw = await invoke<RawRequest>('update_request', { id, ...fields });
+      const { pre_script, post_script, ...rest } = fields;
+      const raw = await invoke<RawRequest>('update_request', {
+        id,
+        ...rest,
+        ...(pre_script !== undefined ? { preScript: pre_script } : {}),
+        ...(post_script !== undefined ? { postScript: post_script } : {}),
+      });
       return parseRequest(raw);
     },
     []
@@ -196,9 +208,15 @@ export function useDatabase() {
       projectId: number,
       folderId: number | null,
       userEmail: string | null,
-      requests: { name: string; method: string; url: string; params: string; headers: string; body: string }[]
+      requests: { name: string; method: string; url: string; params: string; headers: string; body: string; pre_script?: string; post_script?: string }[]
     ): Promise<Request[]> => {
-      const raws = await invoke<RawRequest[]>('import_requests', { projectId, folderId, userEmail, requests });
+      // Rust struct uses camelCase (rename_all = "camelCase"), so transform keys
+      const mapped = requests.map(({ pre_script, post_script, ...rest }) => ({
+        ...rest,
+        ...(pre_script !== undefined ? { preScript: pre_script } : {}),
+        ...(post_script !== undefined ? { postScript: post_script } : {}),
+      }));
+      const raws = await invoke<RawRequest[]>('import_requests', { projectId, folderId, userEmail, requests: mapped });
       return raws.map(parseRequest);
     },
     []

@@ -27,6 +27,8 @@ pub struct Request {
     pub headers: String,
     pub body: String,
     pub attachments: String,
+    pub pre_script: String,
+    pub post_script: String,
     pub position: i64,
     pub created_at: String,
     pub updated_at: String,
@@ -160,21 +162,31 @@ impl Database {
         );
 
         // Migrate requests table to add position column
-        let _ = conn.execute(
+        let position_col_added = conn.execute(
             "ALTER TABLE requests ADD COLUMN position INTEGER DEFAULT 0",
             [],
-        );
-        // Seed positions for existing rows so ordering is stable
-        let _ = conn.execute(
-            "UPDATE requests SET position = rowid WHERE position = 0",
-            [],
-        );
+        ).is_ok();
+        // Seed positions for existing rows so ordering is stable — only on first migration
+        if position_col_added {
+            let _ = conn.execute(
+                "UPDATE requests SET position = rowid WHERE position = 0",
+                [],
+            );
+        }
         let _ = conn.execute(
             "ALTER TABLE requests ADD COLUMN imported INTEGER NOT NULL DEFAULT 0",
             [],
         );
         let _ = conn.execute(
             "ALTER TABLE folders ADD COLUMN imported INTEGER NOT NULL DEFAULT 0",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE requests ADD COLUMN pre_script TEXT NOT NULL DEFAULT ''",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE requests ADD COLUMN post_script TEXT NOT NULL DEFAULT ''",
             [],
         );
 
@@ -298,6 +310,10 @@ pub fn delete_project(db: tauri::State<Database>, id: i64) -> Result<(), String>
     .map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM requests WHERE project_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM environments WHERE project_id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM folders WHERE project_id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM projects WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
     Ok(())
@@ -314,7 +330,7 @@ pub fn list_requests(
 
     let mut stmt = conn
         .prepare(
-            "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported
+            "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script
              FROM requests WHERE project_id = ?1 ORDER BY position ASC",
         )
         .map_err(|e| e.to_string())?;
@@ -337,6 +353,8 @@ pub fn list_requests(
                 created_at: row.get(12)?,
                 updated_at: row.get(13)?,
                 imported: row.get::<_, i64>(14)? != 0,
+                pre_script: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
+                post_script: row.get::<_, Option<String>>(16)?.unwrap_or_default(),
             })
         })
         .map_err(|e| e.to_string())?;
@@ -374,7 +392,7 @@ pub fn create_request(
     let id = conn.last_insert_rowid();
 
     conn.query_row(
-        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported FROM requests WHERE id = ?1",
+        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script FROM requests WHERE id = ?1",
         params![id],
         |row| {
             Ok(Request {
@@ -393,6 +411,8 @@ pub fn create_request(
                 created_at: row.get(12)?,
                 updated_at: row.get(13)?,
                 imported: row.get::<_, i64>(14)? != 0,
+                pre_script: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
+                post_script: row.get::<_, Option<String>>(16)?.unwrap_or_default(),
             })
         },
     )
@@ -411,6 +431,8 @@ pub fn update_request(
     body: Option<String>,
     folder_id: Option<i64>,
     attachments: Option<String>,
+    pre_script: Option<String>,
+    post_script: Option<String>,
 ) -> Result<Request, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
 
@@ -450,6 +472,14 @@ pub fn update_request(
         sets.push(format!("attachments = ?{}", values.len() + 1));
         values.push(Box::new(v));
     }
+    if let Some(v) = pre_script {
+        sets.push(format!("pre_script = ?{}", values.len() + 1));
+        values.push(Box::new(v));
+    }
+    if let Some(v) = post_script {
+        sets.push(format!("post_script = ?{}", values.len() + 1));
+        values.push(Box::new(v));
+    }
 
     let id_param_idx = values.len() + 1;
     values.push(Box::new(id));
@@ -465,7 +495,7 @@ pub fn update_request(
         .map_err(|e| e.to_string())?;
 
     conn.query_row(
-        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported FROM requests WHERE id = ?1",
+        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script FROM requests WHERE id = ?1",
         params![id],
         |row| {
             Ok(Request {
@@ -484,6 +514,8 @@ pub fn update_request(
                 created_at: row.get(12)?,
                 updated_at: row.get(13)?,
                 imported: row.get::<_, i64>(14)? != 0,
+                pre_script: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
+                post_script: row.get::<_, Option<String>>(16)?.unwrap_or_default(),
             })
         },
     )
@@ -655,12 +687,15 @@ pub fn update_folder(
 #[tauri::command]
 pub fn delete_folder(db: tauri::State<Database>, id: i64) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    // Move requests in this folder to project root (preserve them)
+    // Delete responses for requests in this folder
     conn.execute(
-        "UPDATE requests SET folder_id = NULL WHERE folder_id = ?1",
+        "DELETE FROM responses WHERE request_id IN (SELECT id FROM requests WHERE folder_id = ?1)",
         params![id],
     )
     .map_err(|e| e.to_string())?;
+    // Delete requests in this folder
+    conn.execute("DELETE FROM requests WHERE folder_id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM folders WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
     Ok(())
@@ -691,8 +726,8 @@ pub fn duplicate_request(db: tauri::State<Database>, id: i64) -> Result<Request,
     let new_position = max_position + 1;
 
     conn.execute(
-        "INSERT INTO requests (project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position)
-         SELECT project_id, folder_id, user_email, 'Copy of ' || name, method, url, params, headers, body, COALESCE(attachments, '[]'), ?2
+        "INSERT INTO requests (project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, pre_script, post_script, position)
+         SELECT project_id, folder_id, user_email, 'Copy of ' || name, method, url, params, headers, body, COALESCE(attachments, '[]'), pre_script, post_script, ?2
          FROM requests WHERE id = ?1",
         params![id, new_position],
     )
@@ -701,7 +736,7 @@ pub fn duplicate_request(db: tauri::State<Database>, id: i64) -> Result<Request,
     let new_id = conn.last_insert_rowid();
 
     conn.query_row(
-        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported FROM requests WHERE id = ?1",
+        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script FROM requests WHERE id = ?1",
         params![new_id],
         |row| {
             Ok(Request {
@@ -720,6 +755,8 @@ pub fn duplicate_request(db: tauri::State<Database>, id: i64) -> Result<Request,
                 created_at: row.get(12)?,
                 updated_at: row.get(13)?,
                 imported: row.get::<_, i64>(14)? != 0,
+                pre_script: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
+                post_script: row.get::<_, Option<String>>(16)?.unwrap_or_default(),
             })
         },
     )
@@ -756,8 +793,8 @@ pub fn duplicate_folder(db: tauri::State<Database>, id: i64) -> Result<Duplicate
         .map_err(|e| e.to_string())?;
 
     conn.execute(
-        "INSERT INTO requests (project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position)
-         SELECT project_id, ?2, user_email, name, method, url, params, headers, body, COALESCE(attachments, '[]'), position
+        "INSERT INTO requests (project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, pre_script, post_script, position)
+         SELECT project_id, ?2, user_email, name, method, url, params, headers, body, COALESCE(attachments, '[]'), pre_script, post_script, position
          FROM requests WHERE folder_id = ?1",
         params![id, new_folder_id],
     )
@@ -765,7 +802,7 @@ pub fn duplicate_folder(db: tauri::State<Database>, id: i64) -> Result<Duplicate
 
     let mut stmt = conn
         .prepare(
-            "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported
+            "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script
              FROM requests WHERE folder_id = ?1 ORDER BY position ASC",
         )
         .map_err(|e| e.to_string())?;
@@ -788,6 +825,8 @@ pub fn duplicate_folder(db: tauri::State<Database>, id: i64) -> Result<Duplicate
                 created_at: row.get(12)?,
                 updated_at: row.get(13)?,
                 imported: row.get::<_, i64>(14)? != 0,
+                pre_script: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
+                post_script: row.get::<_, Option<String>>(16)?.unwrap_or_default(),
             })
         })
         .map_err(|e| e.to_string())?
@@ -808,6 +847,10 @@ pub struct ImportRequestData {
     pub params: String,
     pub headers: String,
     pub body: String,
+    #[serde(default)]
+    pub pre_script: String,
+    #[serde(default)]
+    pub post_script: String,
 }
 
 #[tauri::command]
@@ -823,15 +866,15 @@ pub fn import_requests(
 
     for (pos, req) in requests.iter().enumerate() {
         conn.execute(
-            "INSERT INTO requests (project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, imported, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, '[]', ?10, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-            params![project_id, folder_id, user_email, req.name, req.method, req.url, req.params, req.headers, req.body, pos as i64],
+            "INSERT INTO requests (project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, imported, pre_script, post_script, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, '[]', ?10, 1, ?11, ?12, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            params![project_id, folder_id, user_email, req.name, req.method, req.url, req.params, req.headers, req.body, pos as i64, req.pre_script, req.post_script],
         )
         .map_err(|e| e.to_string())?;
 
         let id = conn.last_insert_rowid();
         let request = conn
             .query_row(
-                "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported FROM requests WHERE id = ?1",
+                "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script FROM requests WHERE id = ?1",
                 params![id],
                 |row| {
                     Ok(Request {
@@ -850,6 +893,8 @@ pub fn import_requests(
                         created_at: row.get(12)?,
                         updated_at: row.get(13)?,
                         imported: row.get::<_, i64>(14)? != 0,
+                        pre_script: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
+                        post_script: row.get::<_, Option<String>>(16)?.unwrap_or_default(),
                     })
                 },
             )

@@ -188,6 +188,111 @@
   border-color: var(--border-primary);
 }
 
+/* ── Danger Zone ─────────────────────────── */
+
+.dangerRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+}
+
+.dangerInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dangerLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.dangerDesc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.dangerBtn {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent-delete);
+  background: none;
+  border: 1px solid var(--accent-delete);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.dangerBtn:hover {
+  background: var(--accent-delete);
+  color: #fff;
+}
+
+.dangerConfirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-1) 0;
+}
+
+.dangerConfirmText {
+  font-size: 13px;
+  color: var(--accent-delete);
+  font-weight: 500;
+}
+
+.dangerConfirmActions {
+  display: flex;
+  gap: var(--space-1);
+  justify-content: flex-end;
+}
+
+.dangerCancelBtn {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: none;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.dangerCancelBtn:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--border-primary);
+}
+
+.dangerConfirmBtn {
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  background: var(--accent-delete);
+  border: 1px solid var(--accent-delete);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  cursor: pointer;
+  opacity: 1;
+  transition: opacity 0.15s;
+}
+
+.dangerConfirmBtn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.dangerConfirmBtn:disabled,
+.dangerCancelBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ── Zoom ─────────────────────────────────── */
 
 .zoomOptions {

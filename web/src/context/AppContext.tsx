@@ -22,6 +22,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         projects: state.projects.filter((p) => p.id !== action.payload),
+        folders: state.folders.filter((f) => f.project_id !== action.payload),
         requests: state.requests.filter((r) => r.project_id !== action.payload),
         environments: state.environments.filter((e) => e.project_id !== action.payload),
         currentProjectId: state.currentProjectId === action.payload ? null : state.currentProjectId,
@@ -50,11 +51,6 @@ function appReducer(state: AppState, action: AppAction): AppState {
           if (r.id === requestId) updated = { ...updated, project_id: projectId, folder_id: folderId };
           if (idMap.has(r.id)) updated = { ...updated, position: idMap.get(r.id)! };
           return updated;
-        })
-        .sort((a, b) => {
-          const aIndex = idMap.get(a.id) ?? state.requests.length;
-          const bIndex = idMap.get(b.id) ?? state.requests.length;
-          return aIndex - bIndex;
         });
       return { ...state, requests: reordered };
     }
@@ -90,14 +86,19 @@ function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         folders: state.folders.map((f) => (f.id === action.payload.id ? action.payload : f)),
       };
-    case 'DELETE_FOLDER':
+    case 'DELETE_FOLDER': {
+      const folderRequestIds = new Set(
+        state.requests.filter((r) => r.folder_id === action.payload).map((r) => r.id)
+      );
       return {
         ...state,
         folders: state.folders.filter((f) => f.id !== action.payload),
-        requests: state.requests.map((r) =>
-          r.folder_id === action.payload ? { ...r, folder_id: null } : r
-        ),
+        requests: state.requests.filter((r) => r.folder_id !== action.payload),
+        currentRequestId: folderRequestIds.has(state.currentRequestId ?? -1)
+          ? null
+          : state.currentRequestId,
       };
+    }
     case 'TOGGLE_FOLDER': {
       const next = new Set(state.expandedFolders);
       if (next.has(action.payload)) {

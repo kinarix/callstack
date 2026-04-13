@@ -1,16 +1,20 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { parsePostmanCollection } from '../../utils/postmanParser';
 import type { ParsedCollection } from '../../utils/postmanParser';
+import { previewArchive, detectFileFormat } from '../../utils/callstackArchive';
+import type { ArchivePreview } from '../../lib/callstackSchema';
 import styles from './FilePickerModal.module.css';
 
 interface FilePickerModalProps {
   title: string;
   confirmLabel: string;
   onParsed: (collection: ParsedCollection) => void;
+  onCallstackParsed?: (preview: ArchivePreview, file: File) => void;
   onCancel: () => void;
 }
 
 type Stage = 'idle' | 'dragging' | 'error' | 'preview';
+type FileFormat = 'postman' | 'callstack';
 
 function UploadIcon() {
   return (
@@ -40,10 +44,13 @@ function ErrorIcon() {
   );
 }
 
-export function FilePickerModal({ title, confirmLabel, onParsed, onCancel }: FilePickerModalProps) {
+export function FilePickerModal({ title, confirmLabel, onParsed, onCallstackParsed, onCancel }: FilePickerModalProps) {
   const [stage, setStage] = useState<Stage>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [parsed, setParsed] = useState<ParsedCollection | null>(null);
+  const [callstackPreview, setCallstackPreview] = useState<ArchivePreview | null>(null);
+  const [callstackFile, setCallstackFile] = useState<File | null>(null);
+  const [detectedFormat, setDetectedFormat] = useState<FileFormat>('postman');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
 
@@ -56,20 +63,47 @@ export function FilePickerModal({ title, confirmLabel, onParsed, onCancel }: Fil
   }, [onCancel]);
 
   const processFile = useCallback(async (file: File) => {
-    if (!file.name.endsWith('.json') && file.type !== 'application/json') {
-      setStage('error');
-      setErrorMessage('Please select a .json file');
-      return;
+    const isCallstack = file.name.endsWith('.callstack');
+    const isJson = file.name.endsWith('.json') || file.type === 'application/json';
+
+    if (!isCallstack && !isJson) {
+      // Try auto-detecting from content
+      const format = await detectFileFormat(file);
+      if (format === 'callstack') {
+        // fall through to callstack handling
+      } else if (format !== 'postman') {
+        setStage('error');
+        setErrorMessage('Please select a .callstack or .json (Postman) file');
+        return;
+      }
     }
-    try {
-      const text = await file.text();
-      const json = JSON.parse(text);
-      const collection = parsePostmanCollection(json);
-      setParsed(collection);
-      setStage('preview');
-    } catch (err) {
-      setStage('error');
-      setErrorMessage(err instanceof Error ? err.message : 'Not a valid Postman collection');
+
+    const fmt = await detectFileFormat(file);
+
+    if (fmt === 'callstack') {
+      try {
+        const preview = await previewArchive(file);
+        setCallstackPreview(preview);
+        setCallstackFile(file);
+        setDetectedFormat('callstack');
+        setStage('preview');
+      } catch (err) {
+        setStage('error');
+        setErrorMessage(err instanceof Error ? err.message : 'Not a valid .callstack file');
+      }
+    } else {
+      // Postman JSON
+      try {
+        const text = await file.text();
+        const json = JSON.parse(text);
+        const collection = parsePostmanCollection(json);
+        setParsed(collection);
+        setDetectedFormat('postman');
+        setStage('preview');
+      } catch (err) {
+        setStage('error');
+        setErrorMessage(err instanceof Error ? err.message : 'Not a valid Postman collection');
+      }
     }
   }, []);
 
@@ -109,15 +143,26 @@ export function FilePickerModal({ title, confirmLabel, onParsed, onCancel }: Fil
   const handleRetry = useCallback(() => {
     dragCounterRef.current = 0;
     setParsed(null);
+    setCallstackPreview(null);
+    setCallstackFile(null);
     setErrorMessage('');
     setStage('idle');
   }, []);
 
   const handleConfirm = useCallback(() => {
-    if (parsed) onParsed(parsed);
-  }, [parsed, onParsed]);
+    if (detectedFormat === 'callstack' && callstackPreview && callstackFile && onCallstackParsed) {
+      onCallstackParsed(callstackPreview, callstackFile);
+    } else if (detectedFormat === 'postman' && parsed) {
+      onParsed(parsed);
+    }
+  }, [detectedFormat, callstackPreview, callstackFile, parsed, onParsed, onCallstackParsed]);
 
   const isDragging = stage === 'dragging';
+
+  const isConfirmDisabled =
+    stage !== 'preview' ||
+    (detectedFormat === 'postman' && (!parsed || parsed.requests.length === 0)) ||
+    (detectedFormat === 'callstack' && (!callstackPreview || !onCallstackParsed));
 
   return (
     <div className={styles.overlay} onClick={onCancel}>
@@ -144,7 +189,7 @@ export function FilePickerModal({ title, confirmLabel, onParsed, onCancel }: Fil
                 <UploadIcon />
               </div>
               <p className={styles.dropHint}>
-                {isDragging ? 'Release to upload' : 'Drop your Postman collection JSON here'}
+                {isDragging ? 'Release to upload' : 'Drop a .callstack or .json file here'}
               </p>
               {!isDragging && (
                 <>
@@ -157,7 +202,7 @@ export function FilePickerModal({ title, confirmLabel, onParsed, onCancel }: Fil
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".json,application/json"
+                accept=".callstack,.json,application/json"
                 style={{ display: 'none' }}
                 onChange={handleFileInput}
               />
@@ -177,7 +222,7 @@ export function FilePickerModal({ title, confirmLabel, onParsed, onCancel }: Fil
             </div>
           )}
 
-          {stage === 'preview' && parsed && (
+          {stage === 'preview' && detectedFormat === 'postman' && parsed && (
             <div className={styles.feedbackBox}>
               <div className={`${styles.feedbackIcon} ${styles.successIcon}`}>
                 <CheckIcon />
@@ -188,6 +233,33 @@ export function FilePickerModal({ title, confirmLabel, onParsed, onCancel }: Fil
                   ? 'No requests found in this collection'
                   : `${parsed.requests.length} request${parsed.requests.length === 1 ? '' : 's'} ready to import`}
               </p>
+              <p className={styles.formatBadge}>Postman Collection</p>
+              <button className={styles.retryBtn} onClick={handleRetry} type="button">
+                Choose a different file
+              </button>
+            </div>
+          )}
+
+          {stage === 'preview' && detectedFormat === 'callstack' && callstackPreview && (
+            <div className={styles.feedbackBox}>
+              <div className={`${styles.feedbackIcon} ${styles.successIcon}`}>
+                <CheckIcon />
+              </div>
+              <p className={styles.feedbackTitle}>{callstackPreview.name}</p>
+              {callstackPreview.description && (
+                <p className={styles.feedbackDesc}>{callstackPreview.description}</p>
+              )}
+              <div className={styles.callstackStats}>
+                <span>{callstackPreview.requestCount} request{callstackPreview.requestCount !== 1 ? 's' : ''}</span>
+                {callstackPreview.folderCount > 0 && (
+                  <span>{callstackPreview.folderCount} folder{callstackPreview.folderCount !== 1 ? 's' : ''}</span>
+                )}
+                {callstackPreview.environmentCount > 0 && (
+                  <span>{callstackPreview.environmentCount} environment{callstackPreview.environmentCount !== 1 ? 's' : ''}</span>
+                )}
+                {callstackPreview.hasResponses && <span>responses included</span>}
+              </div>
+              <p className={styles.formatBadge}>Callstack Archive</p>
               <button className={styles.retryBtn} onClick={handleRetry} type="button">
                 Choose a different file
               </button>
@@ -202,7 +274,7 @@ export function FilePickerModal({ title, confirmLabel, onParsed, onCancel }: Fil
           <button
             className={styles.confirmBtn}
             onClick={handleConfirm}
-            disabled={stage !== 'preview' || !parsed || parsed.requests.length === 0}
+            disabled={isConfirmDisabled}
             type="button"
           >
             {confirmLabel}

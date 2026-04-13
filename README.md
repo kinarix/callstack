@@ -1,4 +1,7 @@
+[![Build](https://github.com/kinarix/callstack/actions/workflows/build.yml/badge.svg)](https://github.com/kinarix/callstack/actions/workflows/build.yml)
+
 # Callstack
+[![Build](https://github.com/kinarix/callstack/actions/workflows/build.yml/badge.svg)](https://github.com/kinarix/callstack/actions/workflows/build.yml)
 
 A desktop REST API testing tool built with Tauri 2 and React. Runs as a native OS window with a Rust HTTP client — no browser CORS or Origin restrictions.
 

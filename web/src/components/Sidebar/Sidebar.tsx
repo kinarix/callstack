@@ -9,9 +9,11 @@ import { EnvModal } from '../EnvModal/EnvModal';
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 import { ImportModal } from '../ImportModal/ImportModal';
 import { ExportModal } from '../ExportModal/ExportModal';
-import type { ExportItem } from '../ExportModal/ExportModal';
+import type { ExportItem, ExportResult } from '../ExportModal/ExportModal';
 import type { ParsedCollection, ParsedRequest } from '../../utils/postmanParser';
 import { exportFolderAsPostman, exportProjectAsPostman } from '../../utils/postmanParser';
+import { exportProject as exportCallstackProject, importArchive } from '../../utils/callstackArchive';
+import type { ArchivePreview } from '../../lib/callstackSchema';
 import { invoke } from '@tauri-apps/api/core';
 import type { Environment, Request } from '../../lib/types';
 import { FilePickerModal } from '../FilePickerModal/FilePickerModal';
@@ -56,6 +58,8 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId }
     duplicateRequest,
     duplicateFolder,
     importRequests,
+    getLastResponse,
+    saveResponse,
   } = useDatabase();
 
   const { projects, requests, folders, environments, currentRequestId, expandedProjects, expandedFolders } = state;
@@ -80,6 +84,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId }
   const [exportModalState, setExportModalState] = useState<{
     title: string;
     items: ExportItem[];
+    environments: Environment[];
     mode: 'project';
     projectName: string;
     folderGroups: { name: string; requests: Request[] }[];
@@ -87,6 +92,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId }
   } | {
     title: string;
     items: ExportItem[];
+    environments: Environment[];
     mode: 'folder';
     folderName: string;
   } | null>(null);
@@ -320,6 +326,112 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId }
     }
   }, [importModalState, importRequests, dispatch]);
 
+  const handleCallstackFileParsed = useCallback(async (_preview: ArchivePreview, file: File) => {
+    const ctx = filePickerState; // capture before clearing
+    setFilePickerState(null);
+    try {
+      const { manifest, attachmentData } = await importArchive(file);
+
+      // 1. Import into the context project if available; otherwise create a new project
+      const contextProjectId = ctx != null && 'projectId' in ctx ? (ctx as { projectId: number }).projectId : null;
+      const existingProject = contextProjectId != null
+        ? state.projects.find((p) => p.id === contextProjectId) ?? null
+        : null;
+
+      let project: import('../../lib/types').Project;
+      if (existingProject) {
+        project = existingProject;
+      } else {
+        project = await createProject(null, manifest.project.name, manifest.project.description ?? null);
+        dispatch({ type: 'ADD_PROJECT', payload: project });
+        dispatch({ type: 'TOGGLE_PROJECT', payload: project.id });
+      }
+
+      // 2. Create folders and build ref → DB ID map
+      const folderIdMap = new Map<string, number>();
+      for (const f of manifest.folders) {
+        const folder = await createFolder(project.id, f.name, true);
+        dispatch({ type: 'ADD_FOLDER', payload: folder });
+        folderIdMap.set(f._ref, folder.id);
+        dispatch({ type: 'TOGGLE_FOLDER', payload: folder.id });
+      }
+
+      // 3. Import requests — group by folder so we can pass folderId
+      const byFolder = new Map<number | null, typeof manifest.requests>();
+      for (const req of manifest.requests) {
+        const folderId = req.folderRef != null ? (folderIdMap.get(req.folderRef) ?? null) : null;
+        const group = byFolder.get(folderId) ?? [];
+        group.push(req);
+        byFolder.set(folderId, group);
+      }
+
+      const requestRefToId = new Map<string, number>();
+      for (const [folderId, reqs] of byFolder) {
+        const requestData = reqs.map((r) => ({
+          name: r.name,
+          method: r.method,
+          url: r.url,
+          params: JSON.stringify(r.params),
+          headers: JSON.stringify(r.headers),
+          body: r.body,
+          pre_script: r.preScript,
+          post_script: r.postScript,
+        }));
+        const imported = await importRequests(project.id, folderId, null, requestData);
+        imported.forEach((req, i) => {
+          dispatch({ type: 'ADD_REQUEST', payload: req });
+          requestRefToId.set(reqs[i]._ref, req.id);
+        });
+      }
+
+      // 4. Create environments and restore selected env
+      const createdEnvs: import('../../lib/types').Environment[] = [];
+      for (const env of manifest.environments) {
+        const created = await createEnvironment(project.id, env.name);
+        if (env.variables.length > 0) {
+          const updated = await updateEnvironment(created.id, env.name, env.variables);
+          dispatch({ type: 'ADD_ENVIRONMENT', payload: updated });
+          createdEnvs.push(updated);
+        } else {
+          dispatch({ type: 'ADD_ENVIRONMENT', payload: created });
+          createdEnvs.push(created);
+        }
+      }
+      // Restore the previously active environment by name
+      if (manifest.project.selectedEnvironmentName) {
+        const match = createdEnvs.find((e) => e.name === manifest.project.selectedEnvironmentName);
+        if (match) {
+          localStorage.setItem(`callstack.activeEnv.${project.id}`, String(match.id));
+        }
+      }
+
+      // 5. Import responses if present
+      if (manifest.responses && manifest.responses.length > 0) {
+        for (const resp of manifest.responses) {
+          const requestId = requestRefToId.get(resp.requestRef);
+          if (requestId == null) continue;
+          await saveResponse(
+            requestId,
+            resp.status,
+            resp.statusText,
+            resp.headers,
+            resp.body,
+            resp.timeMs,
+            resp.size,
+            resp.timestamp,
+          );
+        }
+      }
+
+      // Silence the unused attachmentData variable until attachment restore is implemented
+      void attachmentData;
+
+      dispatch({ type: 'SET_CURRENT_PROJECT', payload: project.id });
+    } catch (err) {
+      console.error('Failed to import .callstack archive:', err);
+    }
+  }, [filePickerState, state.projects, createProject, createFolder, importRequests, createEnvironment, updateEnvironment, saveResponse, dispatch]);
+
   // ─── Export handlers ────────────────────────────────────────────────────────
 
   const handleProjectExportClick = useCallback((e: React.MouseEvent, projectId: number) => {
@@ -339,8 +451,9 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId }
         allReqs.filter((r) => r.folder_id === f.id).map((r) => ({ request: r, folderName: f.name })),
       ),
     ];
-    setExportModalState({ title: `Export "${project.name}"`, items, mode: 'project', projectName: project.name, folderGroups, rootRequests });
-  }, [state.projects, state.folders, state.requests]);
+    const projectEnvs = state.environments.filter((e) => e.project_id === project.id);
+    setExportModalState({ title: `Export "${project.name}"`, items, environments: projectEnvs, mode: 'project', projectName: project.name, folderGroups, rootRequests });
+  }, [state.projects, state.folders, state.requests, state.environments]);
 
   const handleFolderExportClick = useCallback((e: React.MouseEvent, folderId: number) => {
     e.stopPropagation();
@@ -349,33 +462,82 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId }
     const items: ExportItem[] = state.requests
       .filter((r) => r.folder_id === folderId)
       .map((r) => ({ request: r, folderName: folder.name }));
-    setExportModalState({ title: `Export folder "${folder.name}"`, items, mode: 'folder', folderName: folder.name });
+    setExportModalState({ title: `Export folder "${folder.name}"`, items, environments: [], mode: 'folder', folderName: folder.name });
   }, [state.folders, state.requests]);
 
-  const handleModalExport = useCallback(async (selected: ExportItem[]) => {
+  const handleModalExport = useCallback(async (result: ExportResult) => {
     const ctx = exportModalState;
     setExportModalState(null);
-    if (!ctx || selected.length === 0) return;
+    if (!ctx || result.items.length === 0) return;
     try {
-      let content: string;
-      let filename: string;
-      if (ctx.mode === 'folder') {
-        content = exportFolderAsPostman(ctx.folderName, selected.map((i) => i.request));
-        filename = `${ctx.folderName}.postman_collection.json`;
+      if (result.format === 'callstack') {
+        // ── Callstack Archive export ──
+        const project = state.projects.find((p) => p.id === state.currentProjectId);
+        if (!project) return;
+
+        const selectedIds = new Set(result.items.map((i) => i.request.id));
+        const selectedRequests = state.requests.filter((r) => selectedIds.has(r.id));
+
+        // Include folders that have at least one selected request
+        const usedFolderIds = new Set(selectedRequests.map((r) => r.folder_id).filter(Boolean));
+        const selectedFolders = state.folders.filter(
+          (f) => f.project_id === project.id && usedFolderIds.has(f.id),
+        );
+
+        // Environments belong to the project
+        const envs = state.environments.filter((e) => result.selectedEnvironmentIds.has(e.id));
+
+        // Selected environment (stored in localStorage per project)
+        const activeEnvIdStr = localStorage.getItem(`callstack.activeEnv.${project.id}`);
+        const activeEnvId = activeEnvIdStr ? parseInt(activeEnvIdStr, 10) : null;
+        const selectedEnvironmentName = envs.find((e) => e.id === activeEnvId)?.name;
+
+        // Optionally fetch stored responses
+        let responses: import('../../lib/types').Response[] | undefined;
+        if (result.includeResponses) {
+          const resps = await Promise.all(
+            selectedRequests.map(async (r) => {
+              const resp = await getLastResponse(r.id);
+              return resp;
+            }),
+          );
+          responses = resps.filter(Boolean) as import('../../lib/types').Response[];
+        }
+
+        const blob = await exportCallstackProject({
+          project,
+          folders: selectedFolders,
+          requests: selectedRequests,
+          environments: envs,
+          responses,
+          selectedEnvironmentName,
+        });
+
+        const data = Array.from(new Uint8Array(await blob.arrayBuffer()));
+        const filename = `${project.name}.callstack`;
+        await invoke('save_binary_file', { filename, data });
       } else {
-        const selectedIds = new Set(selected.map((i) => i.request.id));
-        const rootRequests = ctx.rootRequests.filter((r) => selectedIds.has(r.id));
-        const folderGroups = ctx.folderGroups
-          .map((g) => ({ name: g.name, requests: g.requests.filter((r) => selectedIds.has(r.id)) }))
-          .filter((g) => g.requests.length > 0);
-        content = exportProjectAsPostman(ctx.projectName, rootRequests, folderGroups);
-        filename = `${ctx.projectName}.postman_collection.json`;
+        // ── Postman export (existing) ──
+        let content: string;
+        let filename: string;
+        if (ctx.mode === 'folder') {
+          content = exportFolderAsPostman(ctx.folderName, result.items.map((i) => i.request));
+          filename = `${ctx.folderName}.postman_collection.json`;
+        } else {
+          const selectedIds = new Set(result.items.map((i) => i.request.id));
+          const rootRequests = ctx.rootRequests.filter((r) => selectedIds.has(r.id));
+          const folderGroups = ctx.folderGroups
+            .map((g) => ({ name: g.name, requests: g.requests.filter((r) => selectedIds.has(r.id)) }))
+            .filter((g) => g.requests.length > 0);
+          content = exportProjectAsPostman(ctx.projectName, rootRequests, folderGroups);
+          filename = `${ctx.projectName}.postman_collection.json`;
+        }
+        await invoke('save_file', { filename, content });
       }
-      await invoke('save_file', { filename, content });
     } catch (err) {
       console.error('Failed to export:', err);
     }
-  }, [exportModalState]);
+  }, [exportModalState, state, getLastResponse]);
 
   // ─── Native DnD handlers ────────────────────────────────────────────────────
 
@@ -415,6 +577,14 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId }
       if (isCrossContainer) {
         const newPos = withoutActive.findIndex((r) => r.id === requestId);
         await moveRequest(requestId, targetProjectId, targetFolderId, newPos);
+        // Renumber the source container to close the gap left by the moved request
+        const sourceContainerIds = requests
+          .filter((r) => r.project_id === movingRequest.project_id && r.folder_id === movingRequest.folder_id && r.id !== requestId)
+          .sort((a, b) => a.position - b.position)
+          .map((r) => r.id);
+        if (sourceContainerIds.length > 0) {
+          await reorderRequests(sourceContainerIds);
+        }
       }
       await reorderRequests(orderedIds);
       dispatch({
@@ -511,6 +681,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId }
           title={filePickerState.mode === 'project' ? 'Import into project' : 'Import into folder'}
           confirmLabel={filePickerState.mode === 'project' ? 'Import all' : 'Select requests'}
           onParsed={handleFilePickerParsed}
+          onCallstackParsed={handleCallstackFileParsed}
           onCancel={() => setFilePickerState(null)}
         />
       )}
@@ -526,6 +697,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId }
         <ExportModal
           title={exportModalState.title}
           items={exportModalState.items}
+          environments={exportModalState.environments}
           onExport={handleModalExport}
           onCancel={() => setExportModalState(null)}
         />
