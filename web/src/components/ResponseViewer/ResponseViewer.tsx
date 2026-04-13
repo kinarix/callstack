@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import CodeMirror from '@uiw/react-codemirror';
+import { json } from '@codemirror/lang-json';
+import { xml } from '@codemirror/lang-xml';
+import { EditorView } from '@codemirror/view';
+import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
+import { tags } from '@lezer/highlight';
 
 function PinIcon({ pinned }: { pinned: boolean }) {
   return (
@@ -39,6 +45,7 @@ interface ResponseViewerProps {
   requestName?: string;
   copyFlash?: boolean;
   onClear?: () => void;
+  onCopy?: () => void;
 }
 
 function getContentType(headers: { key: string; value: string }[]): string {
@@ -46,34 +53,48 @@ function getContentType(headers: { key: string; value: string }[]): string {
   return ct ? ct.value.toLowerCase() : '';
 }
 
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
+const responseViewerEditorTheme = EditorView.theme({
+  '&': {
+    backgroundColor: 'var(--bg-secondary)',
+    color: 'var(--text-primary)',
+  },
+  '.cm-content': {
+    caretColor: 'var(--text-primary)',
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: '12px',
+    lineHeight: '1.6',
+    padding: '8px 0',
+  },
+  '.cm-gutters': {
+    backgroundColor: 'var(--bg-secondary)',
+    border: 'none',
+    borderRight: '1px solid var(--border-secondary)',
+    color: 'var(--text-tertiary)',
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: '11px',
+  },
+  '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--accent-get)' },
+  '&.cm-focused .cm-selectionBackground, .cm-selectionBackground': {
+    backgroundColor: 'rgba(59, 130, 246, 0.25)',
+  },
+  '.cm-activeLine': { backgroundColor: 'var(--bg-hover, rgba(255,255,255,0.03))' },
+  '.cm-activeLineGutter': { backgroundColor: 'var(--bg-hover, rgba(255,255,255,0.03))' },
+  '.cm-foldPlaceholder': {
+    backgroundColor: 'transparent',
+    border: 'none',
+    color: 'var(--text-tertiary)',
+  },
+});
 
-function highlightJson(json: string): string {
-  const escaped = escapeHtml(json);
-  return escaped.replace(
-    /("(?:\\.|[^"\\])*"(?:\s*:)?|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
-    (match) => {
-      if (match.endsWith(':')) {
-        return `<span class="hl-key">${match}</span>`;
-      }
-      if (match.startsWith('"')) {
-        return `<span class="hl-string">${match}</span>`;
-      }
-      if (match === 'true' || match === 'false') {
-        return `<span class="hl-bool">${match}</span>`;
-      }
-      if (match === 'null') {
-        return `<span class="hl-null">${match}</span>`;
-      }
-      return `<span class="hl-number">${match}</span>`;
-    }
-  );
-}
+const responseViewerHighlight = HighlightStyle.define([
+  { tag: tags.propertyName, color: 'var(--syntax-key)' },
+  { tag: tags.string, color: 'var(--syntax-string)' },
+  { tag: [tags.number, tags.integer, tags.float], color: 'var(--syntax-number)' },
+  { tag: [tags.bool, tags.null], color: 'var(--syntax-bool)' },
+  { tag: tags.keyword, color: 'var(--syntax-key)' },
+]);
+
+const responseViewerThemeExtension = [responseViewerEditorTheme, syntaxHighlighting(responseViewerHighlight)];
 
 function formatXml(xml: string): string {
   try {
@@ -104,43 +125,65 @@ function normalizeLineEndings(s: string): string {
   return s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 }
 
-function renderBody(body: string, contentType: string): { html: boolean; content: string; label: string } {
+function formatBody(body: string, contentType: string): string {
   const text = normalizeLineEndings(body);
   if (contentType.includes('json')) {
     try {
       const parsed = JSON.parse(text);
-      const pretty = JSON.stringify(parsed, null, 2);
-      return { html: true, content: highlightJson(pretty), label: 'JSON' };
+      return JSON.stringify(parsed, null, 2);
     } catch {
-      return { html: false, content: text, label: 'JSON (invalid)' };
+      return text;
     }
   }
   if (contentType.includes('xml') || contentType.includes('html')) {
-    const label = contentType.includes('html') ? 'HTML' : 'XML';
-    return { html: false, content: formatXml(text), label };
+    return formatXml(text);
   }
-  return { html: false, content: text, label: contentType.split(';')[0].split('/')[1]?.toUpperCase() ?? 'Text' };
+  return text;
+}
+
+function getLabel(contentType: string): string {
+  if (contentType.includes('json')) {
+    return 'JSON';
+  }
+  if (contentType.includes('html')) {
+    return 'HTML';
+  }
+  if (contentType.includes('xml')) {
+    return 'XML';
+  }
+  return contentType.split(';')[0].split('/')[1]?.toUpperCase() ?? 'Text';
+}
+
+function getLanguage(contentType: string) {
+  if (contentType.includes('json')) {
+    return json();
+  }
+  if (contentType.includes('xml') || contentType.includes('html')) {
+    return xml();
+  }
+  return null;
 }
 
 function isPreviewable(contentType: string): boolean {
   return contentType.includes('html') || contentType.includes('image/') || contentType.includes('video/') || contentType.includes('audio/');
 }
 
-export function ResponseViewer({ response, requestName, copyFlash, onClear }: ResponseViewerProps) {
+export function ResponseViewer({ response, requestName, copyFlash, onClear, onCopy }: ResponseViewerProps) {
   const [tab, setTab] = useState<'body' | 'headers' | 'preview' | 'tests'>('body');
   const [headersPinned, setHeadersPinned] = useState(false);
+  const [testsPinned, setTestsPinned] = useState(false);
 
   useEffect(() => {
     if (response) {
       const contentType = getContentType(response.headers);
-      if (response.testResults && response.testResults.length > 0) {
-        setTab('tests');
-      } else if (isPreviewable(contentType)) {
+      if (isPreviewable(contentType)) {
         setTab('preview');
       } else if (tab === 'preview') {
         setTab('body');
       } else if (!response.body.trim() && tab === 'body') {
         setTab('headers');
+      } else {
+        setTab('body');
       }
       setHeadersPinned(false);
     }
@@ -159,6 +202,7 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear }: Re
   const handleCopy = async () => {
     if (response?.body) {
       await navigator.clipboard.writeText(response.body);
+      onCopy?.();
     }
   };
 
@@ -192,7 +236,10 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear }: Re
 
   const statusColor = getStatusColor(response.status);
   const contentType = getContentType(response.headers ?? []);
-  const { html, content, label } = renderBody(response.body, contentType);
+  const formattedBody = formatBody(response.body, contentType);
+  const label = getLabel(contentType);
+  const bodyLanguage = getLanguage(contentType);
+  const bodyExtensions = bodyLanguage ? [...responseViewerThemeExtension, bodyLanguage] : responseViewerThemeExtension;
 
   return (
     <div className={styles.viewer}>
@@ -262,16 +309,31 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear }: Re
           const failed = response.testResults.length - passed;
           const statusColor = failed === 0 ? 'var(--accent-get)' : passed === 0 ? '#ef4444' : '#f59e0b';
           return (
-            <button
-              className={`${styles.tab} ${tab === 'tests' ? styles.tabActive : ''}`}
-              onClick={() => setTab('tests')}
-              style={tab === 'tests' ? { color: statusColor, borderBottomColor: statusColor } : {}}
-            >
-              Tests
-              <span className={styles.tabCount} style={{ background: `${statusColor}22`, color: statusColor }}>
-                {failed === 0 ? `${passed} passed` : passed === 0 ? `${failed} failed` : `${passed}/${response.testResults.length}`}
-              </span>
-            </button>
+            <div className={styles.tabGroup}>
+              <button
+                className={`${styles.tab} ${tab === 'tests' ? styles.tabActive : ''} ${testsPinned ? styles.tabDisabled : ''}`}
+                onClick={() => !testsPinned && setTab('tests')}
+                disabled={testsPinned}
+                style={tab === 'tests' && !testsPinned ? { color: statusColor, borderBottomColor: statusColor } : {}}
+              >
+                Tests
+                <span className={styles.tabCount} style={{ background: `${statusColor}22`, color: statusColor }}>
+                  {failed === 0 ? `${passed} passed` : passed === 0 ? `${failed} failed` : `${passed}/${response.testResults.length}`}
+                </span>
+              </button>
+              <button
+                className={`${styles.pinBtn} ${testsPinned ? styles.pinActive : ''}`}
+                onClick={() => {
+                  setTestsPinned(p => {
+                    if (!p) setTab('body');
+                    return !p;
+                  });
+                }}
+                title={testsPinned ? 'Unpin Tests' : 'Pin Tests (always visible)'}
+              >
+                <PinIcon pinned={testsPinned} />
+              </button>
+            </div>
           );
         })()}
       </div>
@@ -300,22 +362,50 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear }: Re
         </div>
       )}
 
+      {/* Pinned tests — shown above body when pinned and body tab is active */}
+      {testsPinned && tab === 'body' && response.testResults && (
+        <div className={styles.pinnedPanel}>
+          <div className={styles.pinnedHeader}>
+            <span>Tests</span>
+            <span className={styles.pinnedBadge}>pinned</span>
+          </div>
+          <div className={styles.pinnedContent}>
+            <div className={styles.testsTable}>
+              {response.testResults.map((r, i) => (
+                <div key={i} className={`${styles.testsRow} ${r.severity === 'warning' ? styles.testsRowWarn : r.passed ? styles.testsRowPass : styles.testsRowFail}`}>
+                  <span className={styles.testsIcon}>{r.severity === 'warning' ? '⚠' : r.passed ? '✓' : '✗'}</span>
+                  <div className={styles.testsDetail}>
+                    <span className={styles.testsDesc} title={r.description}>{r.description}</span>
+                    {r.passed && r.message && <span className={styles.testsSuccess} title={r.message}>{r.message}</span>}
+                    {!r.passed && r.error && <span className={styles.testsError} title={r.error}>{r.error}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {tab === 'body' && (
         <div className={styles.body}>
-          <div className={styles.preWrapper}>
+          <div className={`${styles.preWrapper}${copyFlash ? ` ${styles.flashCopy}` : ''}`}>
             <div className={styles.floatingButtons}>
               <button className={styles.floatingBtn} onClick={handleCopy} title="Copy response body">Copy</button>
               <button className={styles.floatingBtn} onClick={handleSave} title="Save response to file">Save</button>
               <button className={styles.floatingBtn} onClick={handleClear} title="Clear response">Clear</button>
             </div>
-            {html ? (
-              <pre
-                className={`${styles.pre}${copyFlash ? ` ${styles.flashCopy}` : ''}`}
-                dangerouslySetInnerHTML={{ __html: content }}
-              />
-            ) : (
-              <pre className={`${styles.pre}${copyFlash ? ` ${styles.flashCopy}` : ''}`}>{content}</pre>
-            )}
+            <CodeMirror
+              value={formattedBody}
+              extensions={bodyExtensions}
+              theme="none"
+              readOnly={true}
+              basicSetup={{
+                lineNumbers: true,
+                foldGutter: true,
+                highlightSelectionMatches: false,
+              }}
+              className={styles.responseEditor}
+            />
             {copyFlash && (
               <div className={styles.copyToast}>Copied to clipboard</div>
             )}
@@ -403,15 +493,15 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear }: Re
                 </div>
                 <div className={styles.testsTable}>
                   {results.map((r, i) => (
-                    <div key={i} className={`${styles.testsRow} ${r.passed ? styles.testsRowPass : styles.testsRowFail}`}>
-                      <span className={styles.testsIcon}>{r.passed ? '✓' : '✗'}</span>
+                    <div key={i} className={`${styles.testsRow} ${r.severity === 'warning' ? styles.testsRowWarn : r.passed ? styles.testsRowPass : styles.testsRowFail}`}>
+                      <span className={styles.testsIcon}>{r.severity === 'warning' ? '⚠' : r.passed ? '✓' : '✗'}</span>
                       <div className={styles.testsDetail}>
-                        <span className={styles.testsDesc}>{r.description}</span>
+                        <span className={styles.testsDesc} title={r.description}>{r.description}</span>
                         {r.passed && r.message && (
-                          <span className={styles.testsSuccess}>{r.message}</span>
+                          <span className={styles.testsSuccess} title={r.message}>{r.message}</span>
                         )}
                         {!r.passed && r.error && (
-                          <span className={styles.testsError}>{r.error}</span>
+                          <span className={styles.testsError} title={r.error}>{r.error}</span>
                         )}
                       </div>
                     </div>

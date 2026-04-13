@@ -50,11 +50,6 @@ function appReducer(state: AppState, action: AppAction): AppState {
           if (r.id === requestId) updated = { ...updated, project_id: projectId, folder_id: folderId };
           if (idMap.has(r.id)) updated = { ...updated, position: idMap.get(r.id)! };
           return updated;
-        })
-        .sort((a, b) => {
-          const aIndex = idMap.get(a.id) ?? state.requests.length;
-          const bIndex = idMap.get(b.id) ?? state.requests.length;
-          return aIndex - bIndex;
         });
       return { ...state, requests: reordered };
     }

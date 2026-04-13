@@ -16,6 +16,7 @@ interface RequestBuilderProps {
   onExpand?: () => void;
   executeRef?: React.MutableRefObject<(() => void) | null>;
   copyFlash?: boolean;
+  onCopyResponse?: () => void;
 }
 
 interface UrlError {
@@ -159,7 +160,7 @@ function getActiveEnvKey(projectId: number | null) {
   return projectId ? `callstack.activeEnv.${projectId}` : null;
 }
 
-export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, copyFlash }: RequestBuilderProps) {
+export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, copyFlash, onCopyResponse }: RequestBuilderProps) {
   const { state, dispatch } = useApp();
   const { send, cancelRequest } = useHttpClient();
   const { updateRequest, saveResponse, updateEnvironment } = useDatabase();
@@ -576,6 +577,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
             requestName={request?.name}
             copyFlash={copyFlash}
             onClear={() => dispatch({ type: 'SET_RESPONSE', payload: null })}
+            onCopy={onCopyResponse}
           />
         </div>
       </div>

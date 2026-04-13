@@ -1,5 +1,20 @@
 import type { KeyValue, TestResult } from '../lib/types';
 
+// Error classes for test severity levels
+class Warn extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'Warn';
+  }
+}
+
+class Success extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'Success';
+  }
+}
+
 export interface ScriptRequest {
   method: string;
   url: string;
@@ -73,11 +88,28 @@ export function runScript(
       }
       testResults.push({ description, passed: true, message });
     } catch (e) {
-      testResults.push({
-        description,
-        passed: false,
-        error: e instanceof Error ? e.message : String(e),
-      });
+      if (e instanceof Success) {
+        testResults.push({
+          description,
+          passed: true,
+          severity: 'success',
+          message: e.message,
+        });
+      } else if (e instanceof Warn) {
+        testResults.push({
+          description,
+          passed: false,
+          severity: 'warning',
+          error: e.message,
+        });
+      } else {
+        testResults.push({
+          description,
+          passed: false,
+          severity: 'error',
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
     }
   };
 
@@ -116,8 +148,8 @@ export function runScript(
 
   try {
     // eslint-disable-next-line no-new-func
-    const fn = new Function('request', 'response', 'console', 'test', 'env', script);
-    fn(requestClone, responseCopy, consoleMock, testFn, envObj);
+    const fn = new Function('request', 'response', 'console', 'test', 'env', 'Warn', 'Success', script);
+    fn(requestClone, responseCopy, consoleMock, testFn, envObj, Warn, Success);
   } catch (e) {
     const errMsg = e instanceof Error ? e.message : String(e);
     logs.push('[error] Script error: ' + errMsg);

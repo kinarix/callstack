@@ -48,6 +48,7 @@ export interface Request {
 export interface TestResult {
   description: string;
   passed: boolean;
+  severity?: 'success' | 'warning' | 'error';
   error?: string;
   message?: string;
 }

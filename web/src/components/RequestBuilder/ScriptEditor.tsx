@@ -2,7 +2,8 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import type { KeyValue } from '../../lib/types';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
-import { EditorView, showTooltip, type Tooltip } from '@codemirror/view';
+import { EditorView, keymap, showTooltip, type Tooltip } from '@codemirror/view';
+import { indentWithTab } from '@codemirror/commands';
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
 import { StateField } from '@codemirror/state';
 import { tags } from '@lezer/highlight';
@@ -12,9 +13,10 @@ import {
   type CompletionResult,
   snippetCompletion,
 } from '@codemirror/autocomplete';
+import { ScriptExamples } from './ScriptExamples';
 import styles from './ScriptEditor.module.css';
 
-type ScriptTab = 'pre' | 'post';
+type ScriptTab = 'pre' | 'post' | 'examples';
 
 // ── Syntax highlighting ───────────────────────────────────────────────────────
 
@@ -448,20 +450,6 @@ interface ScriptEditorProps {
   onTest?: (script: string, isPost: boolean) => void;
 }
 
-const PLACEHOLDER_PRE = `// Pre-request script
-// Available: request, env, console
-// Example:
-// request.headers.push({ key: 'X-Timestamp', value: String(Date.now()) });
-// env.set('token', 'abc123');`;
-
-const PLACEHOLDER_POST = `// Post-request script
-// Available: request, response, env, console, test()
-// Example:
-// test('Status is 200', () => {
-//   if (response.status !== 200) throw new Error('Got ' + response.status);
-// });
-// env.set('userId', JSON.parse(response.body).id);`;
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function ScriptEditor({ preScript, postScript, onChange, consoleLogs, onClearLogs, envVars = [], onTest }: ScriptEditorProps) {
@@ -509,7 +497,7 @@ export function ScriptEditor({ preScript, postScript, onChange, consoleLogs, onC
     javascript(),
     editorTheme,
     syntaxHighlighting(jsHighlight),
-    EditorView.lineWrapping,
+    keymap.of([indentWithTab]),
     autocompletion({
       override: [makeCompletionSource(isPost, envVarKeys)],
       activateOnTyping: true,
@@ -519,7 +507,6 @@ export function ScriptEditor({ preScript, postScript, onChange, consoleLogs, onC
   ], [isPost, envVarKeys]);
 
   const currentScript = isPost ? postScript : preScript;
-  const placeholder = isPost ? PLACEHOLDER_POST : PLACEHOLDER_PRE;
 
   const handleChange = (value: string) => {
     if (!isPost) {
@@ -545,12 +532,20 @@ export function ScriptEditor({ preScript, postScript, onChange, consoleLogs, onC
         >
           Post-request
         </button>
+        <button
+          className={`${styles.subTab} ${styles.subTabExamples} ${activeTab === 'examples' ? styles.subTabActive : ''}`}
+          onClick={() => setActiveTab('examples')}
+        >
+          Examples
+        </button>
         <div className={styles.hint}>
-          {!isPost
+          {activeTab === 'examples'
+            ? 'Copy code examples to pre or post-request scripts.'
+            : !isPost
             ? 'Runs before the request is sent. Mutate request, headers, params.'
             : 'Runs after the response. Use test() to assert, env.set() to store values.'}
         </div>
-        {onTest && (
+        {onTest && activeTab !== 'examples' && (
           <button
             className={styles.testBtn}
             onClick={() => onTest(currentScript, isPost)}
@@ -563,22 +558,38 @@ export function ScriptEditor({ preScript, postScript, onChange, consoleLogs, onC
       </div>
 
       <div className={styles.editorWrap}>
-        <CodeMirror
-          key={activeTab}
-          value={currentScript}
-          onChange={handleChange}
-          extensions={extensions}
-          theme="none"
-          placeholder={placeholder}
-          basicSetup={{
-            lineNumbers: true,
-            foldGutter: false,
-            bracketMatching: true,
-            closeBrackets: true,
-            autocompletion: false, // we provide our own
-          }}
-          style={{ height: '100%' }}
-        />
+        {activeTab === 'examples' ? (
+          <ScriptExamples
+            onCopy={(code, target) => {
+              if (target === 'pre') {
+                const existing = preScript.trim();
+                onChange({ pre_script: existing ? `${existing}\n\n${code}` : code });
+              } else {
+                const existing = postScript.trim();
+                onChange({ post_script: existing ? `${existing}\n\n${code}` : code });
+              }
+            }}
+          />
+        ) : (
+          <CodeMirror
+            key={activeTab}
+            value={currentScript}
+            onChange={handleChange}
+            extensions={extensions}
+            theme="none"
+            basicSetup={{
+              lineNumbers: true,
+              foldGutter: false,
+              bracketMatching: true,
+              closeBrackets: true,
+              autocompletion: false, // we provide our own
+              highlightSelectionMatches: false,
+              indentOnInput: true,
+              tabSize: 2,
+            }}
+            style={{ height: '100%' }}
+          />
+        )}
       </div>
 
       {/* Environment panel */}

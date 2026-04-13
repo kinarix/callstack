@@ -162,15 +162,17 @@ impl Database {
         );
 
         // Migrate requests table to add position column
-        let _ = conn.execute(
+        let position_col_added = conn.execute(
             "ALTER TABLE requests ADD COLUMN position INTEGER DEFAULT 0",
             [],
-        );
-        // Seed positions for existing rows so ordering is stable
-        let _ = conn.execute(
-            "UPDATE requests SET position = rowid WHERE position = 0",
-            [],
-        );
+        ).is_ok();
+        // Seed positions for existing rows so ordering is stable — only on first migration
+        if position_col_added {
+            let _ = conn.execute(
+                "UPDATE requests SET position = rowid WHERE position = 0",
+                [],
+            );
+        }
         let _ = conn.execute(
             "ALTER TABLE requests ADD COLUMN imported INTEGER NOT NULL DEFAULT 0",
             [],

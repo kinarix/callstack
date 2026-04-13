@@ -247,15 +247,14 @@
   display: flex;
   flex-direction: column;
   border-radius: var(--radius-md);
+  border: 1px solid var(--border-secondary);
+  background: var(--bg-secondary);
 }
 
 .pre {
   flex: 1;
   margin: 0;
   padding: var(--space-2);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-secondary);
-  border-radius: var(--radius-md);
   font-family: 'JetBrains Mono', monospace;
   font-size: 12.5px;
   line-height: 1.6;
@@ -263,6 +262,25 @@
   overflow: auto;
   white-space: pre-wrap;
   word-wrap: break-word;
+}
+
+.responseEditor {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.responseEditor :global(.cm-editor) {
+  height: 100%;
+  border: none;
+  background: transparent;
+}
+
+.responseEditor :global(.cm-scroller) {
+  overflow: auto;
+  height: 100%;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
 }
 
 .flashCopy {
@@ -300,12 +318,7 @@
   100% { opacity: 0; }
 }
 
-/* JSON syntax highlight — these are injected via dangerouslySetInnerHTML */
-.pre :global(.hl-key)    { color: var(--syntax-key); }
-.pre :global(.hl-string) { color: var(--syntax-string); }
-.pre :global(.hl-number) { color: var(--syntax-number); }
-.pre :global(.hl-bool)   { color: var(--syntax-bool); }
-.pre :global(.hl-null)   { color: var(--syntax-null); }
+/* JSON syntax highlighting now handled by CodeMirror language extensions */
 
 /* Headers pane */
 .headerList {
@@ -464,9 +477,10 @@
   flex: 1;
   overflow-y: auto;
   padding: var(--space-1) var(--space-2);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-auto-rows: max-content;
+  gap: var(--space-2);
 }
 
 .testsRow {
@@ -475,11 +489,13 @@
   gap: var(--space-1);
   padding: 6px var(--space-1);
   border-radius: var(--radius-sm);
-  border-bottom: 1px solid var(--border-secondary);
+  border: 1px solid var(--border-secondary);
+  height: 80px;
+  overflow: hidden;
 }
 
 .testsRow:last-child {
-  border-bottom: none;
+  border: 1px solid var(--border-secondary);
 }
 
 .testsRowPass {
@@ -488,6 +504,10 @@
 
 .testsRowFail {
   background: rgba(239, 68, 68, 0.05);
+}
+
+.testsRowWarn {
+  background: rgba(245, 158, 11, 0.05);
 }
 
 .testsIcon {
@@ -506,6 +526,10 @@
   color: #ef4444;
 }
 
+.testsRowWarn .testsIcon {
+  color: #f59e0b;
+}
+
 .testsDetail {
   display: flex;
   flex-direction: column;
@@ -518,6 +542,11 @@
   font-family: 'Outfit', sans-serif;
   color: var(--text-primary);
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .testsSuccess {
@@ -527,6 +556,11 @@
   white-space: pre-wrap;
   word-break: break-word;
   opacity: 0.85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .testsError {
@@ -536,4 +570,9 @@
   white-space: pre-wrap;
   word-break: break-word;
   opacity: 0.85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
