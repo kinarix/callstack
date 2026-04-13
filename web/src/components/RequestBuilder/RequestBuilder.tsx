@@ -15,8 +15,10 @@ interface RequestBuilderProps {
   showExpandBtn?: boolean;
   onExpand?: () => void;
   executeRef?: React.MutableRefObject<(() => void) | null>;
-  copyFlash?: boolean;
+  copyFlashPane?: 'request' | 'response' | null;
   onCopyResponse?: () => void;
+  onRequestFocus?: () => void;
+  onResponseFocus?: () => void;
 }
 
 interface UrlError {
@@ -160,7 +162,7 @@ function getActiveEnvKey(projectId: number | null) {
   return projectId ? `callstack.activeEnv.${projectId}` : null;
 }
 
-export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, copyFlash, onCopyResponse }: RequestBuilderProps) {
+export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, copyFlashPane, onCopyResponse, onRequestFocus, onResponseFocus }: RequestBuilderProps) {
   const { state, dispatch } = useApp();
   const { send, cancelRequest } = useHttpClient();
   const { updateRequest, saveResponse, updateEnvironment } = useDatabase();
@@ -558,7 +560,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         className={styles.panes}
         style={{ gridTemplateColumns: `${splitPct}fr 4px ${100 - splitPct}fr` }}
       >
-        <div className={styles.requestPane}>
+        <div className={styles.requestPane} onFocus={onRequestFocus}>
           <TabPanel
             request={request}
             onRequestChange={handleRequestChange}
@@ -568,14 +570,15 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
             onClearLogs={() => setConsoleLogs([])}
             envVars={envVars}
             onScriptTest={handleScriptTest}
+            copyFlash={copyFlashPane === 'request'}
           />
         </div>
         <div className={styles.splitHandle} onMouseDown={startPanelResize} />
-        <div className={styles.responsePane}>
+        <div className={styles.responsePane} onFocus={onResponseFocus}>
           <ResponseViewer
             response={state.currentResponse}
             requestName={request?.name}
-            copyFlash={copyFlash}
+            copyFlash={copyFlashPane === 'response'}
             onClear={() => dispatch({ type: 'SET_RESPONSE', payload: null })}
             onCopy={onCopyResponse}
           />

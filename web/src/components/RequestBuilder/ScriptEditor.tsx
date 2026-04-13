@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import type { KeyValue } from '../../lib/types';
 import CodeMirror from '@uiw/react-codemirror';
-import { javascript } from '@codemirror/lang-javascript';
+import { javascript, localCompletionSource } from '@codemirror/lang-javascript';
 import { EditorView, keymap, showTooltip, type Tooltip } from '@codemirror/view';
 import { indentWithTab } from '@codemirror/commands';
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
@@ -459,6 +459,7 @@ export function ScriptEditor({ preScript, postScript, onChange, consoleLogs, onC
   const [consoleHeight, setConsoleHeight] = useState(120);
   const isPost = activeTab === 'post';
   const consoleEndRef = useRef<HTMLDivElement>(null);
+  const focusEditorOnMount = useRef(false);
 
   useEffect(() => {
     consoleEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -499,7 +500,7 @@ export function ScriptEditor({ preScript, postScript, onChange, consoleLogs, onC
     syntaxHighlighting(jsHighlight),
     keymap.of([indentWithTab]),
     autocompletion({
-      override: [makeCompletionSource(isPost, envVarKeys)],
+      override: [makeCompletionSource(isPost, envVarKeys), localCompletionSource],
       activateOnTyping: true,
       maxRenderedOptions: 20,
     }),
@@ -568,6 +569,8 @@ export function ScriptEditor({ preScript, postScript, onChange, consoleLogs, onC
                 const existing = postScript.trim();
                 onChange({ post_script: existing ? `${existing}\n\n${code}` : code });
               }
+              focusEditorOnMount.current = true;
+              setActiveTab(target);
             }}
           />
         ) : (
@@ -588,6 +591,12 @@ export function ScriptEditor({ preScript, postScript, onChange, consoleLogs, onC
               tabSize: 2,
             }}
             style={{ height: '100%' }}
+            onCreateEditor={(view) => {
+              if (focusEditorOnMount.current) {
+                focusEditorOnMount.current = false;
+                view.focus();
+              }
+            }}
           />
         )}
       </div>

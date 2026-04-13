@@ -79,6 +79,12 @@ async fn pick_file(filters: Vec<String>) -> Result<Option<Vec<u8>>, String> {
 }
 
 #[tauri::command]
+fn write_clipboard(text: String) -> Result<(), String> {
+    let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
+    clipboard.set_text(text).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn cancel_request(state: tauri::State<'_, CancelHandle>) -> Result<(), String> {
     let guard = state.0.lock().await;
     if let Some(handle) = guard.as_ref() {
@@ -148,6 +154,7 @@ pub fn run() {
             save_binary_file,
             pick_file,
             reset_all_data,
+            write_clipboard,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

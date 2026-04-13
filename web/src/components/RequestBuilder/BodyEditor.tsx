@@ -109,6 +109,7 @@ interface BodyEditorProps {
   onChange: (body: string) => void;
   onContentTypeChange?: (ct: string) => void;
   readOnly?: boolean;
+  copyFlash?: boolean;
 }
 
 export function BodyEditor({
@@ -117,6 +118,7 @@ export function BodyEditor({
   onChange,
   onContentTypeChange,
   readOnly = false,
+  copyFlash = false,
 }: BodyEditorProps) {
   const [validation, setValidation] = useState<{ valid: boolean; error?: string }>({ valid: true });
   const isPreset = PRESETS.includes(contentType);
@@ -164,16 +166,8 @@ export function BodyEditor({
             )}
           </div>
         )}
-        <div className={styles.rightTags}>
-          {body.trim() && (
-            <span className={styles.sizeTag}>{formatBodySize(body)}</span>
-          )}
-          <div className={`${styles.validationTag} ${validation.valid ? styles.validationTagValid : styles.validationTagInvalid}`} title={validation.error}>
-            {validation.valid ? '✓ Valid' : `✗ ${validation.error || 'Invalid'}`}
-          </div>
-        </div>
       </div>
-      <div className={`${styles.editorWrap} ${!validation.valid ? styles.editorWrapInvalid : ''}`}>
+      <div className={`${styles.editorWrap} ${!validation.valid ? styles.editorWrapInvalid : ''} ${copyFlash ? styles.flashCopy : ''}`}>
         <CodeMirror
           value={body}
           onChange={onChange}
@@ -189,6 +183,7 @@ export function BodyEditor({
           }}
           style={{ height: 'auto' }}
         />
+        {copyFlash && <div className={styles.copyToast}>Copied to clipboard</div>}
       </div>
     </div>
   );

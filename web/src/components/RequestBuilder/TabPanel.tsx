@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import type { Request, KeyValue, FileAttachment } from '../../lib/types';
 import { KeyValueEditor } from './KeyValueEditor';
 import { FileUpload } from './FileUpload';
@@ -6,6 +6,28 @@ import { ScriptEditor } from './ScriptEditor';
 import styles from './TabPanel.module.css';
 
 const BodyEditor = lazy(() => import('./BodyEditor').then(m => ({ default: m.BodyEditor })));
+
+function formatBodySize(body: string): string {
+  const bytes = new TextEncoder().encode(body).length;
+  if (bytes === 0) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function validateBody(body: string, contentType: string): { valid: boolean; error?: string } {
+  const trimmed = body.trim();
+  if (!trimmed) return { valid: true };
+  if (contentType.includes('json')) {
+    try { JSON.parse(trimmed); return { valid: true }; }
+    catch (e) { return { valid: false, error: e instanceof SyntaxError ? e.message : 'Invalid JSON' }; }
+  }
+  if (contentType.includes('xml') || contentType.includes('html')) {
+    const doc = new DOMParser().parseFromString(trimmed, 'application/xml');
+    if (doc.getElementsByTagName('parsererror').length > 0) return { valid: false, error: 'Invalid XML/HTML' };
+  }
+  return { valid: true };
+}
 
 type TabName = 'params' | 'headers' | 'body' | 'files' | 'script';
 type PinnableTab = 'params' | 'headers' | 'files';
@@ -85,9 +107,10 @@ interface TabPanelProps {
   onClearLogs?: () => void;
   envVars?: KeyValue[];
   onScriptTest?: (script: string, isPost: boolean) => void;
+  copyFlash?: boolean;
 }
 
-export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, onScriptTest }: TabPanelProps) {
+export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, onScriptTest, copyFlash }: TabPanelProps) {
   const [pinned, setPinned] = useState<Set<PinnableTab>>(() => request ? loadPinned(request.id) : new Set());
   const [activeTab, setActiveTab] = useState<TabName>(() => {
     const p = request ? loadPinned(request.id) : new Set<PinnableTab>();
@@ -140,13 +163,15 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
   };
 
   const currentContentType = getContentType(request.headers);
+  const bodySize = useMemo(() => formatBodySize(request.body), [request.body]);
+  const bodyValidation = useMemo(() => validateBody(request.body, currentContentType), [request.body, currentContentType]);
 
   const TABS: { name: TabName; label: string; count?: number }[] = [
     { name: 'params', label: 'Params', count: request.params.filter(p => p.key).length || undefined },
     { name: 'headers', label: 'Headers', count: request.headers.filter(h => h.key).length || undefined },
     { name: 'files', label: 'Files', count: files.length || undefined },
     { name: 'body', label: 'Body' },
-    { name: 'script', label: 'Script' },
+    { name: 'script', label: 'Scripting' },
   ];
 
   function renderPinnedContent(p: PinnableTab) {
@@ -167,8 +192,20 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
 
   return (
     <div className={styles.tabPanel}>
-      <div className={styles.tabBar}>
+      <div className={styles.header}>
         <span className={styles.sectionLabel}>Request</span>
+        <div className={styles.spacer} />
+        {bodySize && <span className={styles.sizeTag}>{bodySize}</span>}
+        {request.body.trim() && (
+          <div
+            className={`${styles.validationTag} ${bodyValidation.valid ? styles.validationTagValid : styles.validationTagInvalid}`}
+            title={bodyValidation.error}
+          >
+            {bodyValidation.valid ? '✓ Valid' : `✗ ${bodyValidation.error || 'Invalid'}`}
+          </div>
+        )}
+      </div>
+      <div className={styles.tabBar}>
         {TABS.map((tab) => {
           const isPinnable = PINNABLE.includes(tab.name as PinnableTab);
           const isPinned = pinned.has(tab.name as PinnableTab);
@@ -233,6 +270,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
               contentType={currentContentType}
               onChange={handleBodyChange}
               onContentTypeChange={handleContentTypeChange}
+              copyFlash={copyFlash}
             />
           </Suspense>
         )}
