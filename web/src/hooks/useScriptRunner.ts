@@ -41,6 +41,7 @@ export interface ScriptResult {
   testResults: TestResult[];
   mutatedRequest?: ScriptRequest;
   envMutations: EnvMutations;
+  secretMutations: EnvMutations;
   error?: string;
 }
 
@@ -59,15 +60,17 @@ export function runScript(
     request?: ScriptRequest;
     response?: ScriptResponse;
     envVars?: KeyValue[];
+    secrets?: KeyValue[];
   }
 ): ScriptResult {
   if (!script.trim()) {
-    return { logs: [], testResults: [], envMutations: { set: {}, unset: [] } };
+    return { logs: [], testResults: [], envMutations: { set: {}, unset: [] }, secretMutations: { set: {}, unset: [] } };
   }
 
   const logs: string[] = [];
   const testResults: TestResult[] = [];
   const envMutations: EnvMutations = { set: {}, unset: [] };
+  const secretMutations: EnvMutations = { set: {}, unset: [] };
 
   const consoleMock = {
     log: (...args: unknown[]) => logs.push(args.map(safeStringify).join(' ')),
@@ -114,6 +117,9 @@ export function runScript(
   };
 
   const envVarMap = new Map((context.envVars ?? []).map(v => [v.key, v.value]));
+  const secretsMap = new Map(
+    (context.secrets ?? []).filter(s => s.enabled !== false && s.key).map(s => [s.key, s.value])
+  );
   const envObj = {
     get: (key: string) => envVarMap.get(key),
     set: (key: string, value: string) => {
@@ -123,6 +129,17 @@ export function runScript(
     unset: (key: string) => {
       envMutations.unset.push(key);
       envVarMap.delete(key);
+    },
+    secret: {
+      get: (key: string) => secretsMap.get(key),
+      set: (key: string, value: string) => {
+        secretMutations.set[key] = String(value);
+        secretsMap.set(key, String(value));
+      },
+      unset: (key: string) => {
+        secretMutations.unset.push(key);
+        secretsMap.delete(key);
+      },
     },
   };
 
@@ -153,8 +170,8 @@ export function runScript(
   } catch (e) {
     const errMsg = e instanceof Error ? e.message : String(e);
     logs.push('[error] Script error: ' + errMsg);
-    return { logs, testResults, mutatedRequest: requestClone, envMutations, error: errMsg };
+    return { logs, testResults, mutatedRequest: requestClone, envMutations, secretMutations, error: errMsg };
   }
 
-  return { logs, testResults, mutatedRequest: requestClone, envMutations };
+  return { logs, testResults, mutatedRequest: requestClone, envMutations, secretMutations };
 }

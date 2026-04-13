@@ -172,6 +172,74 @@ Object.entries(toStore).forEach(([key, value]) => {
 console.log('[info] Stored ' + Object.keys(toStore).length + ' values to env');`,
   },
 
+  // Secrets
+  {
+    id: 'secrets-read-api-key',
+    category: 'Secrets',
+    title: 'Read a Secret in a Pre-Request Script',
+    description: 'Retrieve a secret value (stored in localStorage, never exported) and inject it as a request header. Ideal for API keys and tokens you never want to include in exports or share with teammates.',
+    target: 'pre',
+    code: `// Inject a secret API key as a header
+const apiKey = env.secret.get('API_KEY');
+if (!apiKey) {
+  console.warn('[warn] API_KEY secret not set — request may fail');
+}
+
+request.headers['X-Api-Key'] = apiKey ?? '';`,
+  },
+  {
+    id: 'secrets-store-after-login',
+    category: 'Secrets',
+    title: 'Store a Token as a Secret After Login',
+    description: 'After a login request succeeds, save the returned token to the secret store instead of an environment variable. Secrets are local-only — they are never included in exports, making them safe for sensitive credentials.',
+    target: 'post',
+    code: `// Store the access token as a secret after login
+const body = JSON.parse(response.body);
+const token = body.access_token;
+if (token) {
+  env.secret.set('ACCESS_TOKEN', token);
+  console.log('[info] Access token saved to secrets');
+} else {
+  console.error('[error] No access_token in response');
+}`,
+  },
+  {
+    id: 'secrets-rotate-token',
+    category: 'Secrets',
+    title: 'Rotate / Remove an Expired Secret',
+    description: 'When a token expires or needs to be refreshed, unset the old secret first, then store the replacement. Using env.secret.unset ensures the old value is fully removed before the new one is written.',
+    target: 'post',
+    code: `// Replace an expiring token with a fresh one
+const body = JSON.parse(response.body);
+if (body.access_token) {
+  env.secret.unset('ACCESS_TOKEN');      // clear the old token
+  env.secret.set('ACCESS_TOKEN', body.access_token);
+  if (body.refresh_token) {
+    env.secret.set('REFRESH_TOKEN', body.refresh_token);
+  }
+  console.log('[info] Tokens rotated successfully');
+}`,
+  },
+  {
+    id: 'secrets-vs-env',
+    category: 'Secrets',
+    title: 'Secrets vs Environment Variables',
+    description: 'Choose between secrets and env vars based on sensitivity. Use env.secret for credentials and tokens that must never leave the machine. Use env.set for non-sensitive data like base URLs and user IDs that teammates can share.',
+    target: 'both',
+    code: `// Secrets: local-only, never exported
+//   Use for: API keys, passwords, tokens, private keys
+env.secret.set('API_KEY', 'sk-...');
+const apiKey = env.secret.get('API_KEY');
+
+// Env vars: shared with teammates via export/import
+//   Use for: base URLs, user IDs, feature flags
+env.set('BASE_URL', 'https://api.example.com');
+env.set('USER_ID', '42');
+
+console.log('[info] API key is a secret:', apiKey ? '✓ set' : '✗ missing');
+console.log('[info] Base URL from env:', env.get('BASE_URL'));`,
+  },
+
   // Authentication
   {
     id: 'auth-bearer-token',
@@ -460,6 +528,7 @@ test('Check deprecated headers', () => {
 const CATEGORIES = [
   'Tests',
   'Environment',
+  'Secrets',
   'Auth',
   'Request',
   'Chaining',

@@ -106,11 +106,12 @@ interface TabPanelProps {
   consoleLogs: string[];
   onClearLogs?: () => void;
   envVars?: KeyValue[];
+  secrets?: KeyValue[];
   onScriptTest?: (script: string, isPost: boolean) => void;
   copyFlash?: boolean;
 }
 
-export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, onScriptTest, copyFlash }: TabPanelProps) {
+export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, secrets, onScriptTest, copyFlash }: TabPanelProps) {
   const [pinned, setPinned] = useState<Set<PinnableTab>>(() => request ? loadPinned(request.id) : new Set());
   const [activeTab, setActiveTab] = useState<TabName>(() => {
     const p = request ? loadPinned(request.id) : new Set<PinnableTab>();
@@ -285,6 +286,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
             consoleLogs={consoleLogs}
             onClearLogs={onClearLogs}
             envVars={envVars}
+            secrets={secrets}
             onTest={onScriptTest}
           />
         )}

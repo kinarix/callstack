@@ -1,4 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
+import { getVersion } from '@tauri-apps/api/app';
+
+declare const __APP_VERSION__: string;
 import type { ActionShortcuts, Settings } from '../../hooks/useSettings';
 import { formatShortcut } from '../../hooks/useSettings';
 import styles from './SettingsModal.module.css';
@@ -48,6 +51,13 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onReset, onR
   const [recording, setRecording] = useState<keyof ActionShortcuts | null>(null);
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [appVersion, setAppVersion] = useState<string>(() => {
+    try { return (window as any).__APP_VERSION__ ?? __APP_VERSION__; } catch { return __APP_VERSION__; }
+  });
+
+  useEffect(() => {
+    getVersion().then(setAppVersion).catch(() => {});
+  }, []);
 
   const handleResetAllClick = useCallback(() => {
     setConfirmingReset(true);
@@ -203,6 +213,7 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onReset, onR
               )}
             </section>
           )}
+          <div className={styles.versionFooter}>v{appVersion}</div>
         </div>
       </div>
     </div>

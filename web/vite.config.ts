@@ -1,10 +1,15 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { readFileSync } from 'fs'
+import { resolve } from 'path'
+
+const tauriConf = JSON.parse(readFileSync(resolve(__dirname, '../src-tauri/tauri.conf.json'), 'utf-8'));
+const appVersion = tauriConf.version ?? process.env.npm_package_version ?? '0.0.0';
 
 export default defineConfig({
   plugins: [react()],
   define: {
-    __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '0.2.0'),
+    __APP_VERSION__: JSON.stringify(appVersion),
   },
   build: {
     outDir: 'dist',
