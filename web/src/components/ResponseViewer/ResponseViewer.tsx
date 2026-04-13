@@ -7,6 +7,12 @@ import { EditorView } from '@codemirror/view';
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 
+
+import type { Response, TestResult } from '../../lib/types';
+import { getStatusColor, formatBytes } from '../../lib/utils';
+import { formatBody, normalizeLineEndings } from '../../lib/formatBody';
+import styles from './ResponseViewer.module.css';
+
 function PinIcon({ pinned }: { pinned: boolean }) {
   return (
     <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden>
@@ -24,10 +30,6 @@ function PinIcon({ pinned }: { pinned: boolean }) {
     </svg>
   );
 }
-import type { Response, TestResult } from '../../lib/types';
-import { getStatusColor, formatBytes } from '../../lib/utils';
-import styles from './ResponseViewer.module.css';
-
 
 function formatTimestamp(ts: number): string {
   const d = new Date(ts);
@@ -96,50 +98,6 @@ const responseViewerHighlight = HighlightStyle.define([
 
 const responseViewerThemeExtension = [responseViewerEditorTheme, syntaxHighlighting(responseViewerHighlight)];
 
-function formatXml(xml: string): string {
-  try {
-    const lines = xml.replace(/>\s*</g, '>\n<').split('\n');
-    let level = 0;
-    return lines
-      .map(line => {
-        line = line.trim();
-        if (!line) return '';
-        if (line.startsWith('</')) {
-          level = Math.max(0, level - 1);
-          return '  '.repeat(level) + line;
-        }
-        const indented = '  '.repeat(level) + line;
-        if (!line.startsWith('<?') && !line.startsWith('<!--') && !line.endsWith('/>') && !/<[^>]+\/>/.test(line) && !line.includes('</')) {
-          level++;
-        }
-        return indented;
-      })
-      .filter(Boolean)
-      .join('\n');
-  } catch {
-    return xml;
-  }
-}
-
-function normalizeLineEndings(s: string): string {
-  return s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-}
-
-function formatBody(body: string, contentType: string): string {
-  const text = normalizeLineEndings(body);
-  if (contentType.includes('json')) {
-    try {
-      const parsed = JSON.parse(text);
-      return JSON.stringify(parsed, null, 2);
-    } catch {
-      return text;
-    }
-  }
-  if (contentType.includes('xml') || contentType.includes('html')) {
-    return formatXml(text);
-  }
-  return text;
-}
 
 function getLabel(contentType: string): string {
   if (contentType.includes('json')) {
@@ -185,7 +143,6 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
       } else {
         setTab('body');
       }
-      setHeadersPinned(false);
     }
   }, [response]);
 
@@ -201,7 +158,7 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
 
   const handleCopy = async () => {
     if (response?.body) {
-      await navigator.clipboard.writeText(response.body);
+      await navigator.clipboard.writeText(formattedBody);
       onCopy?.();
     }
   };
@@ -266,6 +223,25 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
       </div>
 
       <div className={styles.tabs}>
+        <div className={styles.tabGroup}>
+          <button
+            className={`${styles.tab} ${tab === 'headers' ? styles.tabActive : ''} ${headersPinned ? styles.tabDisabled : ''}`}
+            onClick={() => !headersPinned && setTab('headers')}
+            disabled={headersPinned}
+          >
+            Headers
+            {response.headers?.length > 0 && (
+              <span className={styles.tabCount}>{response.headers.length}</span>
+            )}
+          </button>
+          <button
+            className={`${styles.pinBtn} ${headersPinned ? styles.pinActive : ''}`}
+            onClick={() => setHeadersPinned(p => { if (!p) setTab('body'); return !p; })}
+            title={headersPinned ? 'Unpin Headers' : 'Pin Headers (always visible)'}
+          >
+            <PinIcon pinned={headersPinned} />
+          </button>
+        </div>
         <button
           className={`${styles.tab} ${tab === 'body' ? styles.tabActive : ''}`}
           onClick={() => setTab('body')}
@@ -280,30 +256,6 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
             Preview
           </button>
         )}
-        <div className={styles.tabGroup}>
-          <button
-            className={`${styles.tab} ${tab === 'headers' ? styles.tabActive : ''} ${headersPinned ? styles.tabDisabled : ''}`}
-            onClick={() => !headersPinned && setTab('headers')}
-            disabled={headersPinned}
-          >
-            Headers
-            {response.headers?.length > 0 && (
-              <span className={styles.tabCount}>{response.headers.length}</span>
-            )}
-          </button>
-          <button
-            className={`${styles.pinBtn} ${headersPinned ? styles.pinActive : ''}`}
-            onClick={() => {
-              setHeadersPinned(p => {
-                if (!p) setTab('body');
-                return !p;
-              });
-            }}
-            title={headersPinned ? 'Unpin Headers' : 'Pin Headers (always visible)'}
-          >
-            <PinIcon pinned={headersPinned} />
-          </button>
-        </div>
         {response.testResults && response.testResults.length > 0 && (() => {
           const passed = response.testResults.filter(r => r.passed).length;
           const failed = response.testResults.length - passed;
@@ -323,12 +275,7 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
               </button>
               <button
                 className={`${styles.pinBtn} ${testsPinned ? styles.pinActive : ''}`}
-                onClick={() => {
-                  setTestsPinned(p => {
-                    if (!p) setTab('body');
-                    return !p;
-                  });
-                }}
+                onClick={() => setTestsPinned(p => { if (!p) setTab('body'); return !p; })}
                 title={testsPinned ? 'Unpin Tests' : 'Pin Tests (always visible)'}
               >
                 <PinIcon pinned={testsPinned} />
@@ -338,12 +285,11 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
         })()}
       </div>
 
-      {/* Pinned headers — shown above body when pinned and body tab is active */}
+
       {headersPinned && tab === 'body' && (
         <div className={styles.pinnedPanel}>
           <div className={styles.pinnedHeader}>
             <span>Headers</span>
-            <span className={styles.pinnedBadge}>pinned</span>
           </div>
           <div className={styles.pinnedContent}>
             {response.headers?.length > 0 ? (
@@ -362,12 +308,10 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
         </div>
       )}
 
-      {/* Pinned tests — shown above body when pinned and body tab is active */}
       {testsPinned && tab === 'body' && response.testResults && (
         <div className={styles.pinnedPanel}>
           <div className={styles.pinnedHeader}>
             <span>Tests</span>
-            <span className={styles.pinnedBadge}>pinned</span>
           </div>
           <div className={styles.pinnedContent}>
             <div className={styles.testsTable}>

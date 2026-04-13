@@ -9,6 +9,7 @@ import { SettingsModal } from './components/SettingsModal/SettingsModal';
 import styles from './App.module.css';
 import { useDatabase } from './hooks/useDatabase';
 import { useSettings, matchesShortcut } from './hooks/useSettings';
+import { formatBody } from './lib/formatBody';
 
 function AppContent() {
   const { state, dispatch } = useApp();
@@ -19,7 +20,8 @@ function AppContent() {
   const executeRef = useRef<(() => void) | null>(null);
   const [externalRenameId, setExternalRenameId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [copyFlash, setCopyFlash] = useState(false);
+  const [copyFlashPane, setCopyFlashPane] = useState<'request' | 'response' | null>(null);
+  const [activePane, setActivePane] = useState<'request' | 'response'>('response');
   const [ready, setReady] = useState(false);
 
   const [sidebarWidth, setSidebarWidth] = useState(() => {
@@ -132,17 +134,32 @@ function AppContent() {
   // Action shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Copy response shortcut works everywhere (even in editors)
+      // Copy shortcut works everywhere (even in editors) — copies active pane
       if (matchesShortcut(e, settings.shortcuts.copyResponse)) {
         if (window.getSelection()?.toString()) return; // let browser copy selection
         e.preventDefault();
-        const body = state.currentResponse?.body?.trim();
-        if (body) {
-          navigator.clipboard.writeText(state.currentResponse!.body);
-          setCopyFlash(true);
-          setTimeout(() => setCopyFlash(false), 1200);
+
+        if (activePane === 'request') {
+          const currentReq = state.requests.find(r => r.id === state.currentRequestId);
+          const body = currentReq?.body?.trim();
+          if (body) {
+            const ct = currentReq!.headers.find(h => h.key.toLowerCase() === 'content-type')?.value ?? '';
+            navigator.clipboard.writeText(formatBody(currentReq!.body, ct));
+            setCopyFlashPane('request');
+            setTimeout(() => setCopyFlashPane(null), 1200);
+          } else {
+            setErrorMessage('No request body to copy.');
+          }
         } else {
-          setErrorMessage('No response to copy.');
+          const body = state.currentResponse?.body?.trim();
+          if (body) {
+            const ct = state.currentResponse!.headers.find(h => h.key.toLowerCase() === 'content-type')?.value ?? '';
+            navigator.clipboard.writeText(formatBody(state.currentResponse!.body, ct));
+            setCopyFlashPane('response');
+            setTimeout(() => setCopyFlashPane(null), 1200);
+          } else {
+            setErrorMessage('No response to copy.');
+          }
         }
         return;
       }
@@ -201,7 +218,7 @@ function AppContent() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [settings.shortcuts, state.currentRequestId, state.currentProjectId, state.currentResponse, createRequest, duplicateRequest, dispatch]);
+  }, [settings.shortcuts, state.currentRequestId, state.currentProjectId, state.currentResponse, state.requests, activePane, createRequest, duplicateRequest, dispatch]);
 
   useEffect(() => {
     if (errorMessage == null) return;
@@ -242,11 +259,13 @@ function AppContent() {
               showExpandBtn={sidebarCollapsed}
               onExpand={() => setSidebarCollapsed(false)}
               executeRef={executeRef}
-              copyFlash={copyFlash}
+              copyFlashPane={copyFlashPane}
               onCopyResponse={() => {
-                setCopyFlash(true);
-                setTimeout(() => setCopyFlash(false), 1200);
+                setCopyFlashPane('response');
+                setTimeout(() => setCopyFlashPane(null), 1200);
               }}
+              onRequestFocus={() => setActivePane('request')}
+              onResponseFocus={() => setActivePane('response')}
             />
           ) : (
             <div className={styles.emptyState}>

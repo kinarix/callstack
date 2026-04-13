@@ -112,3 +112,37 @@ input:focus, textarea:focus, select:focus {
   scrollbar-color: var(--border-primary) var(--bg-secondary);
   scrollbar-width: thin;
 }
+
+/* Text selection — native elements */
+::selection {
+  background: rgba(59, 130, 246, 0.35);
+  color: inherit;
+}
+
+[data-theme='light'] ::selection {
+  background: rgba(59, 130, 246, 0.25);
+  color: inherit;
+}
+
+[data-theme='dim'] ::selection {
+  background: rgba(123, 175, 212, 0.3);
+  color: inherit;
+}
+
+/* CodeMirror selection — dark (default) */
+.cm-selectionBackground,
+.cm-focused .cm-selectionBackground {
+  background: rgba(59, 130, 246, 0.35) !important;
+}
+
+/* CodeMirror selection — light theme */
+[data-theme='light'] .cm-selectionBackground,
+[data-theme='light'] .cm-focused .cm-selectionBackground {
+  background: rgba(59, 130, 246, 0.25) !important;
+}
+
+/* CodeMirror selection — dim theme */
+[data-theme='dim'] .cm-selectionBackground,
+[data-theme='dim'] .cm-focused .cm-selectionBackground {
+  background: rgba(123, 175, 212, 0.3) !important;
+}

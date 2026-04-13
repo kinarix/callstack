@@ -6,6 +6,48 @@
   overflow: hidden;
 }
 
+/* ── Header row ────────────────────────────────────────── */
+
+.header {
+  padding: 0 var(--space-2);
+  height: 36px;
+  border-bottom: 1px solid var(--border-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.sizeTag {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.validationTag {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.validationTagValid {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--accent-get);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.validationTagInvalid {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
 /* ── Tab bar ───────────────────────────────────────────── */
 
 .tabBar {
@@ -26,16 +68,15 @@
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--text-tertiary);
-  margin-right: var(--space-1);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 /* Each tab + its pin button sit inside a group */
 .tabGroup {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 1px;
 }
 
 .tab {
@@ -83,6 +124,11 @@
 /* ── Pin button ────────────────────────────────────────── */
 
 .pinBtn {
+  position: absolute;
+  right: -11px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
