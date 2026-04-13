@@ -26,3 +26,4 @@ clean:
 
 icons:
 	python3 generate-icons.py
+
