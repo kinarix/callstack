@@ -217,22 +217,13 @@ export function ExportModal({ title, items, environments, onExport, onCancel }: 
           </div>
         )}
 
-        <div className={styles.selectAll}>
-          <label className={styles.checkRow}>
-            <input
-              type="checkbox"
-              className={styles.checkbox}
-              checked={allSelected}
-              ref={(el) => {
-                if (el) el.indeterminate = !allSelected && !noneSelected;
-              }}
-              onChange={toggleAll}
-            />
-            <span className={styles.selectAllLabel}>
+        <div className={styles.envsSection}>
+          <div className={styles.envsSectionHeader}>
+            <span className={styles.envsSectionLabel}>Requests</span>
+            <button className={styles.envToggleAll} onClick={toggleAll} type="button">
               {allSelected ? 'Deselect all' : 'Select all'}
-            </span>
-            <span className={styles.count}>{items.length} requests</span>
-          </label>
+            </button>
+          </div>
         </div>
 
         <div className={styles.list}>

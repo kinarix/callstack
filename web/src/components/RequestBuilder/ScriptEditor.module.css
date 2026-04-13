@@ -256,6 +256,30 @@
   font-family: 'Outfit', sans-serif;
 }
 
+.envRowIcon {
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.envRowIconSecret {
+  color: #f59e0b;
+  opacity: 1;
+}
+
+.envSecretKey {
+  color: #f59e0b;
+}
+
+.envSecretVal {
+  color: var(--text-tertiary);
+  letter-spacing: 2px;
+  font-size: 11px;
+  user-select: none;
+}
+
 /* ── Console ───────────────────────────────────────────────── */
 
 .console {

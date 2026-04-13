@@ -33,6 +33,30 @@
   color: var(--text-tertiary);
 }
 
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.logoIcon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 3px;
+}
+
+.logoText {
+  font-family: 'Outfit', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #5db892, #3a9ab0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.5px;
+}
+
 .newProjectBtn,
 .collapseBtn {
   background: transparent;
@@ -374,4 +398,42 @@
 
 .dropLine.dropBelow {
   bottom: 0;
+}
+
+.sidebarFooter {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  border-top: 1px solid var(--border-primary);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.sidebarFooter > * {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.settingsBtn {
+  background: transparent;
+  border: none;
+  color: var(--accent-patch);
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-base), transform var(--transition-base);
+  padding: 0;
+  opacity: 0.8;
+  font-size: 20px;
+}
+
+.settingsBtn:hover {
+  opacity: 1;
+  transform: scale(1.2) rotate(30deg);
 }

@@ -2,8 +2,8 @@
   background: transparent;
   border: none;
   color: var(--accent-put);
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   display: flex;
@@ -15,8 +15,8 @@
 }
 
 .button:hover {
-  background: var(--bg-hover);
   opacity: 1;
+  transform: scale(1.2);
 }
 
 .button:active {
