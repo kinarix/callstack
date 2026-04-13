@@ -58,6 +58,7 @@ git add -A
 git commit -m "$FULL_MSG"
 echo -e "${GREEN}✓${NC} Committed: $FULL_MSG"
 
-# Push
-git push origin release
-echo -e "${GREEN}✓${NC} Pushed to origin/release"
+# Push to current branch
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+git push origin "$CURRENT_BRANCH"
+echo -e "${GREEN}✓${NC} Pushed to origin/$CURRENT_BRANCH"

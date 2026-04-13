@@ -103,12 +103,17 @@
 /* ── Tab group + pin ───────────────────────────────────── */
 
 .tabGroup {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 1px;
 }
 
 .pinBtn {
+  position: absolute;
+  right: -11px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -157,11 +162,12 @@
   padding: 3px var(--space-2);
   font-size: 11px;
   font-weight: 600;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--border-secondary);
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-primary);
 }
 
 .pinnedBadge {

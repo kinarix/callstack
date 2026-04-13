@@ -1,6 +1,6 @@
 [package]
 name = "callstack"
-version = "0.3.4"
+version = "0.3.5"
 description = "A modern REST API testing tool"
 authors = ["Kinarix"]
 edition = "2021"
@@ -29,6 +29,7 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 tokio = { version = "1", features = ["full"] }
 dirs = "6"
 rfd = "0.15"
+arboard = { version = "3", default-features = false }
 
 [profile.release]
 strip = true        # remove debug symbols from binary
