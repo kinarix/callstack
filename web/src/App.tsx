@@ -273,6 +273,7 @@ function AppContent() {
           onSetZoom={setZoom}
           onSetShortcut={setShortcut}
           onReset={resetSettings}
+          onResetAll={() => invoke('reset_all_data')}
           onClose={() => setSettingsOpen(false)}
         />
       )}

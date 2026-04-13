@@ -1,17 +1,27 @@
 import { useState, useCallback, useMemo } from 'react';
-import type { Request } from '../../lib/types';
+import type { Request, Environment } from '../../lib/types';
 import { getMethodColor } from '../../lib/utils';
 import styles from './ExportModal.module.css';
+
+export type ExportFormat = 'postman' | 'callstack';
 
 export interface ExportItem {
   request: Request;
   folderName?: string;
 }
 
+export interface ExportResult {
+  items: ExportItem[];
+  format: ExportFormat;
+  includeResponses: boolean;
+  selectedEnvironmentIds: Set<number>;
+}
+
 interface ExportModalProps {
   title: string;
   items: ExportItem[];
-  onExport: (selected: ExportItem[]) => void;
+  environments: Environment[];
+  onExport: (result: ExportResult) => void;
   onCancel: () => void;
 }
 
@@ -27,9 +37,14 @@ function MethodBadge({ method }: { method: string }) {
   );
 }
 
-export function ExportModal({ title, items, onExport, onCancel }: ExportModalProps) {
+export function ExportModal({ title, items, environments, onExport, onCancel }: ExportModalProps) {
   const [selected, setSelected] = useState<Set<number>>(
     () => new Set(items.map((item) => item.request.id)),
+  );
+  const [format, setFormat] = useState<ExportFormat>('callstack');
+  const [includeResponses, setIncludeResponses] = useState(true);
+  const [selectedEnvIds, setSelectedEnvIds] = useState<Set<number>>(
+    () => new Set(environments.map((e) => e.id)),
   );
 
   const allSelected = selected.size === items.length;
@@ -82,10 +97,32 @@ export function ExportModal({ title, items, onExport, onCancel }: ExportModalPro
     });
   }, [selected]);
 
+  const toggleEnv = useCallback((id: number) => {
+    setSelectedEnvIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const allEnvsSelected = environments.length > 0 && selectedEnvIds.size === environments.length;
+
+  const toggleAllEnvs = useCallback(() => {
+    if (allEnvsSelected) {
+      setSelectedEnvIds(new Set());
+    } else {
+      setSelectedEnvIds(new Set(environments.map((e) => e.id)));
+    }
+  }, [allEnvsSelected, environments]);
+
   const handleExport = useCallback(() => {
     const picked = items.filter((item) => selected.has(item.request.id));
-    onExport(picked);
-  }, [items, selected, onExport]);
+    onExport({ items: picked, format, includeResponses, selectedEnvironmentIds: selectedEnvIds });
+  }, [items, selected, format, includeResponses, selectedEnvIds, onExport]);
 
   return (
     <div className={styles.overlay} onClick={onCancel}>
@@ -97,6 +134,88 @@ export function ExportModal({ title, items, onExport, onCancel }: ExportModalPro
             <div className={styles.subtitle}>{items.length} request{items.length !== 1 ? 's' : ''}</div>
           </div>
         </div>
+
+        {/* Format selector */}
+        <div className={styles.formatSection}>
+          <div className={styles.formatLabel}>Format</div>
+          <div className={styles.formatOptions}>
+            <label className={styles.formatOption}>
+              <input
+                type="radio"
+                name="format"
+                value="callstack"
+                checked={format === 'callstack'}
+                onChange={() => setFormat('callstack')}
+              />
+              <span className={styles.formatText}>
+                <span className={styles.formatName}>Callstack Archive</span>
+                <span className={styles.formatDesc}>Full project backup with scripts & environments</span>
+              </span>
+            </label>
+            <label className={styles.formatOption}>
+              <input
+                type="radio"
+                name="format"
+                value="postman"
+                checked={format === 'postman'}
+                onChange={() => setFormat('postman')}
+              />
+              <span className={styles.formatText}>
+                <span className={styles.formatName}>Postman Collection</span>
+                <span className={styles.formatDesc}>Compatible with Postman v2.1</span>
+              </span>
+            </label>
+          </div>
+
+          {format === 'callstack' && (
+            <div className={styles.callstackOptions}>
+              <div className={styles.alwaysIncluded}>
+                <span className={styles.includedLabel}>Always included:</span>
+                <span className={styles.includedPill}>Folders</span>
+                <span className={styles.includedPill}>Scripts</span>
+              </div>
+              <label className={styles.optionRow}>
+                <input
+                  type="checkbox"
+                  className={styles.checkbox}
+                  checked={includeResponses}
+                  onChange={(e) => setIncludeResponses(e.target.checked)}
+                />
+                <span className={styles.optionText}>Include stored responses</span>
+              </label>
+            </div>
+          )}
+        </div>
+
+        {/* Environments (Callstack only) */}
+        {format === 'callstack' && environments.length > 0 && (
+          <div className={styles.envsSection}>
+            <div className={styles.envsSectionHeader}>
+              <span className={styles.envsSectionLabel}>Environments</span>
+              <button
+                type="button"
+                className={styles.envToggleAll}
+                onClick={toggleAllEnvs}
+              >
+                {allEnvsSelected ? 'Deselect all' : 'Select all'}
+              </button>
+            </div>
+            <div className={styles.envList}>
+              {environments.map((env) => (
+                <label key={env.id} className={styles.checkRow}>
+                  <input
+                    type="checkbox"
+                    className={styles.checkbox}
+                    checked={selectedEnvIds.has(env.id)}
+                    onChange={() => toggleEnv(env.id)}
+                  />
+                  <span className={styles.envName}>{env.name}</span>
+                  <span className={styles.count}>{env.variables.length} var{env.variables.length !== 1 ? 's' : ''}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className={styles.selectAll}>
           <label className={styles.checkRow}>

@@ -35,12 +35,71 @@ async fn save_file(filename: String, content: String) -> Result<bool, String> {
 }
 
 #[tauri::command]
+async fn save_binary_file(filename: String, data: Vec<u8>) -> Result<bool, String> {
+    let ext = std::path::Path::new(&filename)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("callstack")
+        .to_string();
+
+    let handle = rfd::AsyncFileDialog::new()
+        .set_file_name(&filename)
+        .add_filter("File", &[ext.as_str()])
+        .save_file()
+        .await;
+
+    match handle {
+        Some(h) => {
+            let mut path = h.path().to_path_buf();
+            if path.extension().is_none() {
+                path = path.with_extension(&ext);
+            }
+            std::fs::write(&path, &data).map_err(|e| e.to_string())?;
+            Ok(true)
+        }
+        None => Ok(false),
+    }
+}
+
+#[tauri::command]
+async fn pick_file(filters: Vec<String>) -> Result<Option<Vec<u8>>, String> {
+    let mut dialog = rfd::AsyncFileDialog::new();
+    if !filters.is_empty() {
+        let refs: Vec<&str> = filters.iter().map(|s| s.as_str()).collect();
+        dialog = dialog.add_filter("Supported files", &refs);
+    }
+    let handle = dialog.pick_file().await;
+    match handle {
+        Some(h) => {
+            let bytes = h.read().await;
+            Ok(Some(bytes))
+        }
+        None => Ok(None),
+    }
+}
+
+#[tauri::command]
 async fn cancel_request(state: tauri::State<'_, CancelHandle>) -> Result<(), String> {
     let guard = state.0.lock().await;
     if let Some(handle) = guard.as_ref() {
         handle.abort();
     }
     Ok(())
+}
+
+#[tauri::command]
+fn reset_all_data(db: tauri::State<'_, Database>, app: tauri::AppHandle) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute_batch(
+        "DELETE FROM responses;
+         DELETE FROM requests;
+         DELETE FROM environments;
+         DELETE FROM folders;
+         DELETE FROM projects;",
+    )
+    .map_err(|e| e.to_string())?;
+    drop(conn);
+    app.restart();
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -86,6 +145,9 @@ pub fn run() {
             database::update_environment,
             database::delete_environment,
             save_file,
+            save_binary_file,
+            pick_file,
+            reset_all_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -208,9 +208,15 @@ export function useDatabase() {
       projectId: number,
       folderId: number | null,
       userEmail: string | null,
-      requests: { name: string; method: string; url: string; params: string; headers: string; body: string }[]
+      requests: { name: string; method: string; url: string; params: string; headers: string; body: string; pre_script?: string; post_script?: string }[]
     ): Promise<Request[]> => {
-      const raws = await invoke<RawRequest[]>('import_requests', { projectId, folderId, userEmail, requests });
+      // Rust struct uses camelCase (rename_all = "camelCase"), so transform keys
+      const mapped = requests.map(({ pre_script, post_script, ...rest }) => ({
+        ...rest,
+        ...(pre_script !== undefined ? { preScript: pre_script } : {}),
+        ...(post_script !== undefined ? { postScript: post_script } : {}),
+      }));
+      const raws = await invoke<RawRequest[]>('import_requests', { projectId, folderId, userEmail, requests: mapped });
       return raws.map(parseRequest);
     },
     []
