@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import type { ActionShortcuts, Settings } from '../../hooks/useSettings';
 import { formatShortcut } from '../../hooks/useSettings';
 import styles from './SettingsModal.module.css';
@@ -40,11 +40,29 @@ interface SettingsModalProps {
   onSetZoom: (zoom: number) => void;
   onSetShortcut: (action: keyof ActionShortcuts, value: string) => void;
   onReset?: () => void;
+  onResetAll?: () => Promise<void>;
   onClose: () => void;
 }
 
-export function SettingsModal({ settings, onSetZoom, onSetShortcut, onReset, onClose }: SettingsModalProps) {
+export function SettingsModal({ settings, onSetZoom, onSetShortcut, onReset, onResetAll, onClose }: SettingsModalProps) {
   const [recording, setRecording] = useState<keyof ActionShortcuts | null>(null);
+  const [confirmingReset, setConfirmingReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
+
+  const handleResetAllClick = useCallback(() => {
+    setConfirmingReset(true);
+  }, []);
+
+  const handleResetAllConfirm = useCallback(async () => {
+    if (!onResetAll) return;
+    setResetting(true);
+    try {
+      await onResetAll();
+    } catch {
+      setResetting(false);
+      setConfirmingReset(false);
+    }
+  }, [onResetAll]);
 
   // Global capture-phase listener — intercepts keystrokes before App.tsx shortcuts
   useEffect(() => {
@@ -147,6 +165,44 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onReset, onC
               ))}
             </div>
           </section>
+
+          {/* ── Danger Zone ──────────────────────────── */}
+          {onResetAll && (
+            <section className={styles.section}>
+              <div className={styles.sectionTitle}>Danger Zone</div>
+              {!confirmingReset ? (
+                <div className={styles.dangerRow}>
+                  <div className={styles.dangerInfo}>
+                    <span className={styles.dangerLabel}>Reset all data</span>
+                    <span className={styles.dangerDesc}>Permanently deletes all projects, requests, environments, and responses. The app will restart.</span>
+                  </div>
+                  <button className={styles.dangerBtn} onClick={handleResetAllClick}>
+                    Reset
+                  </button>
+                </div>
+              ) : (
+                <div className={styles.dangerConfirm}>
+                  <span className={styles.dangerConfirmText}>This cannot be undone. Are you sure?</span>
+                  <div className={styles.dangerConfirmActions}>
+                    <button
+                      className={styles.dangerCancelBtn}
+                      onClick={() => setConfirmingReset(false)}
+                      disabled={resetting}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className={styles.dangerConfirmBtn}
+                      onClick={handleResetAllConfirm}
+                      disabled={resetting}
+                    >
+                      {resetting ? 'Resetting…' : 'Yes, reset everything'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
         </div>
       </div>
     </div>

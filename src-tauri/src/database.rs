@@ -310,6 +310,10 @@ pub fn delete_project(db: tauri::State<Database>, id: i64) -> Result<(), String>
     .map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM requests WHERE project_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM environments WHERE project_id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM folders WHERE project_id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM projects WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
     Ok(())
@@ -683,12 +687,15 @@ pub fn update_folder(
 #[tauri::command]
 pub fn delete_folder(db: tauri::State<Database>, id: i64) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    // Move requests in this folder to project root (preserve them)
+    // Delete responses for requests in this folder
     conn.execute(
-        "UPDATE requests SET folder_id = NULL WHERE folder_id = ?1",
+        "DELETE FROM responses WHERE request_id IN (SELECT id FROM requests WHERE folder_id = ?1)",
         params![id],
     )
     .map_err(|e| e.to_string())?;
+    // Delete requests in this folder
+    conn.execute("DELETE FROM requests WHERE folder_id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM folders WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
     Ok(())
@@ -840,6 +847,10 @@ pub struct ImportRequestData {
     pub params: String,
     pub headers: String,
     pub body: String,
+    #[serde(default)]
+    pub pre_script: String,
+    #[serde(default)]
+    pub post_script: String,
 }
 
 #[tauri::command]
@@ -855,8 +866,8 @@ pub fn import_requests(
 
     for (pos, req) in requests.iter().enumerate() {
         conn.execute(
-            "INSERT INTO requests (project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, imported, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, '[]', ?10, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-            params![project_id, folder_id, user_email, req.name, req.method, req.url, req.params, req.headers, req.body, pos as i64],
+            "INSERT INTO requests (project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, imported, pre_script, post_script, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, '[]', ?10, 1, ?11, ?12, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            params![project_id, folder_id, user_email, req.name, req.method, req.url, req.params, req.headers, req.body, pos as i64, req.pre_script, req.post_script],
         )
         .map_err(|e| e.to_string())?;
 

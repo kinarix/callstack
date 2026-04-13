@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/v2/core/tauri-config-schema/schema.json",
   "productName": "Callstack",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "identifier": "com.kinarix.callstack",
   "build": {
     "frontendDist": "../web/dist",

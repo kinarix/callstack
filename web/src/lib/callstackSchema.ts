@@ -1,0 +1,86 @@
+import type { HTTPMethod, KeyValue } from './types';
+
+// ── Schema version ──────────────────────────────────────
+export const CALLSTACK_SCHEMA_VERSION = '1.0.0';
+export const CALLSTACK_FILE_EXTENSION = '.callstack';
+
+// ── Manifest (root of manifest.json inside archive) ─────
+export interface CallstackManifest {
+  schemaVersion: string;
+  exportedAt: string;
+  generator: string;
+  project: ExportProject;
+  folders: ExportFolder[];
+  requests: ExportRequest[];
+  environments: ExportEnvironment[];
+  responses?: ExportResponse[];
+}
+
+// ── Project ─────────────────────────────────────────────
+export interface ExportProject {
+  name: string;
+  description: string | null;
+  selectedEnvironmentName?: string; // name of the active env at export time
+}
+
+// ── Folder ──────────────────────────────────────────────
+export interface ExportFolder {
+  _ref: string;
+  name: string;
+}
+
+// ── Request ─────────────────────────────────────────────
+export interface ExportRequest {
+  _ref: string;
+  folderRef: string | null;
+  name: string;
+  method: HTTPMethod;
+  url: string;
+  params: KeyValue[];
+  headers: KeyValue[];
+  body: string;
+  preScript: string;
+  postScript: string;
+  position: number;
+  attachments: ExportAttachment[];
+}
+
+// ── Attachment ──────────────────────────────────────────
+export interface ExportAttachment {
+  name: string;
+  size: number;
+  mime: string;
+  archivePath: string; // path within ZIP, e.g. "attachments/abc123.bin"
+}
+
+// ── Environment ─────────────────────────────────────────
+export interface ExportEnvironment {
+  name: string;
+  variables: KeyValue[];
+}
+
+// ── Response ────────────────────────────────────────────
+export interface ExportResponse {
+  requestRef: string;
+  status: number;
+  statusText: string;
+  headers: KeyValue[];
+  body: string;
+  timeMs: number;
+  size: number;
+  timestamp: number;
+}
+
+// ── Import types ────────────────────────────────────────
+export type ImportStrategy = 'new-project' | 'merge-into';
+
+export interface ArchivePreview {
+  name: string;
+  description: string | null;
+  schemaVersion: string;
+  exportedAt: string;
+  folderCount: number;
+  requestCount: number;
+  environmentCount: number;
+  hasResponses: boolean;
+}
