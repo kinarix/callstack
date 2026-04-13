@@ -1,3 +1,5 @@
+[![Build](https://github.com/kinarix/callstack/actions/workflows/build.yml/badge.svg)](https://github.com/kinarix/callstack/actions/workflows/build.yml)
+
 # Callstack
 [![Build](https://github.com/kinarix/callstack/actions/workflows/build.yml/badge.svg)](https://github.com/kinarix/callstack/actions/workflows/build.yml)
 
