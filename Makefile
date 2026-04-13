@@ -1,4 +1,4 @@
-.PHONY: dev build clean web-dev icons help
+.PHONY: dev build clean web-dev icons release help
 
 help:
 	@echo "CALLSTACK - API Testing Tool"
@@ -9,7 +9,11 @@ help:
 	@echo "  web-dev     Run Vite dev server only (no Rust backend)"
 	@echo "  clean       Remove build artifacts"
 	@echo "  icons       Regenerate app icons"
+	@echo "  release     Set release version (prompts for version number)"
 	@echo "  help        Show this help"
+
+release:
+	@bash scripts/set-release-version.sh
 
 dev:
 	cd src-tauri && cargo tauri dev
@@ -26,3 +30,4 @@ clean:
 
 icons:
 	python3 generate-icons.py
+

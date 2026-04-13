@@ -62,7 +62,18 @@ jobs:
         with:
           tagName: Callstack-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
           releaseName: 'Callstack v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
+          releaseBody: |
+            ## Install
+
+            **macOS (recommended)**: Install via Homebrew for automatic setup:
+            ```bash
+            brew tap kinarix/callstack
+            brew install --cask callstack
+            ```
+
+            **All platforms**: Download from the assets below.
+
+            To uninstall: `brew uninstall --zap callstack` (macOS)
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
