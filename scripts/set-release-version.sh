@@ -46,12 +46,17 @@ echo -e "${GREEN}✓${NC} Updated $CONF_FILE"
 
 echo ""
 echo -e "${GREEN}Version updated: ${YELLOW}$CURRENT_VERSION${NC} → ${YELLOW}$NEW_VERSION${NC}"
+echo ""
 
-# Stage and commit
+# Prompt for commit message
+read -p "$(echo -e ${BLUE})Commit message$(echo -e ${NC}): " COMMIT_MSG
+FULL_MSG="$COMMIT_MSG (v$NEW_VERSION)"
+
+# Stage all changes and commit
 cd "$REPO_ROOT"
-git add src-tauri/Cargo.toml src-tauri/tauri.conf.json
-git commit -m "Release version $NEW_VERSION"
-echo -e "${GREEN}✓${NC} Committed"
+git add -A
+git commit -m "$FULL_MSG"
+echo -e "${GREEN}✓${NC} Committed: $FULL_MSG"
 
 # Push
 git push origin release
