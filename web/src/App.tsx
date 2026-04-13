@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { AppProvider, useApp } from './context/AppContext';
-import { Header } from './components/Header/Header';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { RequestBuilder } from './components/RequestBuilder/RequestBuilder';
 import { Footer } from './components/Footer/Footer';
@@ -238,7 +237,6 @@ function AppContent() {
 
   return (
     <div className={styles.app} style={{ zoom: settings.zoom }}>
-      <Header onOpenSettings={() => setSettingsOpen(true)} />
       <div className={styles.body}>
       <div className={styles.content} style={{ gridTemplateColumns: gridCols }}>
         <div className={styles.sidebarWrap}>
@@ -246,45 +244,48 @@ function AppContent() {
             collapsed={sidebarCollapsed}
             onToggleCollapse={() => setSidebarCollapsed((c) => !c)}
             externalRenameRequestId={externalRenameId}
+            onOpenSettings={() => setSettingsOpen(true)}
           />
         </div>
         <div
           className={styles.resizeHandle}
           onMouseDown={sidebarCollapsed ? undefined : startSidebarResize}
         />
-        <div className={styles.main}>
-          {currentRequest ? (
-            <RequestBuilder
-              request={currentRequest}
-              showExpandBtn={sidebarCollapsed}
-              onExpand={() => setSidebarCollapsed(false)}
-              executeRef={executeRef}
-              copyFlashPane={copyFlashPane}
-              onCopyResponse={() => {
-                setCopyFlashPane('response');
-                setTimeout(() => setCopyFlashPane(null), 1200);
-              }}
-              onRequestFocus={() => setActivePane('request')}
-              onResponseFocus={() => setActivePane('response')}
-            />
-          ) : (
-            <div className={styles.emptyState}>
-              {sidebarCollapsed && (
-                <button
-                  className={styles.floatingExpand}
-                  onClick={() => setSidebarCollapsed(false)}
-                  title="Show navigator"
-                >
-                  ›
-                </button>
-              )}
-              <h2>Welcome to Callstack</h2>
-              <p>Select a request from the sidebar or create a new one to get started.</p>
-            </div>
-          )}
+        <div className={styles.rightPanel}>
+          <div className={styles.main}>
+            {currentRequest ? (
+              <RequestBuilder
+                request={currentRequest}
+                showExpandBtn={sidebarCollapsed}
+                onExpand={() => setSidebarCollapsed(false)}
+                executeRef={executeRef}
+                copyFlashPane={copyFlashPane}
+                onCopyResponse={() => {
+                  setCopyFlashPane('response');
+                  setTimeout(() => setCopyFlashPane(null), 1200);
+                }}
+                onRequestFocus={() => setActivePane('request')}
+                onResponseFocus={() => setActivePane('response')}
+              />
+            ) : (
+              <div className={styles.emptyState}>
+                {sidebarCollapsed && (
+                  <button
+                    className={styles.floatingExpand}
+                    onClick={() => setSidebarCollapsed(false)}
+                    title="Show navigator"
+                  >
+                    ›
+                  </button>
+                )}
+                <h2>Welcome to Callstack</h2>
+                <p>Select a request from the sidebar or create a new one to get started.</p>
+              </div>
+            )}
+          </div>
+          <Footer />
         </div>
       </div>
-      <Footer />
       </div>
       {settingsOpen && (
         <SettingsModal

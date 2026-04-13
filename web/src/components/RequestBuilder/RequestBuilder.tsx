@@ -110,11 +110,13 @@ function buildCurl(method: string, url: string, params: KeyValue[], headers: Key
   }
   const ct = activeHeaders.find(h => h.key.toLowerCase() === 'content-type')?.value ?? '';
   if (body.trim() && ['POST', 'PUT', 'PATCH'].includes(method)) {
-    if (ct.includes('json') || ct.includes('xml') || ct.includes('plain') || ct.includes('html')) {
-      parts.push(`--data ${JSON.stringify(body.trim())}`);
+    let bodyStr = body.trim().replace(/\r/g, '');
+    if (ct.includes('json')) {
+      try { bodyStr = JSON.stringify(JSON.parse(bodyStr)); } catch {}
     } else {
-      parts.push(`--data ${JSON.stringify(body.trim())}`);
+      bodyStr = bodyStr.replace(/\n/g, ' ').replace(/\s+/g, ' ');
     }
+    parts.push(`--data ${JSON.stringify(bodyStr)}`);
   }
   const activeParams = params.filter(p => p.enabled !== false && p.key.trim());
   if (activeParams.length > 0) {
@@ -122,7 +124,7 @@ function buildCurl(method: string, url: string, params: KeyValue[], headers: Key
     url = url.includes('?') ? `${url}&${qs}` : `${url}?${qs}`;
   }
   parts.push(JSON.stringify(url));
-  return parts.join(' \\\n  ');
+  return parts.join(' ');
 }
 
 function upsertContentType(headers: KeyValue[], value: string): KeyValue[] {

@@ -181,7 +181,7 @@ export function BodyEditor({
             closeBrackets: true,
             autocompletion: true,
           }}
-          style={{ height: 'auto' }}
+          style={{ height: '100%' }}
         />
         {copyFlash && <div className={styles.copyToast}>Copied to clipboard</div>}
       </div>
