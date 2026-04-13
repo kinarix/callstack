@@ -6,7 +6,6 @@ import { Sidebar } from './components/Sidebar/Sidebar';
 import { RequestBuilder } from './components/RequestBuilder/RequestBuilder';
 import { Footer } from './components/Footer/Footer';
 import { SettingsModal } from './components/SettingsModal/SettingsModal';
-import { SplashScreen } from './components/SplashScreen/SplashScreen';
 import styles from './App.module.css';
 import { useDatabase } from './hooks/useDatabase';
 import { useSettings, matchesShortcut } from './hooks/useSettings';
@@ -287,7 +286,6 @@ function AppContent() {
           </div>
         </div>
       )}
-      <SplashScreen visible={!ready} />
     </div>
   );
 }
