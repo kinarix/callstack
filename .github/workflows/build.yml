@@ -62,7 +62,13 @@ jobs:
         with:
           tagName: Callstack-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
           releaseName: 'Callstack v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
+          releaseBody: |
+            See the assets below to download and install.
+
+            **macOS users**: If macOS says the app is "damaged" or "cannot be opened", run this in Terminal after installing:
+            ```
+            xattr -cr /Applications/Callstack.app
+            ```
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
