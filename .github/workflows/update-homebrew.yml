@@ -1,0 +1,92 @@
+name: Update Homebrew Tap
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  update-cask:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get version from tag
+        id: version
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${VERSION#v}"  # Remove 'v' prefix if present
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download macOS artifacts
+        id: download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd /tmp
+          gh release download "${{ github.event.release.tag_name }}" \
+            -R "${{ github.repository }}" \
+            -p "*_aarch64.dmg" \
+            -p "*_x64.dmg"
+          ls -lh *.dmg
+          echo "aarch64_sha=$(shasum -a 256 *_aarch64.dmg | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+          echo "x64_sha=$(shasum -a 256 *_x64.dmg | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+
+      - name: Checkout tap repo
+        uses: actions/checkout@v4
+        with:
+          repository: kinarix/homebrew-callstack
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      - name: Update cask formula
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          AARCH64_SHA: ${{ steps.download.outputs.aarch64_sha }}
+          X64_SHA: ${{ steps.download.outputs.x64_sha }}
+        run: |
+          mkdir -p tap/Casks
+          cat > tap/Casks/callstack.rb << 'CASK'
+          cask "callstack" do
+            version "VERSION_PLACEHOLDER"
+
+            on_arm do
+              sha256 "AARCH64_SHA_PLACEHOLDER"
+              url "https://github.com/kinarix/callstack/releases/download/vVERSION_PLACEHOLDER/Callstack_VERSION_PLACEHOLDER_aarch64.dmg"
+            end
+
+            on_intel do
+              sha256 "X64_SHA_PLACEHOLDER"
+              url "https://github.com/kinarix/callstack/releases/download/vVERSION_PLACEHOLDER/Callstack_VERSION_PLACEHOLDER_x64.dmg"
+            end
+
+            name "Callstack"
+            desc "Desktop REST API testing tool"
+            homepage "https://github.com/kinarix/callstack"
+
+            app "Callstack.app"
+
+            postflight do
+              system_command "xattr", args: ["-cr", staged_path / "Callstack.app"]
+            end
+
+            zap trash: [
+              "~/Library/Application Support/callstack",
+              "~/Library/Caches/com.kinarix.callstack",
+            ]
+          end
+          CASK
+
+          # Replace placeholders
+          sed -i "s/VERSION_PLACEHOLDER/$VERSION/g" tap/Casks/callstack.rb
+          sed -i "s/AARCH64_SHA_PLACEHOLDER/$AARCH64_SHA/g" tap/Casks/callstack.rb
+          sed -i "s/X64_SHA_PLACEHOLDER/$X64_SHA/g" tap/Casks/callstack.rb
+
+      - name: Commit and push
+        working-directory: tap
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/callstack.rb
+          git commit -m "Update callstack to ${{ steps.version.outputs.version }}"
+          git push
