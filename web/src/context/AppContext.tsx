@@ -8,7 +8,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'SET_CURRENT_PROJECT':
       return { ...state, currentProjectId: action.payload };
     case 'SET_CURRENT_REQUEST':
-      return { ...state, currentRequestId: action.payload, currentResponse: null };
+      return { ...state, currentRequestId: action.payload, currentResponse: action.payload === state.currentRequestId ? state.currentResponse : null };
     case 'SET_PROJECTS':
       return { ...state, projects: action.payload };
     case 'ADD_PROJECT':

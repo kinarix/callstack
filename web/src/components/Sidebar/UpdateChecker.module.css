@@ -1,0 +1,61 @@
+.btn {
+  background: transparent;
+  border: none;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  position: relative;
+  transition: opacity var(--transition-base), transform var(--transition-base);
+}
+
+.btn:hover {
+  transform: scale(1.2);
+}
+
+.checking {
+  color: var(--text-tertiary);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.upToDate {
+  color: var(--text-tertiary);
+  opacity: 0.5;
+}
+
+.upToDate:hover {
+  opacity: 0.8;
+}
+
+.updateAvailable {
+  color: #39ff9e;
+  opacity: 0.9;
+}
+
+.updateAvailable:hover {
+  opacity: 1;
+}
+
+.badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #39ff9e;
+  box-shadow: 0 0 6px #39ff9e;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}

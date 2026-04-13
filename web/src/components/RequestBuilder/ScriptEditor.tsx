@@ -158,6 +158,29 @@ const ENV_MEMBERS: MemberDef[] = [
     info: 'Remove an environment variable.',
     type: 'function', snippet: 'unset(${1:key})',
   },
+  {
+    label: 'secret', detail: 'object',
+    info: 'Secret store (localStorage only, never exported). Methods: get(key), set(key, value), unset(key).',
+    type: 'property',
+  },
+];
+
+const SECRET_MEMBERS: MemberDef[] = [
+  {
+    label: 'get', detail: '(key: string) → string | undefined',
+    info: 'Get the value of a secret (never exported).',
+    type: 'function', snippet: 'get(${1:key})',
+  },
+  {
+    label: 'set', detail: '(key: string, value: string) → void',
+    info: 'Set a secret value. Stored in localStorage only — never included in exports.',
+    type: 'function', snippet: 'set(${1:key}, ${2:value})',
+  },
+  {
+    label: 'unset', detail: '(key: string) → void',
+    info: 'Remove a secret.',
+    type: 'function', snippet: 'unset(${1:key})',
+  },
 ];
 
 const CONSOLE_MEMBERS: MemberDef[] = [
@@ -210,6 +233,21 @@ const SIGNATURES: Record<string, SigDef> = {
     sig: 'env.unset(key)',
     params: ['key: string'],
     doc: 'Remove an environment variable.',
+  },
+  'env.secret.get': {
+    sig: 'env.secret.get(key)',
+    params: ['key: string'],
+    doc: 'Get the value of a secret (localStorage only, never exported).',
+  },
+  'env.secret.set': {
+    sig: 'env.secret.set(key, value)',
+    params: ['key: string', 'value: string'],
+    doc: 'Set a secret. Stored in localStorage only — never included in exports.',
+  },
+  'env.secret.unset': {
+    sig: 'env.secret.unset(key)',
+    params: ['key: string'],
+    doc: 'Remove a secret.',
   },
   'console.log': {
     sig: 'console.log(...args)',
@@ -340,8 +378,22 @@ const sigHelpField = StateField.define<readonly Tooltip[]>({
 
 // ── Completion source ─────────────────────────────────────────────────────────
 
-function makeCompletionSource(isPost: boolean, envVarKeys: string[] = []) {
+function makeCompletionSource(isPost: boolean, envVarKeys: string[] = [], secretKeys: string[] = []) {
   return function scriptCompletions(ctx: CompletionContext): CompletionResult | null {
+    // env.secret.get/set/unset('...') string key completions
+    const secretKeyMatch = ctx.matchBefore(/env\.secret\.(get|set|unset)\(['"]([^'"]*)/);
+    if (secretKeyMatch && secretKeys.length > 0) {
+      const quoteIdx = secretKeyMatch.text.search(/['"]/);
+      const partial = secretKeyMatch.text.slice(quoteIdx + 1);
+      return {
+        from: secretKeyMatch.from + quoteIdx + 1,
+        options: secretKeys
+          .filter((k) => k.startsWith(partial))
+          .map((k) => ({ label: k, type: 'constant', detail: 'secret' })),
+        validFor: /^[^'"]*$/,
+      };
+    }
+
     // env.get('...') / env.set('...') string key completions
     const envKeyMatch = ctx.matchBefore(/env\.(get|set|unset)\(['"]([^'"]*)/);
     if (envKeyMatch && envVarKeys.length > 0) {
@@ -355,6 +407,24 @@ function makeCompletionSource(isPost: boolean, envVarKeys: string[] = []) {
         validFor: /^[^'"]*$/,
       };
     }
+
+    // Two-level: env.secret.
+    const subMemberMatch = ctx.matchBefore(/env\.secret\.([a-zA-Z_$][a-zA-Z0-9_$]*)?/);
+    if (subMemberMatch) {
+      const lastDotIdx = subMemberMatch.text.lastIndexOf('.');
+      return {
+        from: subMemberMatch.from + lastDotIdx + 1,
+        options: SECRET_MEMBERS.map((m) =>
+          m.snippet
+            ? snippetCompletion(`${m.label}(${m.snippet.slice(m.label.length + 1, -1)})`, {
+                label: m.label, detail: m.detail, info: m.info, type: m.type,
+              })
+            : { label: m.label, detail: m.detail, info: m.info, type: m.type }
+        ),
+        validFor: /^[a-zA-Z_$][a-zA-Z0-9_$]*$/,
+      };
+    }
+
     // Member access: `something.`
     const memberMatch = ctx.matchBefore(/([a-zA-Z_$][a-zA-Z0-9_$]*)\.([a-zA-Z_$][a-zA-Z0-9_$]*)?/);
     if (memberMatch) {
@@ -447,12 +517,13 @@ interface ScriptEditorProps {
   consoleLogs: string[];
   onClearLogs?: () => void;
   envVars?: KeyValue[];
+  secrets?: KeyValue[];
   onTest?: (script: string, isPost: boolean) => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function ScriptEditor({ preScript, postScript, onChange, consoleLogs, onClearLogs, envVars = [], onTest }: ScriptEditorProps) {
+export function ScriptEditor({ preScript, postScript, onChange, consoleLogs, onClearLogs, envVars = [], secrets = [], onTest }: ScriptEditorProps) {
   const [activeTab, setActiveTab] = useState<ScriptTab>('pre');
   const [envOpen, setEnvOpen] = useState(false);
   const [envHeight, setEnvHeight] = useState(110);
@@ -493,6 +564,10 @@ export function ScriptEditor({ preScript, postScript, onChange, consoleLogs, onC
 
   const activeEnvVars = envVars.filter((v) => v.enabled !== false && v.key);
   const envVarKeys = useMemo(() => activeEnvVars.map((v) => v.key), [activeEnvVars]);
+  const secretKeys = useMemo(
+    () => secrets.filter((s) => s.enabled !== false && s.key).map((s) => s.key),
+    [secrets]
+  );
 
   const extensions = useMemo(() => [
     javascript(),
@@ -500,12 +575,12 @@ export function ScriptEditor({ preScript, postScript, onChange, consoleLogs, onC
     syntaxHighlighting(jsHighlight),
     keymap.of([indentWithTab]),
     autocompletion({
-      override: [makeCompletionSource(isPost, envVarKeys), localCompletionSource],
+      override: [makeCompletionSource(isPost, envVarKeys, secretKeys), localCompletionSource],
       activateOnTyping: true,
       maxRenderedOptions: 20,
     }),
     sigHelpField,
-  ], [isPost, envVarKeys]);
+  ], [isPost, envVarKeys, secretKeys]);
 
   const currentScript = isPost ? postScript : preScript;
 
@@ -602,7 +677,7 @@ export function ScriptEditor({ preScript, postScript, onChange, consoleLogs, onC
       </div>
 
       {/* Environment panel */}
-      {activeEnvVars.length > 0 && (
+      {(activeEnvVars.length > 0 || secretKeys.length > 0) && (
         <div className={styles.envPanel}>
           {envOpen && (
             <div
@@ -613,15 +688,34 @@ export function ScriptEditor({ preScript, postScript, onChange, consoleLogs, onC
           <button className={styles.envToggle} onClick={() => setEnvOpen((o) => !o)}>
             <span className={styles.envToggleArrow} style={{ transform: envOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
             <span>Environment</span>
-            <span className={styles.envCount}>{activeEnvVars.length}</span>
+            <span className={styles.envCount}>{activeEnvVars.length + secretKeys.length}</span>
           </button>
           {envOpen && (
             <div className={styles.envList} style={{ height: envHeight }}>
               {activeEnvVars.map((v, i) => (
                 <div key={i} className={styles.envRow}>
+                  <span className={styles.envRowIcon}>
+                    <svg width="10" height="10" viewBox="0 0 11 11" fill="none" aria-hidden>
+                      <rect x="1" y="1" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+                      <path d="M3 5.5h5M3 3.5h3M3 7.5h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                    </svg>
+                  </span>
                   <span className={styles.envKey}>{v.key}</span>
                   <span className={styles.envEq}>=</span>
                   <span className={styles.envVal}>{v.value || <em className={styles.envEmpty}>empty</em>}</span>
+                </div>
+              ))}
+              {secrets.filter((s) => s.enabled !== false && s.key).map((s, i) => (
+                <div key={`secret-${i}`} className={styles.envRow}>
+                  <span className={`${styles.envRowIcon} ${styles.envRowIconSecret}`}>
+                    <svg width="10" height="10" viewBox="0 0 11 11" fill="none" aria-hidden>
+                      <rect x="2" y="5" width="7" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                      <path d="M3.5 5V3.5a2 2 0 1 1 4 0V5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                    </svg>
+                  </span>
+                  <span className={`${styles.envKey} ${styles.envSecretKey}`}>{s.key}</span>
+                  <span className={styles.envEq}>=</span>
+                  <span className={styles.envSecretVal}>••••••••</span>
                 </div>
               ))}
             </div>

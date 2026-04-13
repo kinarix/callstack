@@ -82,6 +82,7 @@
 .editorWrap :global(.cm-editor) {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
+  height: 100%;
 }
 
 .editorWrap :global(.cm-scroller) {

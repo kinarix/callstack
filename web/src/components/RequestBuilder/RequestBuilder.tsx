@@ -9,6 +9,8 @@ import { useHttpClient } from '../../hooks/useHttpClient';
 import { useDatabase } from '../../hooks/useDatabase';
 import { resolveTemplate } from '../../lib/template';
 import { runScript } from '../../hooks/useScriptRunner';
+import type { EnvMutations } from '../../hooks/useScriptRunner';
+import { loadSecrets, saveSecrets } from '../../lib/secrets';
 
 interface RequestBuilderProps {
   request: Request | null;
@@ -108,11 +110,13 @@ function buildCurl(method: string, url: string, params: KeyValue[], headers: Key
   }
   const ct = activeHeaders.find(h => h.key.toLowerCase() === 'content-type')?.value ?? '';
   if (body.trim() && ['POST', 'PUT', 'PATCH'].includes(method)) {
-    if (ct.includes('json') || ct.includes('xml') || ct.includes('plain') || ct.includes('html')) {
-      parts.push(`--data ${JSON.stringify(body.trim())}`);
+    let bodyStr = body.trim().replace(/\r/g, '');
+    if (ct.includes('json')) {
+      try { bodyStr = JSON.stringify(JSON.parse(bodyStr)); } catch {}
     } else {
-      parts.push(`--data ${JSON.stringify(body.trim())}`);
+      bodyStr = bodyStr.replace(/\n/g, ' ').replace(/\s+/g, ' ');
     }
+    parts.push(`--data ${JSON.stringify(bodyStr)}`);
   }
   const activeParams = params.filter(p => p.enabled !== false && p.key.trim());
   if (activeParams.length > 0) {
@@ -120,7 +124,7 @@ function buildCurl(method: string, url: string, params: KeyValue[], headers: Key
     url = url.includes('?') ? `${url}&${qs}` : `${url}?${qs}`;
   }
   parts.push(JSON.stringify(url));
-  return parts.join(' \\\n  ');
+  return parts.join(' ');
 }
 
 function upsertContentType(headers: KeyValue[], value: string): KeyValue[] {
@@ -282,6 +286,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
 
   const activeEnv = projectEnvironments.find((e) => e.id === activeEnvId) ?? null;
   const envVars = activeEnv?.variables ?? [];
+  const secrets = activeEnv ? loadSecrets(activeEnv.id) : [];
 
   const applyEnvMutations = useCallback(async (mutations: { set: Record<string, string>; unset: string[] }) => {
     if (!activeEnv || (Object.keys(mutations.set).length === 0 && mutations.unset.length === 0)) return;
@@ -297,6 +302,19 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
     dispatch({ type: 'UPDATE_ENVIRONMENT', payload: updated });
   }, [activeEnv, updateEnvironment, dispatch]);
 
+  const applySecretMutations = useCallback((mutations: EnvMutations) => {
+    if (!activeEnv || (Object.keys(mutations.set).length === 0 && mutations.unset.length === 0)) return;
+    let current = loadSecrets(activeEnv.id);
+    current = current.filter((s) => !mutations.unset.includes(s.key));
+    current = current.map((s) => mutations.set[s.key] !== undefined ? { ...s, value: mutations.set[s.key] } : s);
+    for (const [key, value] of Object.entries(mutations.set)) {
+      if (!current.find((s) => s.key === key)) {
+        current.push({ key, value, enabled: true });
+      }
+    }
+    saveSecrets(activeEnv.id, current);
+  }, [activeEnv]);
+
   const handleScriptTest = useCallback((script: string, isPost: boolean) => {
     if (!script.trim()) return;
     setConsoleLogs([]);
@@ -304,7 +322,10 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
       request: request ?? undefined,
       response: isPost ? (state.currentResponse ?? undefined) : undefined,
       envVars,
+      secrets,
     });
+
+    if (result.secretMutations) applySecretMutations(result.secretMutations);
 
     // Append test result summaries to console output
     const testLines: string[] = [];
@@ -375,9 +396,11 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
           body: resolvedBody,
         },
         envVars,
+        secrets,
       });
       setConsoleLogs(preResult.logs);
       if (preResult.envMutations) await applyEnvMutations(preResult.envMutations);
+      if (preResult.secretMutations) applySecretMutations(preResult.secretMutations);
       if (preResult.mutatedRequest) {
         resolvedUrl = preResult.mutatedRequest.url;
         resolvedBody = preResult.mutatedRequest.body;
@@ -437,9 +460,11 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
           request: { method: request.method, url: normalizedUrl, headers: resolvedHeaders, params: resolvedParams, body: resolvedBody },
           response: { status: result.status, statusText: result.statusText, headers: result.headers, body: result.body, time: result.timeMs },
           envVars,
+          secrets,
         });
         setConsoleLogs((prev) => [...prev, ...postResult.logs]);
         if (postResult.envMutations) await applyEnvMutations(postResult.envMutations);
+        if (postResult.secretMutations) applySecretMutations(postResult.secretMutations);
         if (postResult.testResults.length > 0) {
           testResults = [...(testResults ?? []), ...postResult.testResults];
         }
@@ -569,6 +594,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
             consoleLogs={consoleLogs}
             onClearLogs={() => setConsoleLogs([])}
             envVars={envVars}
+            secrets={secrets}
             onScriptTest={handleScriptTest}
             copyFlash={copyFlashPane === 'request'}
           />
