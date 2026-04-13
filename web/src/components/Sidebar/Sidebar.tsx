@@ -415,6 +415,14 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId }
       if (isCrossContainer) {
         const newPos = withoutActive.findIndex((r) => r.id === requestId);
         await moveRequest(requestId, targetProjectId, targetFolderId, newPos);
+        // Renumber the source container to close the gap left by the moved request
+        const sourceContainerIds = requests
+          .filter((r) => r.project_id === movingRequest.project_id && r.folder_id === movingRequest.folder_id && r.id !== requestId)
+          .sort((a, b) => a.position - b.position)
+          .map((r) => r.id);
+        if (sourceContainerIds.length > 0) {
+          await reorderRequests(sourceContainerIds);
+        }
       }
       await reorderRequests(orderedIds);
       dispatch({

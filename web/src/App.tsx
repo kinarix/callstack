@@ -6,6 +6,7 @@ import { Sidebar } from './components/Sidebar/Sidebar';
 import { RequestBuilder } from './components/RequestBuilder/RequestBuilder';
 import { Footer } from './components/Footer/Footer';
 import { SettingsModal } from './components/SettingsModal/SettingsModal';
+import { SplashScreen } from './components/SplashScreen/SplashScreen';
 import styles from './App.module.css';
 import { useDatabase } from './hooks/useDatabase';
 import { useSettings, matchesShortcut } from './hooks/useSettings';
@@ -20,6 +21,7 @@ function AppContent() {
   const [externalRenameId, setExternalRenameId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copyFlash, setCopyFlash] = useState(false);
+  const [ready, setReady] = useState(false);
 
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const v = localStorage.getItem('callstack.sidebarWidth');
@@ -71,6 +73,22 @@ function AppContent() {
     });
   }, [dispatch, loadUserProjects, loadUserRequests, loadFolders, listEnvironments]);
 
+  // Show window and fade splash when app is ready
+  useEffect(() => {
+    if (state.projects.length > 0 && !ready) {
+      (async () => {
+        try {
+          const { getCurrentWebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+          const window = getCurrentWebviewWindow();
+          await window.show();
+        } catch {
+          // Not in Tauri (dev mode), safe to ignore
+        }
+        setReady(true);
+      })();
+    }
+  }, [state.projects.length, ready]);
+
   // Load last response whenever selected request changes
   useEffect(() => {
     if (state.currentRequestId == null) return;
@@ -115,16 +133,7 @@ function AppContent() {
   // Action shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't fire when typing in inputs / textareas
-      const tag = (e.target as HTMLElement).tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement).isContentEditable) return;
-
-      if (matchesShortcut(e, settings.shortcuts.execute)) {
-        e.preventDefault();
-        executeRef.current?.();
-        return;
-      }
-
+      // Copy response shortcut works everywhere (even in editors)
       if (matchesShortcut(e, settings.shortcuts.copyResponse)) {
         if (window.getSelection()?.toString()) return; // let browser copy selection
         e.preventDefault();
@@ -136,6 +145,16 @@ function AppContent() {
         } else {
           setErrorMessage('No response to copy.');
         }
+        return;
+      }
+
+      // Don't fire when typing in inputs / textareas
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement).isContentEditable) return;
+
+      if (matchesShortcut(e, settings.shortcuts.execute)) {
+        e.preventDefault();
+        executeRef.current?.();
         return;
       }
 
@@ -225,6 +244,10 @@ function AppContent() {
               onExpand={() => setSidebarCollapsed(false)}
               executeRef={executeRef}
               copyFlash={copyFlash}
+              onCopyResponse={() => {
+                setCopyFlash(true);
+                setTimeout(() => setCopyFlash(false), 1200);
+              }}
             />
           ) : (
             <div className={styles.emptyState}>
@@ -264,6 +287,7 @@ function AppContent() {
           </div>
         </div>
       )}
+      <SplashScreen visible={!ready} />
     </div>
   );
 }

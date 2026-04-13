@@ -37,11 +37,23 @@ export interface Request {
   headers: KeyValue[];
   body: string;
   files: FileAttachment[];
+  pre_script: string;
+  post_script: string;
   position: number;
   created_at: string;
   updated_at: string;
   imported: boolean;
 }
+
+export interface TestResult {
+  description: string;
+  passed: boolean;
+  severity?: 'success' | 'warning' | 'error';
+  error?: string;
+  message?: string;
+}
+
+export type TestStatus = 'PASS' | 'FAIL' | 'PARTIAL';
 
 export interface Response {
   id: number;
@@ -54,6 +66,8 @@ export interface Response {
   size: number;
   timestamp?: number;
   isBase64?: boolean;
+  testResults?: TestResult[];
+  testStatus?: TestStatus;
 }
 
 export interface FileAttachment {

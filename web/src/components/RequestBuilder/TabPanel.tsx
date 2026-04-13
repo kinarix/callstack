@@ -2,11 +2,12 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import type { Request, KeyValue, FileAttachment } from '../../lib/types';
 import { KeyValueEditor } from './KeyValueEditor';
 import { FileUpload } from './FileUpload';
+import { ScriptEditor } from './ScriptEditor';
 import styles from './TabPanel.module.css';
 
 const BodyEditor = lazy(() => import('./BodyEditor').then(m => ({ default: m.BodyEditor })));
 
-type TabName = 'params' | 'headers' | 'body' | 'files';
+type TabName = 'params' | 'headers' | 'body' | 'files' | 'script';
 type PinnableTab = 'params' | 'headers' | 'files';
 
 const PINNABLE: PinnableTab[] = ['params', 'headers', 'files'];
@@ -80,9 +81,13 @@ interface TabPanelProps {
   onRequestChange: (changes: Partial<Request>) => void;
   files: FileAttachment[];
   onFilesChange: (files: FileAttachment[]) => void;
+  consoleLogs: string[];
+  onClearLogs?: () => void;
+  envVars?: KeyValue[];
+  onScriptTest?: (script: string, isPost: boolean) => void;
 }
 
-export function TabPanel({ request, onRequestChange, files, onFilesChange }: TabPanelProps) {
+export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, onScriptTest }: TabPanelProps) {
   const [pinned, setPinned] = useState<Set<PinnableTab>>(() => request ? loadPinned(request.id) : new Set());
   const [activeTab, setActiveTab] = useState<TabName>(() => {
     const p = request ? loadPinned(request.id) : new Set<PinnableTab>();
@@ -141,6 +146,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange }: Tab
     { name: 'headers', label: 'Headers', count: request.headers.filter(h => h.key).length || undefined },
     { name: 'files', label: 'Files', count: files.length || undefined },
     { name: 'body', label: 'Body' },
+    { name: 'script', label: 'Script' },
   ];
 
   function renderPinnedContent(p: PinnableTab) {
@@ -232,6 +238,17 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange }: Tab
         )}
         {activeTab === 'files' && (
           <FileUpload files={files} onChange={onFilesChange} />
+        )}
+        {activeTab === 'script' && (
+          <ScriptEditor
+            preScript={request.pre_script}
+            postScript={request.post_script}
+            onChange={onRequestChange}
+            consoleLogs={consoleLogs}
+            onClearLogs={onClearLogs}
+            envVars={envVars}
+            onTest={onScriptTest}
+          />
         )}
       </div>
     </div>
