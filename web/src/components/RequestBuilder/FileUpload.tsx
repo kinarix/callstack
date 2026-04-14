@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import type { FileAttachment } from '../../lib/types';
 import styles from './FileUpload.module.css';
 
@@ -14,30 +14,18 @@ interface FileUploadProps {
 }
 
 export function FileUpload({ files, onChange }: FileUploadProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const handleAddFiles = async () => {
+    const picked = await invoke<FileAttachment[] | null>('pick_attachment_files');
+    if (picked) onChange([...files, ...picked]);
+  };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(e.target.files ?? []);
-    if (!selected.length) return;
-
-    const attachments = await Promise.all(
-      selected.map(async (file): Promise<FileAttachment> => {
-        const buf = await file.arrayBuffer();
-        const bytes = new Uint8Array(buf);
-        let binary = '';
-        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-        return {
-          name: file.name,
-          size: file.size,
-          mime: file.type || 'application/octet-stream',
-          path: '',
-          data: btoa(binary),
-        };
-      })
-    );
-
-    onChange([...files, ...attachments]);
-    e.target.value = '';
+  const handleReattach = async (index: number) => {
+    const picked = await invoke<FileAttachment[] | null>('pick_attachment_files');
+    if (!picked || picked.length === 0) return;
+    const updated = [...files];
+    updated[index] = picked[0];
+    if (picked.length > 1) updated.splice(index + 1, 0, ...picked.slice(1));
+    onChange(updated);
   };
 
   const handleRemove = (index: number) => {
@@ -46,15 +34,8 @@ export function FileUpload({ files, onChange }: FileUploadProps) {
 
   return (
     <div className={styles.container}>
-      <input
-        ref={inputRef}
-        type="file"
-        multiple
-        className={styles.hiddenInput}
-        onChange={handleFileSelect}
-      />
       <div className={styles.toolbar}>
-        <button className={styles.addBtn} onClick={() => inputRef.current?.click()}>
+        <button className={styles.addBtn} onClick={handleAddFiles}>
           + Add Files
         </button>
         {files.length > 0 && (
@@ -64,13 +45,19 @@ export function FileUpload({ files, onChange }: FileUploadProps) {
         )}
       </div>
       {files.length === 0 ? (
-        <div className={styles.empty}>No files attached. Click "Add Files" to upload.</div>
+        <div className={styles.empty}>No files attached. Click "Add Files" to attach.</div>
       ) : (
         <div className={styles.list}>
           {files.map((f, i) => (
-            <div key={i} className={styles.item}>
+            <div key={i} className={`${styles.item}${f.path === '' ? ` ${styles.missing}` : ''}`}>
               <span className={styles.fileName}>{f.name}</span>
-              <span className={styles.fileMeta}>{f.mime} · {formatBytes(f.size)}</span>
+              {f.path === '' ? (
+                <button className={styles.reattachBtn} onClick={() => handleReattach(i)}>
+                  ⚠ File missing — click to re-attach
+                </button>
+              ) : (
+                <span className={styles.fileMeta}>{f.mime} · {formatBytes(f.size)}</span>
+              )}
               <button
                 className={styles.removeBtn}
                 onClick={() => handleRemove(i)}

@@ -2,6 +2,7 @@ mod database;
 mod http_client;
 
 use database::Database;
+use serde::Serialize;
 use tauri::Manager;
 
 pub struct CancelHandle(pub tokio::sync::Mutex<Option<tokio::task::AbortHandle>>);
@@ -59,6 +60,61 @@ async fn save_binary_file(filename: String, data: Vec<u8>) -> Result<bool, Strin
         }
         None => Ok(false),
     }
+}
+
+#[derive(Serialize)]
+struct AttachmentMeta {
+    name: String,
+    size: u64,
+    mime: String,
+    path: String,
+}
+
+fn guess_mime(name: &str) -> &'static str {
+    match name.rsplit('.').next().map(|e| e.to_lowercase()).as_deref() {
+        Some("jpg") | Some("jpeg") => "image/jpeg",
+        Some("png") => "image/png",
+        Some("gif") => "image/gif",
+        Some("webp") => "image/webp",
+        Some("svg") => "image/svg+xml",
+        Some("pdf") => "application/pdf",
+        Some("json") => "application/json",
+        Some("xml") => "application/xml",
+        Some("csv") => "text/csv",
+        Some("txt") => "text/plain",
+        Some("html") | Some("htm") => "text/html",
+        Some("zip") => "application/zip",
+        _ => "application/octet-stream",
+    }
+}
+
+#[tauri::command]
+async fn pick_attachment_files(app: tauri::AppHandle) -> Result<Option<Vec<AttachmentMeta>>, String> {
+    let handles = rfd::AsyncFileDialog::new().pick_files().await;
+    let Some(files) = handles else { return Ok(None) };
+
+    let attachments_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("attachments");
+    std::fs::create_dir_all(&attachments_dir).map_err(|e| e.to_string())?;
+
+    let mut result = Vec::new();
+    for h in files {
+        let src = h.path().to_path_buf();
+        let name = h.file_name();
+        let ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let dest = attachments_dir.join(format!("{ts}_{name}"));
+        std::fs::copy(&src, &dest).map_err(|e| format!("Failed to copy '{}': {e}", name))?;
+        let size = std::fs::metadata(&dest).map(|m| m.len()).unwrap_or(0);
+        let mime = guess_mime(&name).to_string();
+        result.push(AttachmentMeta { name, size, mime, path: dest.to_string_lossy().into_owned() });
+    }
+    Ok(Some(result))
 }
 
 #[tauri::command]
@@ -153,6 +209,7 @@ pub fn run() {
             save_file,
             save_binary_file,
             pick_file,
+            pick_attachment_files,
             reset_all_data,
             write_clipboard,
         ])

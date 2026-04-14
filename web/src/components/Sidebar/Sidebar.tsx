@@ -14,7 +14,7 @@ import { ExportModal } from '../ExportModal/ExportModal';
 import type { ExportItem, ExportResult } from '../ExportModal/ExportModal';
 import type { ParsedCollection, ParsedRequest } from '../../utils/postmanParser';
 import { exportFolderAsPostman, exportProjectAsPostman } from '../../utils/postmanParser';
-import { exportProject as exportCallstackProject, importArchive } from '../../utils/callstackArchive';
+import { exportProject as exportCallstackProject, exportProjectPlain, importArchive } from '../../utils/callstackArchive';
 import type { ArchivePreview } from '../../lib/callstackSchema';
 import { invoke } from '@tauri-apps/api/core';
 import type { Environment, Request } from '../../lib/types';
@@ -346,7 +346,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     const ctx = filePickerState; // capture before clearing
     setFilePickerState(null);
     try {
-      const { manifest, attachmentData } = await importArchive(file);
+      const { manifest } = await importArchive(file);
 
       // 1. Import into the context project if available; otherwise create a new project
       const contextProjectId = ctx != null && 'projectId' in ctx ? (ctx as { projectId: number }).projectId : null;
@@ -439,14 +439,21 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
         }
       }
 
-      // Silence the unused attachmentData variable until attachment restore is implemented
-      void attachmentData;
+      // 6. Restore attachment metadata (path: '' = file not on this machine)
+      for (const req of manifest.requests) {
+        if (!req.attachments || req.attachments.length === 0) continue;
+        const requestId = requestRefToId.get(req._ref);
+        if (requestId == null) continue;
+        const files = req.attachments.map(({ name, size, mime }) => ({ name, size, mime, path: '' }));
+        const updated = await updateRequest(requestId, { attachments: JSON.stringify(files) });
+        dispatch({ type: 'UPDATE_REQUEST', payload: updated });
+      }
 
       dispatch({ type: 'SET_CURRENT_PROJECT', payload: project.id });
     } catch (err) {
       console.error('Failed to import .callstack archive:', err);
     }
-  }, [filePickerState, state.projects, createProject, createFolder, importRequests, createEnvironment, updateEnvironment, saveResponse, dispatch]);
+  }, [filePickerState, state.projects, createProject, createFolder, importRequests, createEnvironment, updateEnvironment, saveResponse, updateRequest, dispatch]);
 
   // ─── Export handlers ────────────────────────────────────────────────────────
 
@@ -486,8 +493,8 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     setExportModalState(null);
     if (!ctx || result.items.length === 0) return;
     try {
-      if (result.format === 'callstack') {
-        // ── Callstack Archive export ──
+      if (result.format === 'callstack' || result.format === 'callstack-plain') {
+        // ── Callstack export (archive or plain JSON) ──
         const project = state.projects.find((p) => p.id === state.currentProjectId);
         if (!project) return;
 
@@ -520,18 +527,25 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
           responses = resps.filter(Boolean) as import('../../lib/types').Response[];
         }
 
-        const blob = await exportCallstackProject({
+        const exportOpts = {
           project,
           folders: selectedFolders,
           requests: selectedRequests,
           environments: envs,
           responses,
           selectedEnvironmentName,
-        });
+        };
 
-        const data = Array.from(new Uint8Array(await blob.arrayBuffer()));
-        const filename = `${project.name}.callstack`;
-        await invoke('save_binary_file', { filename, data });
+        if (result.format === 'callstack-plain') {
+          const content = await exportProjectPlain(exportOpts);
+          const filename = `${project.name}.callstack.json`;
+          await invoke('save_file', { filename, content });
+        } else {
+          const blob = await exportCallstackProject(exportOpts);
+          const data = Array.from(new Uint8Array(await blob.arrayBuffer()));
+          const filename = `${project.name}.callstack`;
+          await invoke('save_binary_file', { filename, data });
+        }
       } else {
         // ── Postman export (existing) ──
         let content: string;
