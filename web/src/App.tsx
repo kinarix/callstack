@@ -30,14 +30,17 @@ function AppContent() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const startSidebarResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
     const startX = e.clientX;
     const startW = sidebarWidth;
+    document.body.style.userSelect = 'none';
     const onMove = (e: MouseEvent) => {
       const w = Math.max(180, Math.min(480, startW + e.clientX - startX));
       setSidebarWidth(w);
       localStorage.setItem('callstack.sidebarWidth', String(w));
     };
     const onUp = () => {
+      document.body.style.userSelect = '';
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
     };

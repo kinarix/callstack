@@ -199,7 +199,9 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
   });
 
   const startPanelResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
     const container = (e.currentTarget as HTMLElement).parentElement!;
+    document.body.style.userSelect = 'none';
     const onMove = (ev: MouseEvent) => {
       const rect = container.getBoundingClientRect();
       const pct = Math.max(25, Math.min(75, ((ev.clientX - rect.left) / rect.width) * 100));
@@ -207,6 +209,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
       localStorage.setItem('callstack.splitPct', pct.toFixed(1));
     };
     const onUp = () => {
+      document.body.style.userSelect = '';
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
     };
