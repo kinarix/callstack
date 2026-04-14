@@ -32,12 +32,12 @@ export function KeyValueEditor({
     onChange(updated);
   };
 
-  const newValueRef = useRef<HTMLInputElement | null>(null);
+  const newKeyRef = useRef<HTMLInputElement | null>(null);
   const prevLengthRef = useRef(items.length);
 
   useEffect(() => {
     if (items.length > prevLengthRef.current) {
-      newValueRef.current?.focus();
+      newKeyRef.current?.focus();
     }
     prevLengthRef.current = items.length;
   }, [items.length]);
@@ -55,57 +55,59 @@ export function KeyValueEditor({
   }
 
   return (
-    <div className={styles.editor}>
-      <div className={styles.rows}>
-        {items.map((item, index) => (
-          <div key={index} className={styles.row}>
-            {!readOnly && (
-              <button
-                className={`${styles.checkbox} ${item.enabled ?? true ? styles.checked : ''}`}
-                onClick={() => handleEnabledToggle(index)}
-                title="Toggle item"
-                tabIndex={-1}
-              >
-                ✓
-              </button>
-            )}
-            <input
-              type="text"
-              className={styles.input}
-              placeholder="Key"
-              value={item.key}
-              onChange={(e) => handleKeyChange(index, e.target.value)}
-              disabled={readOnly}
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="off"
-              spellCheck={false}
-            />
-            <input
-              type="text"
-              className={styles.input}
-              placeholder="Value"
-              value={item.value}
-              onChange={(e) => handleValueChange(index, e.target.value)}
-              disabled={readOnly}
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="off"
-              spellCheck={false}
-              ref={index === items.length - 1 ? newValueRef : null}
-            />
-            {!readOnly && (
-              <button
-                className={styles.deleteBtn}
-                onClick={() => handleRemove(index)}
-                title="Delete"
-                tabIndex={-1}
-              >
-                <BinIcon />
-              </button>
-            )}
-          </div>
-        ))}
+    <div className={styles.wrap}>
+      <div className={styles.editor}>
+        <div className={styles.rows}>
+          {items.map((item, index) => (
+            <div key={index} className={styles.row}>
+              {!readOnly && (
+                <button
+                  className={`${styles.checkbox} ${item.enabled ?? true ? styles.checked : ''}`}
+                  onClick={() => handleEnabledToggle(index)}
+                  title="Toggle item"
+                  tabIndex={-1}
+                >
+                  ✓
+                </button>
+              )}
+              <input
+                type="text"
+                className={styles.input}
+                placeholder="Key"
+                value={item.key}
+                onChange={(e) => handleKeyChange(index, e.target.value)}
+                disabled={readOnly}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                ref={index === items.length - 1 ? newKeyRef : null}
+              />
+              <input
+                type="text"
+                className={styles.input}
+                placeholder="Value"
+                value={item.value}
+                onChange={(e) => handleValueChange(index, e.target.value)}
+                disabled={readOnly}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+              />
+              {!readOnly && (
+                <button
+                  className={styles.deleteBtn}
+                  onClick={() => handleRemove(index)}
+                  title="Delete"
+                  tabIndex={-1}
+                >
+                  <BinIcon />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
       {!readOnly && (
         <div className={styles.addRow}>

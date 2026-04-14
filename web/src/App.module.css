@@ -20,6 +20,7 @@
 .content {
   display: grid;
   grid-template-columns: 280px 4px 1fr; /* overridden by inline style */
+  grid-template-rows: minmax(0, 1fr);
   background: var(--bg-primary);
   overflow: hidden;
   flex: 1;

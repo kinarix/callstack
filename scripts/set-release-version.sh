@@ -48,17 +48,30 @@ echo ""
 echo -e "${GREEN}Version updated: ${YELLOW}$CURRENT_VERSION${NC} → ${YELLOW}$NEW_VERSION${NC}"
 echo ""
 
-# Prompt for commit message
-read -p "$(echo -e ${BLUE})Commit message$(echo -e ${NC}): " COMMIT_MSG
+# Collect unpushed commit messages
+cd "$REPO_ROOT"
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+UNPUSHED=$(git log origin/"$CURRENT_BRANCH"..HEAD --pretty=format:"- %s" 2>/dev/null || true)
+
+# Build default commit message from unpushed commits
+if [ -n "$UNPUSHED" ]; then
+    echo -e "${BLUE}Unpushed commits:${NC}"
+    echo "$UNPUSHED"
+    echo ""
+    DEFAULT_MSG=$(git log origin/"$CURRENT_BRANCH"..HEAD --pretty=format:"%s" 2>/dev/null | paste -sd '. ' -)
+else
+    DEFAULT_MSG=""
+fi
+
+read -p "$(echo -e ${BLUE})Commit message [${DEFAULT_MSG}]$(echo -e ${NC}): " COMMIT_MSG
+COMMIT_MSG="${COMMIT_MSG:-$DEFAULT_MSG}"
 FULL_MSG="$COMMIT_MSG (v$NEW_VERSION)"
 
 # Stage all changes and commit
-cd "$REPO_ROOT"
 git add -A
 git commit -m "$FULL_MSG"
 echo -e "${GREEN}✓${NC} Committed: $FULL_MSG"
 
 # Push to current branch
-CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 git push origin "$CURRENT_BRANCH"
 echo -e "${GREEN}✓${NC} Pushed to origin/$CURRENT_BRANCH"
