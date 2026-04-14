@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
 import { xml } from '@codemirror/lang-xml';
@@ -53,6 +53,81 @@ const PRESETS = [
   'text/plain',
   'text/html',
 ];
+
+const CT_LABELS: Record<string, string> = {
+  'application/json':                  'JSON',
+  'application/xml':                   'XML',
+  'application/x-www-form-urlencoded': 'Form URL',
+  'multipart/form-data':               'Form Data',
+  'text/plain':                        'Plain Text',
+  'text/html':                         'HTML',
+};
+
+function ContentTypeSelector({
+  value,
+  onChange,
+  onCustom,
+}: {
+  value: string;
+  onChange: (ct: string) => void;
+  onCustom: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const isPreset = PRESETS.includes(value);
+  const isCustom = !isPreset && value !== '';
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const label = isPreset ? CT_LABELS[value] : isCustom ? 'Custom' : 'None';
+
+  return (
+    <div ref={ref} className={styles.ctWrapper}>
+      <button
+        className={`${styles.ctPill} ${value ? styles.ctPillActive : ''}`}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span>{label}</span>
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" aria-hidden>
+          <path d="M1.5 3L4 5.5L6.5 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+        </svg>
+      </button>
+      {open && (
+        <div className={styles.ctDropdown}>
+          <button
+            className={`${styles.ctOption} ${value === '' ? styles.ctOptionActive : ''}`}
+            onClick={() => { onChange(''); setOpen(false); }}
+          >
+            None
+          </button>
+          {PRESETS.map((p) => (
+            <button
+              key={p}
+              className={`${styles.ctOption} ${value === p ? styles.ctOptionActive : ''}`}
+              onClick={() => { onChange(p); setOpen(false); }}
+            >
+              <span className={styles.ctOptionLabel}>{CT_LABELS[p]}</span>
+              <span className={styles.ctOptionValue}>{p}</span>
+            </button>
+          ))}
+          <button
+            className={`${styles.ctOption} ${isCustom ? styles.ctOptionActive : ''}`}
+            onClick={() => { onCustom(); setOpen(false); }}
+          >
+            Custom…
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function getLanguage(contentType: string) {
   if (contentType.includes('json')) return json();
@@ -121,7 +196,9 @@ export function BodyEditor({
   copyFlash = false,
 }: BodyEditorProps) {
   const [validation, setValidation] = useState<{ valid: boolean; error?: string }>({ valid: true });
+  const [inCustomMode, setInCustomMode] = useState(() => !PRESETS.includes(contentType) && contentType !== '');
   const isPreset = PRESETS.includes(contentType);
+  const showCustomInput = inCustomMode || (!isPreset && contentType !== '');
   const extensions = useMemo(() => {
     const lang = getLanguage(contentType);
     return lang ? [...appThemeExtension, lang] : appThemeExtension;
@@ -137,22 +214,12 @@ export function BodyEditor({
         {!readOnly && (
           <div className={styles.toolbar}>
             <span className={styles.ctLabel}>Content-Type</span>
-            <select
-              className={styles.ctSelect}
-              value={isPreset ? contentType : '__custom__'}
-              onChange={(e) => {
-                if (e.target.value !== '__custom__') {
-                  onContentTypeChange?.(e.target.value);
-                }
-              }}
-            >
-              <option value="">None</option>
-              {PRESETS.map(p => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-              <option value="__custom__">Custom…</option>
-            </select>
-            {!isPreset && contentType !== '' && (
+            <ContentTypeSelector
+              value={contentType}
+              onChange={(ct) => { setInCustomMode(false); onContentTypeChange?.(ct); }}
+              onCustom={() => setInCustomMode(true)}
+            />
+            {showCustomInput && (
               <input
                 className={styles.ctInput}
                 value={contentType}

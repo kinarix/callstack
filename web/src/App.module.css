@@ -53,6 +53,7 @@
   margin: 8px 8px 8px 0;
   border-radius: 10px;
   border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-md);
   min-width: 0;
   min-height: 0;
 }
