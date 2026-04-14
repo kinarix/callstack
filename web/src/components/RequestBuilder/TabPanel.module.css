@@ -1,7 +1,8 @@
 .tabPanel {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   background: var(--bg-primary);
   overflow: hidden;
 }
@@ -168,6 +169,7 @@
   border-bottom: 1px solid var(--border-primary);
   background: var(--bg-secondary);
   overflow: hidden;
+  --kv-add-bg: var(--bg-secondary);
 }
 
 .pinnedHeader {
@@ -187,7 +189,9 @@
 
 .pinnedContent {
   flex: 1;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   min-height: 0;
 }
 
