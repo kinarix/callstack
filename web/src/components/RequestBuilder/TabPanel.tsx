@@ -167,10 +167,11 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
   const bodySize = useMemo(() => formatBodySize(request.body), [request.body]);
   const bodyValidation = useMemo(() => validateBody(request.body, currentContentType), [request.body, currentContentType]);
 
-  const TABS: { name: TabName; label: string; count?: number }[] = [
+  const hasMissingFiles = files.some(f => f.path === '');
+  const TABS: { name: TabName; label: string; count?: number; warn?: boolean }[] = [
     { name: 'params', label: 'Params', count: request.params.filter(p => p.key).length || undefined },
     { name: 'headers', label: 'Headers', count: request.headers.filter(h => h.key).length || undefined },
-    { name: 'files', label: 'Files', count: files.length || undefined },
+    { name: 'files', label: 'Files', count: files.length || undefined, warn: hasMissingFiles || undefined },
     { name: 'body', label: 'Body' },
     { name: 'script', label: 'Scripting' },
   ];
@@ -220,6 +221,9 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
                 {tab.label}
                 {tab.count != null && (
                   <span className={styles.count}>{tab.count}</span>
+                )}
+                {tab.warn && (
+                  <span className={styles.warn}>⚠</span>
                 )}
               </button>
               {isPinnable && (

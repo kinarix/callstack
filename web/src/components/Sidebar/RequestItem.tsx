@@ -142,6 +142,9 @@ export function RequestItem({
           <div className={styles.name}>
             <span className={styles.nameText}>{request.name}</span>
             {request.imported && <ImportedIcon />}
+            {request.files?.some(f => f.path === '') && (
+              <span className={styles.missingBadge} title="Some attached files are missing — open request to re-attach">⚠</span>
+            )}
             {assignedShortcut && <span className={styles.shortcutBadge}>{assignedShortcut}</span>}
           </div>
         )}
