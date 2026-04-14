@@ -3,6 +3,7 @@ import type { HTTPMethod, KeyValue } from './types';
 // ── Schema version ──────────────────────────────────────
 export const CALLSTACK_SCHEMA_VERSION = '1.0.0';
 export const CALLSTACK_FILE_EXTENSION = '.callstack';
+export const CALLSTACK_PLAIN_EXTENSION = '.callstack.json';
 
 // ── Manifest (root of manifest.json inside archive) ─────
 export interface CallstackManifest {
@@ -50,7 +51,6 @@ export interface ExportAttachment {
   name: string;
   size: number;
   mime: string;
-  archivePath: string; // path within ZIP, e.g. "attachments/abc123.bin"
 }
 
 // ── Environment ─────────────────────────────────────────

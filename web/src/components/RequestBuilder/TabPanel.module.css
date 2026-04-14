@@ -122,6 +122,15 @@
   font-weight: 600;
 }
 
+.warn {
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent-put) 20%, transparent);
+  color: var(--accent-put);
+  font-weight: 700;
+}
+
 /* ── Pin button ────────────────────────────────────────── */
 
 .pinBtn {

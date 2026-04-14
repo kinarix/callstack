@@ -127,6 +127,14 @@
   color: var(--text-tertiary);
 }
 
+.formatExt {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+  margin-left: 4px;
+}
+
 .callstackOptions {
   display: flex;
   flex-direction: column;

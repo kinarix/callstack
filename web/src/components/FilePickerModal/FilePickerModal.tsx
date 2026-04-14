@@ -189,7 +189,7 @@ export function FilePickerModal({ title, confirmLabel, onParsed, onCallstackPars
                 <UploadIcon />
               </div>
               <p className={styles.dropHint}>
-                {isDragging ? 'Release to upload' : 'Drop a .callstack or .json file here'}
+                {isDragging ? 'Release to upload' : 'Drop a .callstack, .callstack.json, or .json file here'}
               </p>
               {!isDragging && (
                 <>
@@ -202,7 +202,7 @@ export function FilePickerModal({ title, confirmLabel, onParsed, onCallstackPars
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".callstack,.json,application/json"
+                accept=".callstack,.callstack.json,.json,application/json"
                 style={{ display: 'none' }}
                 onChange={handleFileInput}
               />
@@ -259,7 +259,9 @@ export function FilePickerModal({ title, confirmLabel, onParsed, onCallstackPars
                 )}
                 {callstackPreview.hasResponses && <span>responses included</span>}
               </div>
-              <p className={styles.formatBadge}>Callstack Archive</p>
+              <p className={styles.formatBadge}>
+                {callstackFile?.name.endsWith('.callstack.json') ? 'Callstack Plain JSON' : 'Callstack Archive'}
+              </p>
               <button className={styles.retryBtn} onClick={handleRetry} type="button">
                 Choose a different file
               </button>

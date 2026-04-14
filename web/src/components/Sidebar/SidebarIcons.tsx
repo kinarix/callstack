@@ -3,8 +3,7 @@ import styles from './Sidebar.module.css';
 export function Chevron({ expanded }: { expanded: boolean }) {
   return (
     <svg
-      className={styles.chevron}
-      style={{ transform: expanded ? undefined : 'rotate(-90deg)' }}
+      className={`${styles.chevron}${expanded ? ` ${styles.chevronOpen}` : ''}`}
       width="13"
       height="13"
       viewBox="0 0 13 13"
