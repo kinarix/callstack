@@ -5,7 +5,6 @@ import type {
   ExportFolder,
   ExportRequest,
   ExportResponse,
-  ExportAttachment,
   ArchivePreview,
 } from '../lib/callstackSchema';
 import { CALLSTACK_SCHEMA_VERSION } from '../lib/callstackSchema';
@@ -34,7 +33,7 @@ export async function exportProject(opts: ExportOptions): Promise<Blob> {
     return { _ref: ref, name: f.name };
   });
 
-  // Build request ref map and collect attachments
+  // Build request ref map
   const requestRefMap = new Map<number, string>();
   const exportRequests: ExportRequest[] = [];
 
@@ -42,24 +41,6 @@ export async function exportProject(opts: ExportOptions): Promise<Blob> {
     const r = requests[i];
     const ref = `req-${i}`;
     requestRefMap.set(r.id, ref);
-
-    const attachments: ExportAttachment[] = [];
-    if (r.files && r.files.length > 0) {
-      for (let j = 0; j < r.files.length; j++) {
-        const file = r.files[j];
-        const archivePath = `attachments/${ref}-${j}-${file.name}`;
-        attachments.push({
-          name: file.name,
-          size: file.size,
-          mime: file.mime,
-          archivePath,
-        });
-        // Store binary data in ZIP if available
-        if (file.data) {
-          zip.file(archivePath, file.data, { base64: true });
-        }
-      }
-    }
 
     exportRequests.push({
       _ref: ref,
@@ -73,7 +54,7 @@ export async function exportProject(opts: ExportOptions): Promise<Blob> {
       preScript: r.pre_script,
       postScript: r.post_script,
       position: r.position,
-      attachments,
+      attachments: (r.files ?? []).map(({ name, size, mime }) => ({ name, size, mime })),
     });
   }
 
@@ -117,26 +98,113 @@ export async function exportProject(opts: ExportOptions): Promise<Blob> {
   return zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
 }
 
+export async function exportProjectPlain(opts: ExportOptions): Promise<string> {
+  const { project, folders, requests, environments, responses, selectedEnvironmentName } = opts;
+
+  const folderRefMap = new Map<number, string>();
+  const exportFolders: ExportFolder[] = folders.map((f, i) => {
+    const ref = `folder-${i}`;
+    folderRefMap.set(f.id, ref);
+    return { _ref: ref, name: f.name };
+  });
+
+  const requestRefMap = new Map<number, string>();
+  const exportRequests: ExportRequest[] = [];
+
+  for (let i = 0; i < requests.length; i++) {
+    const r = requests[i];
+    const ref = `req-${i}`;
+    requestRefMap.set(r.id, ref);
+
+    exportRequests.push({
+      _ref: ref,
+      folderRef: r.folder_id != null ? (folderRefMap.get(r.folder_id) ?? null) : null,
+      name: r.name,
+      method: r.method,
+      url: r.url,
+      params: r.params,
+      headers: r.headers,
+      body: r.body,
+      preScript: r.pre_script,
+      postScript: r.post_script,
+      position: r.position,
+      attachments: (r.files ?? []).map(({ name, size, mime }) => ({ name, size, mime })),
+    });
+  }
+
+  let exportResponses: ExportResponse[] | undefined;
+  if (responses && responses.length > 0) {
+    exportResponses = responses
+      .filter((resp) => requestRefMap.has(resp.request_id))
+      .map((resp) => ({
+        requestRef: requestRefMap.get(resp.request_id)!,
+        status: resp.status,
+        statusText: resp.statusText,
+        headers: resp.headers,
+        body: resp.body,
+        timeMs: resp.time,
+        size: resp.size,
+        timestamp: resp.timestamp ?? 0,
+      }));
+  }
+
+  const manifest: CallstackManifest = {
+    schemaVersion: CALLSTACK_SCHEMA_VERSION,
+    exportedAt: new Date().toISOString(),
+    generator: `callstack/${__APP_VERSION__}`,
+    project: {
+      name: project.name,
+      description: project.description,
+      ...(selectedEnvironmentName ? { selectedEnvironmentName } : {}),
+    },
+    folders: exportFolders,
+    requests: exportRequests,
+    environments: environments.map((e) => ({
+      name: e.name,
+      variables: e.variables,
+    })),
+    ...(exportResponses ? { responses: exportResponses } : {}),
+  };
+
+  return JSON.stringify(manifest, null, 2);
+}
+
 // ── Import ──────────────────────────────────────────────
 
 export interface ParsedCallstackExport {
   manifest: CallstackManifest;
-  attachmentData: Map<string, string>; // archivePath → base64 data
 }
 
 export async function importArchive(file: File): Promise<ParsedCallstackExport> {
-  const buffer = await file.arrayBuffer();
-  const zip = await JSZip.loadAsync(buffer);
+  const header = new Uint8Array(await file.slice(0, 2).arrayBuffer());
+  const isZip = header[0] === 0x50 && header[1] === 0x4b;
 
-  const manifestFile = zip.file('manifest.json');
-  if (!manifestFile) {
-    throw new Error('Invalid .callstack file: missing manifest.json');
+  if (isZip) {
+    const buffer = await file.arrayBuffer();
+    const zip = await JSZip.loadAsync(buffer);
+
+    const manifestFile = zip.file('manifest.json');
+    if (!manifestFile) {
+      throw new Error('Invalid .callstack file: missing manifest.json');
+    }
+
+    const manifestText = await manifestFile.async('text');
+    const manifest = JSON.parse(manifestText) as CallstackManifest;
+
+    const majorVersion = parseInt(manifest.schemaVersion.split('.')[0], 10);
+    if (isNaN(majorVersion) || majorVersion > 1) {
+      throw new Error(
+        `Unsupported schema version: ${manifest.schemaVersion}. This version of Callstack supports schema v1.x.x.`
+      );
+    }
+
+    return { manifest };
   }
 
-  const manifestText = await manifestFile.async('text');
-  const manifest = JSON.parse(manifestText) as CallstackManifest;
+  // Plain JSON format
+  const text = await file.text();
+  const manifest = JSON.parse(text) as CallstackManifest;
 
-  // Validate schema version (reject if major version > 1)
   const majorVersion = parseInt(manifest.schemaVersion.split('.')[0], 10);
   if (isNaN(majorVersion) || majorVersion > 1) {
     throw new Error(
@@ -144,34 +212,28 @@ export async function importArchive(file: File): Promise<ParsedCallstackExport> 
     );
   }
 
-  // Extract attachment data
-  const attachmentData = new Map<string, string>();
-  for (const req of manifest.requests) {
-    for (const att of req.attachments) {
-      const zipFile = zip.file(att.archivePath);
-      if (zipFile) {
-        const data = await zipFile.async('base64');
-        attachmentData.set(att.archivePath, data);
-      }
-    }
-  }
-
-  return { manifest, attachmentData };
+  return { manifest };
 }
 
 // ── Preview (lightweight) ───────────────────────────────
 
 export async function previewArchive(file: File): Promise<ArchivePreview> {
-  const buffer = await file.arrayBuffer();
-  const zip = await JSZip.loadAsync(buffer);
+  const header = new Uint8Array(await file.slice(0, 2).arrayBuffer());
+  const isZip = header[0] === 0x50 && header[1] === 0x4b;
 
-  const manifestFile = zip.file('manifest.json');
-  if (!manifestFile) {
-    throw new Error('Invalid .callstack file: missing manifest.json');
+  let manifest: CallstackManifest;
+
+  if (isZip) {
+    const buffer = await file.arrayBuffer();
+    const zip = await JSZip.loadAsync(buffer);
+    const manifestFile = zip.file('manifest.json');
+    if (!manifestFile) {
+      throw new Error('Invalid .callstack file: missing manifest.json');
+    }
+    manifest = JSON.parse(await manifestFile.async('text')) as CallstackManifest;
+  } else {
+    manifest = JSON.parse(await file.text()) as CallstackManifest;
   }
-
-  const manifestText = await manifestFile.async('text');
-  const manifest = JSON.parse(manifestText) as CallstackManifest;
 
   return {
     name: manifest.project.name,
@@ -196,10 +258,14 @@ export async function detectFileFormat(file: File): Promise<ImportFileFormat> {
     return 'callstack';
   }
 
-  // Try parsing as JSON for Postman
+  // Try parsing as JSON
   try {
     const text = await file.text();
     const json = JSON.parse(text);
+    // Plain callstack format has a schemaVersion field
+    if (json?.schemaVersion) {
+      return 'callstack';
+    }
     if (json?.info?.schema?.includes('getpostman.com')) {
       return 'postman';
     }

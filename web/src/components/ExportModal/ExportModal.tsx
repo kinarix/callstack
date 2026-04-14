@@ -3,7 +3,7 @@ import type { Request, Environment } from '../../lib/types';
 import { getMethodColor } from '../../lib/utils';
 import styles from './ExportModal.module.css';
 
-export type ExportFormat = 'postman' | 'callstack';
+export type ExportFormat = 'postman' | 'callstack' | 'callstack-plain';
 
 export interface ExportItem {
   request: Request;
@@ -14,6 +14,7 @@ export interface ExportResult {
   items: ExportItem[];
   format: ExportFormat;
   includeResponses: boolean;
+  inlineAttachments: boolean;
   selectedEnvironmentIds: Set<number>;
 }
 
@@ -41,8 +42,9 @@ export function ExportModal({ title, items, environments, onExport, onCancel }: 
   const [selected, setSelected] = useState<Set<number>>(
     () => new Set(items.map((item) => item.request.id)),
   );
-  const [format, setFormat] = useState<ExportFormat>('callstack');
+  const [format, setFormat] = useState<ExportFormat>('callstack-plain');
   const [includeResponses, setIncludeResponses] = useState(true);
+  const [inlineAttachments, setInlineAttachments] = useState(true);
   const [selectedEnvIds, setSelectedEnvIds] = useState<Set<number>>(
     () => new Set(environments.map((e) => e.id)),
   );
@@ -121,7 +123,7 @@ export function ExportModal({ title, items, environments, onExport, onCancel }: 
 
   const handleExport = useCallback(() => {
     const picked = items.filter((item) => selected.has(item.request.id));
-    onExport({ items: picked, format, includeResponses, selectedEnvironmentIds: selectedEnvIds });
+    onExport({ items: picked, format, includeResponses, inlineAttachments, selectedEnvironmentIds: selectedEnvIds });
   }, [items, selected, format, includeResponses, selectedEnvIds, onExport]);
 
   return (
@@ -143,13 +145,26 @@ export function ExportModal({ title, items, environments, onExport, onCancel }: 
               <input
                 type="radio"
                 name="format"
+                value="callstack-plain"
+                checked={format === 'callstack-plain'}
+                onChange={() => setFormat('callstack-plain')}
+              />
+              <span className={styles.formatText}>
+                <span className={styles.formatName}>Plain JSON <span className={styles.formatExt}>.callstack.json</span></span>
+                <span className={styles.formatDesc}>Single file, git-friendly, diffable</span>
+              </span>
+            </label>
+            <label className={styles.formatOption}>
+              <input
+                type="radio"
+                name="format"
                 value="callstack"
                 checked={format === 'callstack'}
                 onChange={() => setFormat('callstack')}
               />
               <span className={styles.formatText}>
-                <span className={styles.formatName}>Callstack Archive</span>
-                <span className={styles.formatDesc}>Full project backup with scripts & environments</span>
+                <span className={styles.formatName}>Archive <span className={styles.formatExt}>.callstack</span></span>
+                <span className={styles.formatDesc}>ZIP bundle, ideal for sharing</span>
               </span>
             </label>
             <label className={styles.formatOption}>
@@ -167,7 +182,7 @@ export function ExportModal({ title, items, environments, onExport, onCancel }: 
             </label>
           </div>
 
-          {format === 'callstack' && (
+          {(format === 'callstack' || format === 'callstack-plain') && (
             <div className={styles.callstackOptions}>
               <div className={styles.alwaysIncluded}>
                 <span className={styles.includedLabel}>Always included:</span>
@@ -183,6 +198,17 @@ export function ExportModal({ title, items, environments, onExport, onCancel }: 
                 />
                 <span className={styles.optionText}>Include stored responses</span>
               </label>
+              {format === 'callstack-plain' && (
+                <label className={styles.optionRow}>
+                  <input
+                    type="checkbox"
+                    className={styles.checkbox}
+                    checked={inlineAttachments}
+                    onChange={(e) => setInlineAttachments(e.target.checked)}
+                  />
+                  <span className={styles.optionText}>Inline file attachments as base64</span>
+                </label>
+              )}
             </div>
           )}
         </div>

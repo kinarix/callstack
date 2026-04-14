@@ -192,6 +192,14 @@
   transform: scale(1.2);
 }
 
+.missingBadge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-put);
+  line-height: 1;
+}
+
 .shortcutBadge {
   flex-shrink: 0;
   font-size: 10px;

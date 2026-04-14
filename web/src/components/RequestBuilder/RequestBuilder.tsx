@@ -242,10 +242,11 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
     (newFiles: FileAttachment[]) => {
       setFiles(newFiles);
       if (request) {
+        dispatch({ type: 'UPDATE_REQUEST', payload: { ...request, files: newFiles } });
         saveToDb(request.id, { files: newFiles });
       }
     },
-    [request, saveToDb]
+    [request, saveToDb, dispatch]
   );
 
   const handleMethodChange = (method: string) => {

@@ -74,8 +74,7 @@ export interface FileAttachment {
   name: string;
   size: number;
   mime: string;
-  path: string;
-  data?: string; // base64-encoded file contents
+  path: string; // empty string = file not on this machine (imported from another machine)
 }
 
 export interface Environment {
