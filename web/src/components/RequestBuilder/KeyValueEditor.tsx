@@ -32,12 +32,12 @@ export function KeyValueEditor({
     onChange(updated);
   };
 
-  const newValueRef = useRef<HTMLInputElement | null>(null);
+  const newKeyRef = useRef<HTMLInputElement | null>(null);
   const prevLengthRef = useRef(items.length);
 
   useEffect(() => {
     if (items.length > prevLengthRef.current) {
-      newValueRef.current?.focus();
+      newKeyRef.current?.focus();
     }
     prevLengthRef.current = items.length;
   }, [items.length]);
@@ -80,6 +80,7 @@ export function KeyValueEditor({
               autoCorrect="off"
               autoCapitalize="off"
               spellCheck={false}
+              ref={index === items.length - 1 ? newKeyRef : null}
             />
             <input
               type="text"
@@ -92,7 +93,6 @@ export function KeyValueEditor({
               autoCorrect="off"
               autoCapitalize="off"
               spellCheck={false}
-              ref={index === items.length - 1 ? newValueRef : null}
             />
             {!readOnly && (
               <button
