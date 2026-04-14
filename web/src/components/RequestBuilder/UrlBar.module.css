@@ -69,6 +69,7 @@
   align-self: stretch;
   background: var(--bg-tertiary);
   border: 1px solid;
+  box-shadow: var(--shadow-sm);
   border-radius: 4px;
   font-size: 12px;
   font-weight: 700;
@@ -245,12 +246,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: var(--shadow-sm);
   transition: all var(--transition-base);
 }
 
 .sendBtn:hover:not(:disabled) {
   transform: scale(1.1);
-  box-shadow: 0 2px 8px rgba(0, 255, 136, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 255, 136, 0.3);
 }
 
 .sendBtn:active:not(:disabled) {

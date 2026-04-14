@@ -58,7 +58,7 @@ if [ -n "$UNPUSHED" ]; then
     echo -e "${BLUE}Unpushed commits:${NC}"
     echo "$UNPUSHED"
     echo ""
-    DEFAULT_MSG=$(git log origin/"$CURRENT_BRANCH"..HEAD --pretty=format:"%s" 2>/dev/null | paste -sd '. ' -)
+    DEFAULT_MSG=$(git log origin/"$CURRENT_BRANCH"..HEAD --pretty=format:"%s" 2>/dev/null | paste -sd '|' - | sed 's/|/. /g')
 else
     DEFAULT_MSG=""
 fi

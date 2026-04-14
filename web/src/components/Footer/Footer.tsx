@@ -102,12 +102,14 @@ export function Footer() {
     e.preventDefault();
     const startY = e.clientY;
     const startH = height;
+    document.body.style.userSelect = 'none';
     const onMove = (ev: MouseEvent) => {
       const h = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, startH - (ev.clientY - startY)));
       setHeight(h);
       localStorage.setItem('callstack.footerHeight', String(h));
     };
     const onUp = () => {
+      document.body.style.userSelect = '';
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
     };
