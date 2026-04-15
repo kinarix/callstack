@@ -42,6 +42,7 @@ export interface ScriptResult {
   mutatedRequest?: ScriptRequest;
   envMutations: EnvMutations;
   secretMutations: EnvMutations;
+  emitMutations: Record<string, string>;
   error?: string;
 }
 
@@ -64,7 +65,7 @@ export function runScript(
   }
 ): ScriptResult {
   if (!script.trim()) {
-    return { logs: [], testResults: [], envMutations: { set: {}, unset: [] }, secretMutations: { set: {}, unset: [] } };
+    return { logs: [], testResults: [], envMutations: { set: {}, unset: [] }, secretMutations: { set: {}, unset: [] }, emitMutations: {} };
   }
 
   const logs: string[] = [];
@@ -163,15 +164,20 @@ export function runScript(
       )
     : undefined;
 
+  const emitMutations: Record<string, string> = {};
+  const emitFn = (key: unknown, value: unknown) => {
+    emitMutations[String(key)] = String(value);
+  };
+
   try {
     // eslint-disable-next-line no-new-func
-    const fn = new Function('request', 'response', 'console', 'test', 'env', 'Warn', 'Success', script);
-    fn(requestClone, responseCopy, consoleMock, testFn, envObj, Warn, Success);
+    const fn = new Function('request', 'response', 'console', 'test', 'env', 'Warn', 'Success', 'emit', script);
+    fn(requestClone, responseCopy, consoleMock, testFn, envObj, Warn, Success, emitFn);
   } catch (e) {
     const errMsg = e instanceof Error ? e.message : String(e);
     logs.push('[error] Script error: ' + errMsg);
-    return { logs, testResults, mutatedRequest: requestClone, envMutations, secretMutations, error: errMsg };
+    return { logs, testResults, mutatedRequest: requestClone, envMutations, secretMutations, emitMutations: {}, error: errMsg };
   }
 
-  return { logs, testResults, mutatedRequest: requestClone, envMutations, secretMutations };
+  return { logs, testResults, mutatedRequest: requestClone, envMutations, secretMutations, emitMutations };
 }

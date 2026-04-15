@@ -9,135 +9,196 @@
 .editor {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-2);
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding: var(--space-2);
 }
 
 .rows {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 2px;
 }
 
 .row {
   display: flex;
-  gap: var(--space-1);
   align-items: center;
+  gap: var(--space-1);
+  font-size: 12.5px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border-secondary);
+  transition: background-color var(--transition-base);
+}
+
+.row:hover,
+.row:focus-within {
+  background: var(--bg-secondary);
 }
 
 .checkbox {
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-secondary);
-  border-radius: 4px;
-  color: var(--text-tertiary);
-  cursor: pointer;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  transition: all var(--transition-base);
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 11px;
+  opacity: 0.4;
+  transition: opacity var(--transition-base), color var(--transition-base);
 }
 
-.checkbox:hover {
-  border-color: var(--accent-post);
+.row:hover .checkbox {
+  opacity: 0.7;
 }
 
 .checkbox.checked {
-  background: var(--accent-post);
-  border-color: var(--accent-post);
-  color: var(--bg-primary);
+  opacity: 1;
+  color: var(--accent-post);
 }
 
 .input {
-  flex: 1;
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--border-secondary);
-  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  color: var(--text-primary);
-  background: var(--bg-secondary);
-  transition: all var(--transition-base);
-}
-
-.input:first-of-type {
-  flex: 0 1 150px;
-  min-width: 100px;
-}
-
-.input::placeholder {
-  color: var(--text-tertiary);
+  font-size: 12.5px;
+  padding: 0;
+  min-width: 0;
 }
 
 .input:focus {
   outline: none;
-  border-color: var(--accent-post);
 }
 
 .input:disabled {
-  background: var(--bg-tertiary);
   cursor: not-allowed;
-  opacity: 0.7;
+  opacity: 0.5;
+}
+
+/* Key column — matches response .headerKey */
+.input.keyCell,
+.row > input.input:nth-of-type(1) {
+  flex: 0 0 200px;
+  min-width: 200px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Value column — matches response .headerValue */
+.row > :global(.wrapper),
+.input.valueCell {
+  flex: 1;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.input::placeholder {
+  color: var(--text-tertiary);
+  opacity: 0.5;
+  font-weight: 400;
 }
 
 .deleteBtn {
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  color: var(--text-tertiary);
-  font-size: 18px;
-  cursor: pointer;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--transition-base);
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--transition-base), color var(--transition-base);
+}
+
+.row:hover .deleteBtn,
+.row:focus-within .deleteBtn {
+  opacity: 0.6;
 }
 
 .deleteBtn:hover {
+  opacity: 1 !important;
   color: var(--status-error);
-  transform: scale(1.2);
+}
+
+.confirm {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+  padding-right: 4px;
+}
+
+.confirmYes,
+.confirmNo {
+  background: none;
+  border: 1px solid var(--border-primary);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: 'Outfit', sans-serif;
+  padding: 2px 8px;
+  border-radius: 3px;
+  transition: background-color var(--transition-base);
+}
+
+.confirmYes {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+.confirmYes:hover {
+  background: rgba(34, 197, 94, 0.3);
+  border-color: #16a34a;
+}
+
+.confirmNo {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.confirmNo:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: #dc2626;
 }
 
 .addRow {
   display: flex;
   flex-shrink: 0;
-  background: var(--kv-add-bg, var(--bg-primary));
-  /* left: checkbox(24px) + gap(8px) + key input(150px) + gap(8px) */
-  padding-left: calc(24px + var(--space-1) + 150px + var(--space-1));
-  /* right: gap(8px) + delete btn(24px) */
-  padding-right: calc(var(--space-1) + 24px);
-  padding-bottom: var(--space-1);
+  padding: var(--space-2) 0 var(--space-1);
 }
 
 .addBtn {
-  margin-left: auto;
-  padding: 3px 10px;
-  background: transparent;
-  border: 1px solid var(--accent-post);
-  border-radius: var(--radius-md);
-  color: var(--accent-post);
+  background: var(--accent-post);
+  border: none;
+  color: white;
+  font-family: 'Outfit', sans-serif;
   font-size: 12px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all var(--transition-base);
+  transition: background-color var(--transition-base), transform var(--transition-base);
 }
 
 .addBtn:hover {
-  background: var(--accent-post);
-  color: #fff;
+  background: var(--accent-post-hover, #2563eb);
+}
+
+.addBtn:active {
+  transform: translateY(1px);
 }
 
 .empty {
-  padding: var(--space-2);
+  padding: var(--space-3);
   color: var(--text-tertiary);
   font-size: 12px;
   text-align: center;

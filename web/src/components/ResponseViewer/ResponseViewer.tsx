@@ -89,11 +89,12 @@ const responseViewerEditorTheme = EditorView.theme({
 });
 
 const responseViewerHighlight = HighlightStyle.define([
-  { tag: tags.propertyName, color: 'var(--syntax-key)' },
+  { tag: tags.keyword, color: 'var(--syntax-keyword)' },
   { tag: tags.string, color: 'var(--syntax-string)' },
   { tag: [tags.number, tags.integer, tags.float], color: 'var(--syntax-number)' },
   { tag: [tags.bool, tags.null], color: 'var(--syntax-bool)' },
-  { tag: tags.keyword, color: 'var(--syntax-key)' },
+  { tag: tags.propertyName, color: 'var(--syntax-property)' },
+  { tag: tags.comment, color: 'var(--syntax-comment)', fontStyle: 'italic' },
 ]);
 
 const responseViewerThemeExtension = [responseViewerEditorTheme, syntaxHighlighting(responseViewerHighlight)];

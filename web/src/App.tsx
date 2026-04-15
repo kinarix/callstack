@@ -3,6 +3,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { AppProvider, useApp } from './context/AppContext';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { RequestBuilder } from './components/RequestBuilder/RequestBuilder';
+import AutomationView from './components/AutomationView/AutomationView';
+import EnvironmentView from './components/EnvironmentView/EnvironmentView';
 import { Footer } from './components/Footer/Footer';
 import { SettingsModal } from './components/SettingsModal/SettingsModal';
 import styles from './App.module.css';
@@ -12,7 +14,7 @@ import { formatBody } from './lib/formatBody';
 
 function AppContent() {
   const { state, dispatch } = useApp();
-  const { loadUserProjects, loadUserRequests, loadFolders, listEnvironments, createRequest, duplicateRequest, getLastResponse } = useDatabase();
+  const { loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations, createRequest, duplicateRequest, getLastResponse } = useDatabase();
   const { settings, setZoom, setShortcut, resetSettings } = useSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -27,7 +29,13 @@ function AppContent() {
     const v = localStorage.getItem('callstack.sidebarWidth');
     return v ? parseInt(v, 10) : 280;
   });
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('callstack.sidebarCollapsed') === '1';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('callstack.sidebarCollapsed', sidebarCollapsed ? '1' : '0');
+  }, [sidebarCollapsed]);
 
   const startSidebarResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -50,31 +58,68 @@ function AppContent() {
 
   useEffect(() => {
     loadUserProjects(null).then(async (projects) => {
-      dispatch({ type: 'SET_PROJECTS', payload: projects });
-      if (projects.length > 0 && !state.currentProjectId) {
-        dispatch({ type: 'SET_CURRENT_PROJECT', payload: projects[0].id });
+      if (projects.length === 0) {
+        dispatch({ type: 'SET_PROJECTS', payload: projects });
+        return;
       }
-      if (projects.length === 0) return;
-      const [allRequests, allFolders, allEnvs] = await Promise.all([
+
+      // Load all child data BEFORE dispatching anything, so the first render with projects
+      // also has requests/automations — eliminates the "blank intermediate state" flash.
+      const [allRequests, allFolders, allEnvs, allAutomations] = await Promise.all([
         Promise.all(projects.map((p) => loadUserRequests(p.id))).then((r) => r.flat()),
         Promise.all(projects.map((p) => loadFolders(p.id))).then((r) => r.flat()),
         Promise.all(projects.map((p) => listEnvironments(p.id))).then((r) => r.flat()),
+        Promise.all(projects.map((p) => listAutomations(p.id))).then((r) => r.flat()),
       ]);
+
+      // Pick initial project (LS pref → first project)
+      const savedProjectId = localStorage.getItem('callstack.currentProjectId');
+      let initialProjectId: number | null = null;
+      if (savedProjectId) {
+        const id = parseInt(savedProjectId, 10);
+        if (projects.find((p) => p.id === id)) initialProjectId = id;
+      }
+      if (initialProjectId == null) initialProjectId = projects[0].id;
+
+      // If a saved request belongs to a different project, prefer that project
+      const savedReqId = localStorage.getItem('callstack.currentRequestId');
+      let restoredReqId: number | null = null;
+      if (savedReqId) {
+        const id = parseInt(savedReqId, 10);
+        const req = allRequests.find((r) => r.id === id);
+        if (req) {
+          restoredReqId = id;
+          initialProjectId = req.project_id;
+        }
+      }
+
+      // If active automation belongs to a different project, prefer that project
+      const savedAutoId = localStorage.getItem('callstack.activeAutomationId');
+      if (savedAutoId) {
+        const id = parseInt(savedAutoId, 10);
+        const auto = allAutomations.find((a) => a.id === id);
+        if (auto) initialProjectId = auto.projectId;
+      }
+
+      // All dispatches together — React 18 batches into a single render
+      dispatch({ type: 'SET_PROJECTS', payload: projects });
       dispatch({ type: 'SET_REQUESTS', payload: allRequests });
       dispatch({ type: 'SET_FOLDERS', payload: allFolders });
       dispatch({ type: 'SET_ENVIRONMENTS', payload: allEnvs });
-
-      // Restore last selected request
-      const savedId = localStorage.getItem('callstack.currentRequestId');
-      if (savedId) {
-        const id = parseInt(savedId, 10);
-        const req = allRequests.find((r) => r.id === id);
-        if (req) {
-          dispatch({ type: 'SET_CURRENT_REQUEST', payload: id });
-        }
+      dispatch({ type: 'SET_AUTOMATIONS', payload: allAutomations });
+      dispatch({ type: 'SET_CURRENT_PROJECT', payload: initialProjectId });
+      if (restoredReqId != null) {
+        dispatch({ type: 'SET_CURRENT_REQUEST', payload: restoredReqId });
       }
     });
-  }, [dispatch, loadUserProjects, loadUserRequests, loadFolders, listEnvironments]);
+  }, [dispatch, loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations]);
+
+  // Persist current project across sessions
+  useEffect(() => {
+    if (state.currentProjectId != null) {
+      localStorage.setItem('callstack.currentProjectId', String(state.currentProjectId));
+    }
+  }, [state.currentProjectId]);
 
   // Show window and fade splash when app is ready
   useEffect(() => {
@@ -256,7 +301,19 @@ function AppContent() {
         />
         <div className={styles.rightPanel}>
           <div className={styles.main}>
-            {currentRequest ? (
+            {state.activeView === 'automation' && state.activeAutomationId !== null ? (
+              <AutomationView
+                automationId={state.activeAutomationId}
+                showExpandBtn={sidebarCollapsed}
+                onExpand={() => setSidebarCollapsed(false)}
+              />
+            ) : state.activeView === 'environment' && state.activeEnvironmentId !== null ? (
+              <EnvironmentView
+                environmentId={state.activeEnvironmentId}
+                showExpandBtn={sidebarCollapsed}
+                onExpand={() => setSidebarCollapsed(false)}
+              />
+            ) : currentRequest ? (
               <RequestBuilder
                 request={currentRequest}
                 showExpandBtn={sidebarCollapsed}

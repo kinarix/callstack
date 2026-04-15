@@ -40,6 +40,10 @@ const editorTheme = EditorView.theme({
     fontFamily: "'JetBrains Mono', monospace",
     fontSize: '12px',
   },
+  '.cm-content': {
+    lineHeight: '1.6',
+    padding: '8px 0',
+  },
   '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--accent-get)' },
   '.cm-selectionBackground': { backgroundColor: 'rgba(59, 130, 246, 0.3) !important' },
   '&.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(59, 130, 246, 0.3) !important' },
@@ -274,6 +278,11 @@ const SIGNATURES: Record<string, SigDef> = {
     params: ['value: any', 'replacer?: null | Function', 'space?: number | string'],
     doc: 'Serialize a value to a JSON string.',
   },
+  emit: {
+    sig: 'emit(key, value)',
+    params: ['key: string', 'value: any'],
+    doc: 'Emit a short-lived run-scoped value for use in automation branch conditions.',
+  },
 };
 
 // ── Signature help state field ────────────────────────────────────────────────
@@ -491,6 +500,12 @@ function makeCompletionSource(isPost: boolean, envVarKeys: string[] = [], secret
         info: 'Serialize a value to JSON.',
         type: 'function',
       }),
+      snippetCompletion('emit(${1:key}, ${2:value})', {
+        label: 'emit',
+        detail: '(key, value)',
+        info: 'Emit a short-lived run-scoped value for use in automation branch conditions.',
+        type: 'function',
+      }),
     ];
 
     if (isPost) {
@@ -511,6 +526,7 @@ function makeCompletionSource(isPost: boolean, envVarKeys: string[] = [], secret
 // ── Props ────────────────────────────────────────────────────────────────────
 
 interface ScriptEditorProps {
+  requestId?: number;
   preScript: string;
   postScript: string;
   onChange: (changes: { pre_script?: string; post_script?: string }) => void;
@@ -523,8 +539,29 @@ interface ScriptEditorProps {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function ScriptEditor({ preScript, postScript, onChange, consoleLogs, onClearLogs, envVars = [], secrets = [], onTest }: ScriptEditorProps) {
-  const [activeTab, setActiveTab] = useState<ScriptTab>('pre');
+const VALID_SCRIPT_TABS: ScriptTab[] = ['pre', 'post', 'examples'];
+
+function loadScriptTab(requestId?: number): ScriptTab {
+  if (requestId == null) return 'pre';
+  const stored = localStorage.getItem('callstack.scriptTab.' + requestId);
+  if (stored && (VALID_SCRIPT_TABS as string[]).includes(stored)) {
+    return stored as ScriptTab;
+  }
+  return 'pre';
+}
+
+export function ScriptEditor({ requestId, preScript, postScript, onChange, consoleLogs, onClearLogs, envVars = [], secrets = [], onTest }: ScriptEditorProps) {
+  const [activeTab, setActiveTab] = useState<ScriptTab>(() => loadScriptTab(requestId));
+
+  useEffect(() => {
+    setActiveTab(loadScriptTab(requestId));
+  }, [requestId]);
+
+  useEffect(() => {
+    if (requestId != null) {
+      localStorage.setItem('callstack.scriptTab.' + requestId, activeTab);
+    }
+  }, [activeTab, requestId]);
   const [envOpen, setEnvOpen] = useState(false);
   const [envHeight, setEnvHeight] = useState(110);
   const [consoleHeight, setConsoleHeight] = useState(120);
