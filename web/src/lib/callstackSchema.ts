@@ -14,6 +14,7 @@ export interface CallstackManifest {
   folders: ExportFolder[];
   requests: ExportRequest[];
   environments: ExportEnvironment[];
+  automations?: ExportAutomation[];
   responses?: ExportResponse[];
 }
 
@@ -71,6 +72,31 @@ export interface ExportResponse {
   timestamp: number;
 }
 
+// ── Automation ──────────────────────────────────────────
+export type ExportBranchCondition =
+  | { type: 'lastRequestPass' }
+  | { type: 'lastRequestFail' }
+  | { type: 'lastStatusGte'; value: number }
+  | { type: 'lastStatusLt'; value: number }
+  | { type: 'emittedEquals'; key: string; value: string }
+  | { type: 'emittedExists'; key: string }
+  | { type: 'emittedTruthy'; key: string };
+
+export type ExportAutomationStep =
+  | { id: string; type: 'request'; requestRef: string | null }
+  | { id: string; type: 'delay'; delayMs: number }
+  | { id: string; type: 'repeat'; count: number; steps: ExportAutomationStep[] }
+  | { id: string; type: 'branch'; condition: ExportBranchCondition; trueSteps: ExportAutomationStep[]; falseSteps: ExportAutomationStep[] }
+  | { id: string; type: 'fanout'; lanes: ExportAutomationStep[][] }
+  | { id: string; type: 'stop' }
+  | { id: string; type: 'log'; scope: string; object: string };
+
+export interface ExportAutomation {
+  _ref: string;
+  name: string;
+  steps: ExportAutomationStep[];
+}
+
 // ── Import types ────────────────────────────────────────
 export type ImportStrategy = 'new-project' | 'merge-into';
 
@@ -82,5 +108,6 @@ export interface ArchivePreview {
   folderCount: number;
   requestCount: number;
   environmentCount: number;
+  automationCount: number;
   hasResponses: boolean;
 }
