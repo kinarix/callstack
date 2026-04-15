@@ -61,6 +61,16 @@
   flex-shrink: 0;
 }
 
+.lastAutomationBadge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #0ea5e9;
+  color: #fff;
+  flex-shrink: 0;
+}
+
 .lastUrl {
   font-size: 11px;
   font-family: 'JetBrains Mono', monospace;
@@ -192,6 +202,34 @@
   flex-shrink: 0;
   width: 10px;
   text-align: center;
+}
+
+.logChevronSpacer {
+  flex-shrink: 0;
+  width: 10px;
+}
+
+.logRowAutomation .logSummary {
+  background: color-mix(in srgb, #0ea5e9 5%, transparent);
+}
+
+.logAutomationBadge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #0ea5e9;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.logAutomationLabel {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .logTime {

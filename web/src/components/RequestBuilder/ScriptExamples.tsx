@@ -11,6 +11,72 @@ interface Example {
 }
 
 const EXAMPLES: Example[] = [
+  // Random Data Tokens
+  {
+    id: 'random-tokens-reference',
+    category: 'Random Data',
+    title: 'Random Data Tokens Reference',
+    description: 'Use {{$randomXxx}} tokens in URL, params, headers, or body to inject realistic fake data. Each send generates fresh values. Perfect for testing with realistic data without hardcoding. Tokens work in templates: {{$randomEmail}}, {{$randomUUID}}, {{$timestamp}}, etc.',
+    target: 'both',
+    code: `// Use random data tokens in URL, params, headers, or body
+// Each {{$randomXxx}} generates a fresh value on every send
+
+// IDs & Identification
+{{$randomUUID}}        // e.g. 550e8400-e29b-41d4-a716-446655440000
+{{$guid}}              // alias for $randomUUID
+{{$timestamp}}         // e.g. 1713177600 (Unix seconds)
+{{$isoTimestamp}}      // e.g. 2024-04-15T12:00:00.000Z
+
+// Names & People
+{{$randomFirstName}}   // e.g. John
+{{$randomLastName}}    // e.g. Doe
+{{$randomFullName}}    // e.g. John Doe
+{{$randomUserName}}    // e.g. john_doe42
+{{$randomJobTitle}}    // e.g. Product Manager
+{{$randomCompanyName}} // e.g. ACME Corp
+
+// Contact & Web
+{{$randomEmail}}       // e.g. john@example.com
+{{$randomPhoneNumber}} // e.g. (555) 123-4567
+{{$randomUrl}}         // e.g. https://example.com/image
+{{$randomDomainName}}  // e.g. example.com
+{{$randomPassword}}    // e.g. mK9$vL2@xQ
+
+// Network
+{{$randomIP}}          // e.g. 192.168.1.1
+{{$randomIPV6}}        // e.g. 2001:0db8::1
+{{$randomMACAddress}}  // e.g. 00:1A:2B:3C:4D:5E
+
+// Numbers & Colors
+{{$randomInt}}         // e.g. 543 (0-1000)
+{{$randomFloat}}       // e.g. 123.45
+{{$randomColor}}       // e.g. red
+{{$randomHexColor}}    // e.g. #FF5733
+
+// Text & Lorem
+{{$randomLoremWord}}       // e.g. lorem
+{{$randomLoremSentence}}   // e.g. Lorem ipsum dolor sit amet
+{{$randomLoremParagraph}}  // longer paragraph
+
+// Location
+{{$randomCity}}        // e.g. San Francisco
+{{$randomCountry}}     // e.g. United States
+{{$randomStreetAddress}} // e.g. 123 Main St
+{{$randomZipCode}}     // e.g. 94105
+
+// Example URL with multiple tokens:
+// https://api.example.com/users?id={{$randomUUID}}&created={{$timestamp}}
+//
+// Example JSON body:
+// {
+//   "id": "{{$randomUUID}}",
+//   "name": "{{$randomFullName}}",
+//   "email": "{{$randomEmail}}",
+//   "phone": "{{$randomPhoneNumber}}",
+//   "registered_at": "{{$isoTimestamp}}"
+// }`,
+  },
+
   // Tests
   {
     id: 'test-status',
@@ -523,6 +589,62 @@ test('Check deprecated headers', () => {
   }
 });`,
   },
+  // Emitter — short-lived values for branch conditions
+  {
+    id: 'emit-status-ok',
+    category: 'Emitter',
+    title: 'Emit success flag',
+    description: 'Emit a boolean flag based on the response status. Use "Emitted key is truthy" with key isOk in a branch condition to route the automation based on whether this request succeeded.',
+    target: 'post',
+    code: `// Emit a flag that branch conditions can check
+emit('isOk', response.status >= 200 && response.status < 300);`,
+  },
+  {
+    id: 'emit-json-field',
+    category: 'Emitter',
+    title: 'Emit a JSON field',
+    description: 'Parse the response body and emit a specific field value. Use "Emitted equals" with key status and value active in a branch condition to take different paths based on the value.',
+    target: 'post',
+    code: `// Parse response and emit a field for branching
+const body = JSON.parse(response.body);
+emit('status', body.status);          // e.g. "active" / "inactive"
+emit('userId', String(body.user.id)); // always emit as string`,
+  },
+  {
+    id: 'emit-token-expiry',
+    category: 'Emitter',
+    title: 'Emit token expiry check',
+    description: 'Decode a JWT expiry claim and emit whether the token is expired. Branch on "Emitted key is truthy" with key tokenExpired to conditionally refresh the token before continuing.',
+    target: 'post',
+    code: `// Check if a JWT in the response is already expired
+const body = JSON.parse(response.body);
+const token = body.accessToken || env.get('authToken');
+
+if (token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const isExpired = payload.exp * 1000 < Date.now();
+    emit('tokenExpired', isExpired);
+    console.log('[info] Token expires at ' + new Date(payload.exp * 1000).toISOString());
+  } catch {
+    emit('tokenExpired', true); // treat unparseable token as expired
+  }
+}`,
+  },
+  {
+    id: 'emit-retry-after',
+    category: 'Emitter',
+    title: 'Emit rate-limit signal',
+    description: 'Detect a 429 Too Many Requests response and emit a flag. Branch on "Emitted key is truthy" with key rateLimited to stop the automation or route to a delay step.',
+    target: 'post',
+    code: `// Detect rate limiting so a branch can pause or stop
+emit('rateLimited', response.status === 429);
+
+if (response.status === 429) {
+  const retryAfter = response.headers.find(h => h.key.toLowerCase() === 'retry-after');
+  console.log('[warn] Rate limited. Retry-After: ' + (retryAfter?.value ?? 'unknown'));
+}`,
+  },
 ];
 
 const CATEGORIES = [
@@ -532,6 +654,7 @@ const CATEGORIES = [
   'Auth',
   'Request',
   'Chaining',
+  'Emitter',
 ];
 
 interface ExampleCardProps {

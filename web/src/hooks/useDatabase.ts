@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import type { Project, Request, Folder, Response, Environment, KeyValue } from '../lib/types';
+import type { Project, Request, Folder, Response, Environment, KeyValue, Automation, AutomationRun, AutomationRequestResult, AutomationStep } from '../lib/types';
 
 interface RawRequest {
   id: number;
@@ -388,6 +388,50 @@ export function useDatabase() {
     []
   );
 
+  // --- Automation methods ---
+
+  const listAutomations = useCallback(async (projectId: number): Promise<Automation[]> => {
+    const rows = await invoke<{ id: number; projectId: number; name: string; steps: string; createdAt: string; updatedAt: string }[]>('list_automations', { projectId });
+    return rows.map((r) => ({ ...r, steps: JSON.parse(r.steps || '[]') as AutomationStep[] }));
+  }, []);
+
+  const createAutomation = useCallback(async (projectId: number, name: string, steps: AutomationStep[]): Promise<Automation> => {
+    const r = await invoke<{ id: number; projectId: number; name: string; steps: string; createdAt: string; updatedAt: string }>('create_automation', { projectId, name, steps: JSON.stringify(steps) });
+    return { ...r, steps: JSON.parse(r.steps || '[]') as AutomationStep[] };
+  }, []);
+
+  const updateAutomation = useCallback(async (id: number, name: string, steps: AutomationStep[]): Promise<Automation> => {
+    const r = await invoke<{ id: number; projectId: number; name: string; steps: string; createdAt: string; updatedAt: string }>('update_automation', { id, name, steps: JSON.stringify(steps) });
+    return { ...r, steps: JSON.parse(r.steps || '[]') as AutomationStep[] };
+  }, []);
+
+  const deleteAutomation = useCallback(async (id: number): Promise<void> => {
+    await invoke('delete_automation', { id });
+  }, []);
+
+  const saveAutomationRun = useCallback(async (automationId: number, status: string, results: AutomationRequestResult[], durationMs: number): Promise<AutomationRun> => {
+    const r = await invoke<{ id: number; automationId: number; status: string; results: string; durationMs: number; createdAt: string }>('save_automation_run', {
+      automationId,
+      status,
+      results: JSON.stringify(results),
+      durationMs,
+    });
+    return { ...r, status: r.status as AutomationRun['status'], results: JSON.parse(r.results || '[]') };
+  }, []);
+
+  const listAutomationRuns = useCallback(async (automationId: number, limit = 20): Promise<AutomationRun[]> => {
+    const rows = await invoke<{ id: number; automationId: number; status: string; results: string; durationMs: number; createdAt: string }[]>('list_automation_runs', { automationId, limit });
+    return rows.map((r) => ({ ...r, status: r.status as AutomationRun['status'], results: JSON.parse(r.results || '[]') }));
+  }, []);
+
+  const clearAutomationRuns = useCallback(async (automationId: number): Promise<void> => {
+    await invoke('clear_automation_runs', { automationId });
+  }, []);
+
+  const deleteAutomationRun = useCallback(async (id: number): Promise<void> => {
+    await invoke('delete_automation_run', { id });
+  }, []);
+
   return {
     isReady: true, // Always ready — Rust manages the DB
     loadUserProjects,
@@ -414,5 +458,13 @@ export function useDatabase() {
     createEnvironment,
     updateEnvironment,
     deleteEnvironment,
+    listAutomations,
+    createAutomation,
+    updateAutomation,
+    deleteAutomation,
+    saveAutomationRun,
+    listAutomationRuns,
+    clearAutomationRuns,
+    deleteAutomationRun,
   };
 }

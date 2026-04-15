@@ -1,18 +1,23 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import type { KeyValue } from '../../lib/types';
 import { BinIcon } from '../Sidebar/SidebarIcons';
+import { TemplateInput } from './TemplateInput';
 import styles from './KeyValueEditor.module.css';
 
 interface KeyValueEditorProps {
   items: KeyValue[];
   onChange: (items: KeyValue[]) => void;
   readOnly?: boolean;
+  envVars?: KeyValue[];
+  secrets?: KeyValue[];
 }
 
 export function KeyValueEditor({
   items,
   onChange,
   readOnly = false,
+  envVars = [],
+  secrets = [],
 }: KeyValueEditorProps) {
   const handleKeyChange = (index: number, key: string) => {
     const updated = [...items];
@@ -46,8 +51,11 @@ export function KeyValueEditor({
     onChange([...items, { key: '', value: '', enabled: true }]);
   };
 
+  const [confirmIndex, setConfirmIndex] = useState<number | null>(null);
+
   const handleRemove = (index: number) => {
     onChange(items.filter((_, i) => i !== index));
+    setConfirmIndex(null);
   };
 
   if (readOnly && items.length === 0) {
@@ -83,39 +91,54 @@ export function KeyValueEditor({
                 spellCheck={false}
                 ref={index === items.length - 1 ? newKeyRef : null}
               />
-              <input
-                type="text"
-                className={styles.input}
-                placeholder="Value"
+              <TemplateInput
                 value={item.value}
-                onChange={(e) => handleValueChange(index, e.target.value)}
+                onChange={(value) => handleValueChange(index, value)}
+                placeholder="Value"
+                envVars={envVars}
+                secrets={secrets}
                 disabled={readOnly}
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck={false}
               />
               {!readOnly && (
-                <button
-                  className={styles.deleteBtn}
-                  onClick={() => handleRemove(index)}
-                  title="Delete"
-                  tabIndex={-1}
-                >
-                  <BinIcon />
-                </button>
+                confirmIndex === index ? (
+                  <span className={styles.confirm}>
+                    <button
+                      className={styles.confirmYes}
+                      onClick={() => handleRemove(index)}
+                      title="Confirm delete"
+                    >
+                      Yes
+                    </button>
+                    <button
+                      className={styles.confirmNo}
+                      onClick={() => setConfirmIndex(null)}
+                      title="Cancel"
+                    >
+                      No
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    className={styles.deleteBtn}
+                    onClick={() => setConfirmIndex(index)}
+                    title="Delete"
+                    tabIndex={-1}
+                  >
+                    <BinIcon />
+                  </button>
+                )
               )}
             </div>
           ))}
         </div>
+        {!readOnly && (
+          <div className={styles.addRow}>
+            <button className={styles.addBtn} onClick={handleAdd}>
+              + Add
+            </button>
+          </div>
+        )}
       </div>
-      {!readOnly && (
-        <div className={styles.addRow}>
-          <button className={styles.addBtn} onClick={handleAdd}>
-            + Add
-          </button>
-        </div>
-      )}
     </div>
   );
 }

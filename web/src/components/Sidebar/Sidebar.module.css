@@ -340,8 +340,24 @@
   color: var(--accent-post);
 }
 
+.treeIconAutomation {
+  color: var(--accent-get);
+}
+
 .treeIconEnv {
   color: var(--accent-patch);
+}
+
+.countBadge {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  background: var(--bg-tertiary, var(--bg-secondary));
+  border-radius: 8px;
+  padding: 0 5px;
+  line-height: 15px;
+  min-width: 15px;
+  text-align: center;
 }
 
 .envRow {
@@ -353,8 +369,26 @@
   background: var(--bg-hover);
 }
 
-.envRow:hover .iconBtn {
+.envRow.selected,
+.automationRow.selected {
+  background: var(--bg-selected, var(--bg-hover));
+}
+
+.envRow.selected .envName,
+.automationRow.selected .automationName {
+  color: var(--text-primary);
+}
+
+/* Use visibility (not display) so buttons always occupy space — prevents row height flicker on hover */
+.envRow .iconBtn {
   display: flex;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.envRow:hover .iconBtn {
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .envName {
@@ -368,6 +402,41 @@
 }
 
 .envRow:hover .envName {
+  color: var(--text-primary);
+}
+
+.automationRow {
+  cursor: pointer;
+  gap: 5px;
+}
+
+.automationRow:hover {
+  background: var(--bg-hover);
+}
+
+/* Use visibility so buttons always occupy space — prevents row height flicker on hover */
+.automationRow .iconBtn {
+  display: flex;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.automationRow:hover .iconBtn {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.automationName {
+  flex: 1;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.automationRow:hover .automationName {
   color: var(--text-primary);
 }
 

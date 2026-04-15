@@ -3,6 +3,9 @@ import type { Request, KeyValue, FileAttachment } from '../../lib/types';
 import { KeyValueEditor } from './KeyValueEditor';
 import { FileUpload } from './FileUpload';
 import { ScriptEditor } from './ScriptEditor';
+import { ContentTypeSelector } from './ContentTypeSelector';
+import { resolveTemplate } from '../../lib/template';
+import { FAKER_TOKENS } from '../../lib/templateTokens';
 import styles from './TabPanel.module.css';
 
 const BodyEditor = lazy(() => import('./BodyEditor').then(m => ({ default: m.BodyEditor })));
@@ -15,15 +18,35 @@ function formatBodySize(body: string): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
-function validateBody(body: string, contentType: string): { valid: boolean; error?: string } {
+function resolveTemplatesForValidation(body: string, envVars: KeyValue[]): string {
+  // Create sample variables with actual env vars or placeholder values
+  const sampleVars: KeyValue[] = [
+    // Include actual env vars
+    ...envVars.filter(v => v.enabled !== false),
+    // Add sample values for faker tokens if not already defined as env vars
+    ...FAKER_TOKENS.map(token => ({
+      key: token.name,
+      value: token.example || `sample-${token.name}`,
+      enabled: true,
+    })).filter(t => !envVars.some(v => v.key === t.key)),
+  ];
+
+  return resolveTemplate(body, sampleVars);
+}
+
+function validateBody(body: string, contentType: string, envVars: KeyValue[] = []): { valid: boolean; error?: string } {
   const trimmed = body.trim();
   if (!trimmed) return { valid: true };
+
+  // Resolve templates for validation
+  const resolvedBody = resolveTemplatesForValidation(trimmed, envVars);
+
   if (contentType.includes('json')) {
-    try { JSON.parse(trimmed); return { valid: true }; }
+    try { JSON.parse(resolvedBody); return { valid: true }; }
     catch (e) { return { valid: false, error: e instanceof SyntaxError ? e.message : 'Invalid JSON' }; }
   }
   if (contentType.includes('xml') || contentType.includes('html')) {
-    const doc = new DOMParser().parseFromString(trimmed, 'application/xml');
+    const doc = new DOMParser().parseFromString(resolvedBody, 'application/xml');
     if (doc.getElementsByTagName('parsererror').length > 0) return { valid: false, error: 'Invalid XML/HTML' };
   }
   return { valid: true };
@@ -50,6 +73,19 @@ function loadPinned(requestId: number): Set<PinnableTab> {
 function savePinned(requestId: number, pinned: Set<PinnableTab>) {
   const key = STORAGE_KEY_PREFIX + requestId;
   localStorage.setItem(key, JSON.stringify([...pinned]));
+}
+
+const VALID_TABS: TabName[] = ['params', 'headers', 'body', 'files', 'script'];
+
+function loadActiveTab(requestId: number, pinned: Set<PinnableTab>): TabName {
+  const stored = localStorage.getItem('callstack.activeTab.' + requestId);
+  if (stored && (VALID_TABS as string[]).includes(stored)) {
+    const tab = stored as TabName;
+    if (!PINNABLE.includes(tab as PinnableTab) || !pinned.has(tab as PinnableTab)) {
+      return tab;
+    }
+  }
+  return pinned.has('params') ? 'body' : 'params';
 }
 
 function detectContentType(body: string): string {
@@ -114,19 +150,24 @@ interface TabPanelProps {
 export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, secrets, onScriptTest, copyFlash }: TabPanelProps) {
   const [pinned, setPinned] = useState<Set<PinnableTab>>(() => request ? loadPinned(request.id) : new Set());
   const [activeTab, setActiveTab] = useState<TabName>(() => {
-    const p = request ? loadPinned(request.id) : new Set<PinnableTab>();
-    return p.has('params') ? 'body' : 'params';
+    if (!request) return 'params';
+    const p = loadPinned(request.id);
+    return loadActiveTab(request.id, p);
   });
 
   useEffect(() => {
     if (request) {
       const loaded = loadPinned(request.id);
       setPinned(loaded);
-      setActiveTab(prev =>
-        PINNABLE.includes(prev as PinnableTab) && loaded.has(prev as PinnableTab) ? 'body' : prev
-      );
+      setActiveTab(loadActiveTab(request.id, loaded));
     }
   }, [request?.id]);
+
+  useEffect(() => {
+    if (request) {
+      localStorage.setItem('callstack.activeTab.' + request.id, activeTab);
+    }
+  }, [activeTab, request?.id]);
 
   if (!request) {
     return <div className={styles.empty}>Select a request to get started</div>;
@@ -165,7 +206,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
 
   const currentContentType = getContentType(request.headers);
   const bodySize = useMemo(() => formatBodySize(request.body), [request.body]);
-  const bodyValidation = useMemo(() => validateBody(request.body, currentContentType), [request.body, currentContentType]);
+  const bodyValidation = useMemo(() => validateBody(request.body, currentContentType, envVars), [request.body, currentContentType, envVars]);
 
   const hasMissingFiles = files.some(f => f.path === '');
   const TABS: { name: TabName; label: string; count?: number; warn?: boolean }[] = [
@@ -178,10 +219,10 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
 
   function renderPinnedContent(p: PinnableTab) {
     if (p === 'params') {
-      return <KeyValueEditor items={request!.params} onChange={(params) => onRequestChange({ params })} />;
+      return <KeyValueEditor items={request!.params} onChange={(params) => onRequestChange({ params })} envVars={envVars} secrets={secrets} />;
     }
     if (p === 'headers') {
-      return <KeyValueEditor items={request!.headers} onChange={(headers) => onRequestChange({ headers })} />;
+      return <KeyValueEditor items={request!.headers} onChange={(headers) => onRequestChange({ headers })} envVars={envVars} secrets={secrets} />;
     }
     return <FileUpload files={files} onChange={onFilesChange} />;
   }
@@ -196,6 +237,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
     <div className={styles.tabPanel}>
       <div className={styles.header}>
         <span className={styles.sectionLabel}>Request</span>
+        <ContentTypeSelector value={currentContentType} onChange={handleContentTypeChange} />
         <div className={styles.spacer} />
         {bodySize && <span className={styles.sizeTag}>{bodySize}</span>}
         {request.body.trim() && (
@@ -260,12 +302,16 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
           <KeyValueEditor
             items={request.params}
             onChange={(params) => onRequestChange({ params })}
+            envVars={envVars}
+            secrets={secrets}
           />
         )}
         {activeTab === 'headers' && (
           <KeyValueEditor
             items={request.headers}
             onChange={(headers) => onRequestChange({ headers })}
+            envVars={envVars}
+            secrets={secrets}
           />
         )}
         {activeTab === 'body' && (
@@ -274,8 +320,9 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
               body={request.body}
               contentType={currentContentType}
               onChange={handleBodyChange}
-              onContentTypeChange={handleContentTypeChange}
               copyFlash={copyFlash}
+              envVars={envVars}
+              secrets={secrets}
             />
           </Suspense>
         )}
@@ -284,6 +331,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
         )}
         {activeTab === 'script' && (
           <ScriptEditor
+            requestId={request.id}
             preScript={request.pre_script}
             postScript={request.post_script}
             onChange={onRequestChange}
