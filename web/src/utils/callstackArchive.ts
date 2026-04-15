@@ -1,10 +1,12 @@
 import JSZip from 'jszip';
-import type { Project, Folder, Request, Environment, Response } from '../lib/types';
+import type { Project, Folder, Request, Environment, Response, Automation, AutomationStep } from '../lib/types';
 import type {
   CallstackManifest,
   ExportFolder,
   ExportRequest,
   ExportResponse,
+  ExportAutomation,
+  ExportAutomationStep,
   ArchivePreview,
 } from '../lib/callstackSchema';
 import { CALLSTACK_SCHEMA_VERSION } from '../lib/callstackSchema';
@@ -16,12 +18,73 @@ interface ExportOptions {
   folders: Folder[];
   requests: Request[];
   environments: Environment[];
+  automations?: Automation[];
   responses?: Response[];
   selectedEnvironmentName?: string;
 }
 
+// Helper: serialize AutomationStep recursively, mapping requestIds to requestRefs
+function serializeAutomationStep(step: AutomationStep, requestRefMap: Map<number, string>): ExportAutomationStep {
+  const base = { id: step.id, type: step.type } as ExportAutomationStep;
+
+  if (step.type === 'request') {
+    return {
+      id: step.id,
+      type: 'request',
+      requestRef: step.requestId != null ? (requestRefMap.get(step.requestId) ?? null) : null,
+    };
+  }
+  if (step.type === 'delay') {
+    return {
+      id: step.id,
+      type: 'delay',
+      delayMs: step.delayMs,
+    };
+  }
+  if (step.type === 'repeat') {
+    return {
+      id: step.id,
+      type: 'repeat',
+      count: step.count,
+      steps: step.steps.map((s) => serializeAutomationStep(s, requestRefMap)),
+    };
+  }
+  if (step.type === 'branch') {
+    return {
+      id: step.id,
+      type: 'branch',
+      condition: step.condition as any, // BranchCondition type is identical in export
+      trueSteps: step.trueSteps.map((s) => serializeAutomationStep(s, requestRefMap)),
+      falseSteps: step.falseSteps.map((s) => serializeAutomationStep(s, requestRefMap)),
+    };
+  }
+  if (step.type === 'fanout') {
+    return {
+      id: step.id,
+      type: 'fanout',
+      lanes: step.lanes.map((lane) => lane.map((s) => serializeAutomationStep(s, requestRefMap))),
+    };
+  }
+  if (step.type === 'stop') {
+    return {
+      id: step.id,
+      type: 'stop',
+    };
+  }
+  if (step.type === 'log') {
+    return {
+      id: step.id,
+      type: 'log',
+      scope: step.scope,
+      object: step.object,
+    };
+  }
+
+  return base;
+}
+
 export async function exportProject(opts: ExportOptions): Promise<Blob> {
-  const { project, folders, requests, environments, responses, selectedEnvironmentName } = opts;
+  const { project, folders, requests, environments, automations, responses, selectedEnvironmentName } = opts;
 
   const zip = new JSZip();
 
@@ -75,6 +138,21 @@ export async function exportProject(opts: ExportOptions): Promise<Blob> {
       }));
   }
 
+  // Build automations with serialized steps
+  let exportAutomations: ExportAutomation[] | undefined;
+  if (automations && automations.length > 0) {
+    const automationRefMap = new Map<number, string>();
+    exportAutomations = automations.map((a, i) => {
+      const ref = `auto-${i}`;
+      automationRefMap.set(a.id, ref);
+      return {
+        _ref: ref,
+        name: a.name,
+        steps: a.steps.map((s) => serializeAutomationStep(s, requestRefMap)),
+      };
+    });
+  }
+
   const manifest: CallstackManifest = {
     schemaVersion: CALLSTACK_SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
@@ -90,6 +168,7 @@ export async function exportProject(opts: ExportOptions): Promise<Blob> {
       name: e.name,
       variables: e.variables,
     })),
+    ...(exportAutomations ? { automations: exportAutomations } : {}),
     ...(exportResponses ? { responses: exportResponses } : {}),
   };
 
@@ -99,7 +178,7 @@ export async function exportProject(opts: ExportOptions): Promise<Blob> {
 }
 
 export async function exportProjectPlain(opts: ExportOptions): Promise<string> {
-  const { project, folders, requests, environments, responses, selectedEnvironmentName } = opts;
+  const { project, folders, requests, environments, automations, responses, selectedEnvironmentName } = opts;
 
   const folderRefMap = new Map<number, string>();
   const exportFolders: ExportFolder[] = folders.map((f, i) => {
@@ -148,6 +227,21 @@ export async function exportProjectPlain(opts: ExportOptions): Promise<string> {
       }));
   }
 
+  // Build automations with serialized steps
+  let exportAutomations: ExportAutomation[] | undefined;
+  if (automations && automations.length > 0) {
+    const automationRefMap = new Map<number, string>();
+    exportAutomations = automations.map((a, i) => {
+      const ref = `auto-${i}`;
+      automationRefMap.set(a.id, ref);
+      return {
+        _ref: ref,
+        name: a.name,
+        steps: a.steps.map((s) => serializeAutomationStep(s, requestRefMap)),
+      };
+    });
+  }
+
   const manifest: CallstackManifest = {
     schemaVersion: CALLSTACK_SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
@@ -163,6 +257,7 @@ export async function exportProjectPlain(opts: ExportOptions): Promise<string> {
       name: e.name,
       variables: e.variables,
     })),
+    ...(exportAutomations ? { automations: exportAutomations } : {}),
     ...(exportResponses ? { responses: exportResponses } : {}),
   };
 
@@ -170,6 +265,69 @@ export async function exportProjectPlain(opts: ExportOptions): Promise<string> {
 }
 
 // ── Import ──────────────────────────────────────────────
+
+// Helper: deserialize ExportAutomationStep back to AutomationStep, mapping requestRefs to requestIds
+export function deserializeAutomationStep(
+  step: ExportAutomationStep,
+  requestRefToId: Map<string, number>,
+): AutomationStep {
+  const base = { id: step.id, type: step.type } as AutomationStep;
+
+  if (step.type === 'request') {
+    return {
+      id: step.id,
+      type: 'request',
+      requestId: step.requestRef != null ? (requestRefToId.get(step.requestRef) ?? null) : null,
+    };
+  }
+  if (step.type === 'delay') {
+    return {
+      id: step.id,
+      type: 'delay',
+      delayMs: step.delayMs,
+    };
+  }
+  if (step.type === 'repeat') {
+    return {
+      id: step.id,
+      type: 'repeat',
+      count: step.count,
+      steps: step.steps.map((s) => deserializeAutomationStep(s, requestRefToId)),
+    };
+  }
+  if (step.type === 'branch') {
+    return {
+      id: step.id,
+      type: 'branch',
+      condition: step.condition as any,
+      trueSteps: step.trueSteps.map((s) => deserializeAutomationStep(s, requestRefToId)),
+      falseSteps: step.falseSteps.map((s) => deserializeAutomationStep(s, requestRefToId)),
+    };
+  }
+  if (step.type === 'fanout') {
+    return {
+      id: step.id,
+      type: 'fanout',
+      lanes: step.lanes.map((lane) => lane.map((s) => deserializeAutomationStep(s, requestRefToId))),
+    };
+  }
+  if (step.type === 'stop') {
+    return {
+      id: step.id,
+      type: 'stop',
+    };
+  }
+  if (step.type === 'log') {
+    return {
+      id: step.id,
+      type: 'log',
+      scope: step.scope as any,
+      object: step.object,
+    };
+  }
+
+  return base;
+}
 
 export interface ParsedCallstackExport {
   manifest: CallstackManifest;
@@ -243,6 +401,7 @@ export async function previewArchive(file: File): Promise<ArchivePreview> {
     folderCount: manifest.folders.length,
     requestCount: manifest.requests.length,
     environmentCount: manifest.environments.length,
+    automationCount: manifest.automations ? manifest.automations.length : 0,
     hasResponses: Array.isArray(manifest.responses) && manifest.responses.length > 0,
   };
 }

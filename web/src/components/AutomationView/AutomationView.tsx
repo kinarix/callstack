@@ -1002,7 +1002,7 @@ export default function AutomationView({ automationId, showExpandBtn, onExpand }
   function countRunnable(steps: AutomationStep[]): number {
     let n = 0;
     for (const s of steps) {
-      if (s.type === 'request' && s.requestId > 0) n++;
+      if (s.type === 'request' && s.requestId != null && s.requestId > 0) n++;
       else if (s.type === 'repeat') n += countRunnable(s.steps);
       else if (s.type === 'branch') n += countRunnable(s.trueSteps) + countRunnable(s.falseSteps);
     }

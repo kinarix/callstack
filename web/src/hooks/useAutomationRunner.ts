@@ -175,6 +175,7 @@ export function useAutomationRunner() {
       }
 
       if (step.type === 'request') {
+        if (step.requestId == null) continue;
         const req = requestMap.get(step.requestId);
         if (!req) continue;
 
