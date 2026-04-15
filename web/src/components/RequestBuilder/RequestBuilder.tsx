@@ -265,8 +265,42 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
   const handleUrlChange = (url: string) => {
     if (request) {
       if (urlError) setUrlError(null);
-      dispatch({ type: 'UPDATE_REQUEST', payload: { ...request, url } });
-      saveToDb(request.id, { url });
+
+      // Extract and sync params from URL on every keystroke if URL contains valid query string
+      let updatedChanges: Partial<Request> = { url };
+      const questionMarkIndex = url.indexOf('?');
+
+      if (questionMarkIndex !== -1) {
+        const queryString = url.substring(questionMarkIndex + 1);
+        // Only extract if query string looks complete (doesn't end with = or &, meaning they're still typing)
+        if (queryString && !queryString.endsWith('=') && !queryString.endsWith('&')) {
+          try {
+            const extractedParams: KeyValue[] = [];
+            const params = new URLSearchParams(queryString);
+            params.forEach((value, key) => {
+              // Only add params that have both key and value
+              if (key && value) {
+                extractedParams.push({ key, value, enabled: true });
+              }
+            });
+
+            // Only update if we extracted at least one valid param
+            if (extractedParams.length > 0) {
+              // Merge extracted params with existing ones (avoid duplicates)
+              const newParams = [
+                ...request.params.filter(p => !extractedParams.some(ep => ep.key === p.key)),
+                ...extractedParams,
+              ];
+              updatedChanges.params = newParams;
+            }
+          } catch {
+            // Invalid query string, just update URL without params
+          }
+        }
+      }
+
+      dispatch({ type: 'UPDATE_REQUEST', payload: { ...request, ...updatedChanges } });
+      saveToDb(request.id, updatedChanges);
     }
   };
 
