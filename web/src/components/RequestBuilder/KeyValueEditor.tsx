@@ -1,18 +1,21 @@
 import { useRef, useEffect } from 'react';
 import type { KeyValue } from '../../lib/types';
 import { BinIcon } from '../Sidebar/SidebarIcons';
+import { TemplateInput } from './TemplateInput';
 import styles from './KeyValueEditor.module.css';
 
 interface KeyValueEditorProps {
   items: KeyValue[];
   onChange: (items: KeyValue[]) => void;
   readOnly?: boolean;
+  envVars?: KeyValue[];
 }
 
 export function KeyValueEditor({
   items,
   onChange,
   readOnly = false,
+  envVars = [],
 }: KeyValueEditorProps) {
   const handleKeyChange = (index: number, key: string) => {
     const updated = [...items];
@@ -83,17 +86,12 @@ export function KeyValueEditor({
                 spellCheck={false}
                 ref={index === items.length - 1 ? newKeyRef : null}
               />
-              <input
-                type="text"
-                className={styles.input}
-                placeholder="Value"
+              <TemplateInput
                 value={item.value}
-                onChange={(e) => handleValueChange(index, e.target.value)}
+                onChange={(value) => handleValueChange(index, value)}
+                placeholder="Value"
+                envVars={envVars}
                 disabled={readOnly}
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck={false}
               />
               {!readOnly && (
                 <button

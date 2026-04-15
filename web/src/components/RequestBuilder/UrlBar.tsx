@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import type { HTTPMethod, Request, Environment } from '../../lib/types';
+import type { HTTPMethod, Request, Environment, KeyValue } from '../../lib/types';
 import { getMethodColor, getMethodIcon } from '../../lib/utils';
 import { EnvSelector } from './EnvSelector';
+import { TemplateInput } from './TemplateInput';
 import styles from './UrlBar.module.css';
 
 interface UrlError {
@@ -27,6 +28,7 @@ interface UrlBarProps {
   environments: Environment[];
   activeEnvId: number | null;
   onEnvSelect: (env: Environment) => void;
+  envVars?: KeyValue[];
 }
 
 const METHODS: HTTPMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
@@ -107,6 +109,7 @@ export function UrlBar({
   environments,
   activeEnvId,
   onEnvSelect,
+  envVars = [],
 }: UrlBarProps) {
   const method = request?.method ?? 'GET';
   const url = request?.url ?? '';
@@ -143,18 +146,13 @@ export function UrlBar({
             {renderUrlSegments(url, urlError)}
           </div>
         )}
-        <input
+        <TemplateInput
           key={request?.id ?? 'none'}
-          type="text"
-          className={styles.urlInput}
+          value={url}
+          onChange={onUrlChange}
           placeholder="https://api.example.com/endpoint"
-          defaultValue={url}
-          onChange={(e) => onUrlChange(e.target.value)}
+          envVars={envVars}
           onKeyDown={(e) => { if (e.key === 'Enter') onSend(); }}
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-          spellCheck={false}
         />
         <label className={styles.redirectToggle} title="Follow 3xx redirects automatically">
           <input
