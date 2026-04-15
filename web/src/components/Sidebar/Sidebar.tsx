@@ -13,7 +13,7 @@ import { ExportModal } from '../ExportModal/ExportModal';
 import type { ExportItem, ExportResult } from '../ExportModal/ExportModal';
 import type { ParsedCollection, ParsedRequest } from '../../utils/postmanParser';
 import { exportFolderAsPostman, exportProjectAsPostman } from '../../utils/postmanParser';
-import { exportProject as exportCallstackProject, exportProjectPlain, importArchive } from '../../utils/callstackArchive';
+import { exportProject as exportCallstackProject, exportProjectPlain, importArchive, deserializeAutomationStep } from '../../utils/callstackArchive';
 import type { ArchivePreview } from '../../lib/callstackSchema';
 import { invoke } from '@tauri-apps/api/core';
 import type { Automation, Environment, Request } from '../../lib/types';
@@ -548,11 +548,20 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
         dispatch({ type: 'UPDATE_REQUEST', payload: updated });
       }
 
+      // 7. Import automations if present
+      if (manifest.automations && manifest.automations.length > 0) {
+        for (const auto of manifest.automations) {
+          const deserializedSteps = auto.steps.map((s) => deserializeAutomationStep(s, requestRefToId));
+          const created = await createAutomation(project.id, auto.name, deserializedSteps);
+          dispatch({ type: 'ADD_AUTOMATION', payload: created });
+        }
+      }
+
       dispatch({ type: 'SET_CURRENT_PROJECT', payload: project.id });
     } catch (err) {
       console.error('Failed to import .callstack archive:', err);
     }
-  }, [filePickerState, state.projects, createProject, createFolder, importRequests, createEnvironment, updateEnvironment, saveResponse, updateRequest, dispatch]);
+  }, [filePickerState, state.projects, createProject, createFolder, importRequests, createEnvironment, updateEnvironment, saveResponse, updateRequest, createAutomation, dispatch]);
 
   // ─── Export handlers ────────────────────────────────────────────────────────
 
@@ -626,11 +635,15 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
           responses = resps.filter(Boolean) as import('../../lib/types').Response[];
         }
 
+        // Include automations for the project
+        const projectAutomations = automations.filter((a) => a.projectId === project.id);
+
         const exportOpts = {
           project,
           folders: selectedFolders,
           requests: selectedRequests,
           environments: envs,
+          automations: projectAutomations,
           responses,
           selectedEnvironmentName,
         };

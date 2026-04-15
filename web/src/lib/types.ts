@@ -175,7 +175,7 @@ export type BranchCondition =
 export type LogScope = 'request' | 'response' | 'env' | 'emitter';
 
 export type AutomationStep =
-  | { id: string; type: 'request'; requestId: number }
+  | { id: string; type: 'request'; requestId: number | null }
   | { id: string; type: 'delay'; delayMs: number }
   | { id: string; type: 'repeat'; count: number; steps: AutomationStep[] }
   | { id: string; type: 'branch'; condition: BranchCondition; trueSteps: AutomationStep[]; falseSteps: AutomationStep[] }

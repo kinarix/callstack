@@ -1,6 +1,6 @@
 [package]
 name = "callstack"
-version = "0.5.0"
+version = "0.5.2"
 description = "A modern REST API testing tool"
 authors = ["Kinarix"]
 edition = "2021"
@@ -25,10 +25,10 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 reqwest = { version = "0.12", features = ["rustls-tls", "multipart"], default-features = false }
 base64 = "0.22"
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.39", features = ["bundled"] }
 tokio = { version = "1", features = ["full"] }
 dirs = "6"
-rfd = "0.15"
+rfd = "0.17"
 arboard = { version = "3", default-features = false }
 
 [profile.release]
