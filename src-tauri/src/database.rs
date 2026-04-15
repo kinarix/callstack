@@ -71,6 +71,13 @@ pub struct Database {
     pub conn: Mutex<Connection>,
 }
 
+pub fn db_path() -> Result<std::path::PathBuf, String> {
+    let db_dir = dirs::data_dir()
+        .ok_or("Cannot find data directory")?
+        .join("callstack");
+    Ok(db_dir.join("callstack.db"))
+}
+
 impl Database {
     pub fn new() -> Result<Self, String> {
         let db_dir = dirs::data_dir()
@@ -139,6 +146,25 @@ impl Database {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (project_id) REFERENCES projects(id)
+            );
+            CREATE TABLE IF NOT EXISTS automations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                request_ids TEXT NOT NULL DEFAULT '[]',
+                steps TEXT NOT NULL DEFAULT '[]',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+            );
+            CREATE TABLE IF NOT EXISTS automation_runs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                automation_id INTEGER NOT NULL,
+                status TEXT NOT NULL,
+                results TEXT NOT NULL DEFAULT '[]',
+                duration_ms INTEGER NOT NULL DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (automation_id) REFERENCES automations(id) ON DELETE CASCADE
             );",
         )
         .map_err(|e| format!("Cannot create tables: {e}"))?;
@@ -187,6 +213,10 @@ impl Database {
         );
         let _ = conn.execute(
             "ALTER TABLE requests ADD COLUMN post_script TEXT NOT NULL DEFAULT ''",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE automations ADD COLUMN steps TEXT NOT NULL DEFAULT '[]'",
             [],
         );
 
@@ -1065,6 +1095,189 @@ pub fn update_environment(
 pub fn delete_environment(db: tauri::State<Database>, id: i64) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM environments WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// --- Automation structs ---
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Automation {
+    pub id: i64,
+    pub project_id: i64,
+    pub name: String,
+    pub steps: String, // JSON array of AutomationStep
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AutomationRun {
+    pub id: i64,
+    pub automation_id: i64,
+    pub status: String,
+    pub results: String, // JSON array
+    pub duration_ms: i64,
+    pub created_at: String,
+}
+
+// --- Automation commands ---
+
+#[tauri::command]
+pub fn list_automations(db: tauri::State<Database>, project_id: i64) -> Result<Vec<Automation>, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT id, project_id, name, steps, created_at, updated_at FROM automations WHERE project_id = ?1 ORDER BY created_at ASC")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![project_id], |row| {
+            Ok(Automation {
+                id: row.get(0)?,
+                project_id: row.get(1)?,
+                name: row.get(2)?,
+                steps: row.get(3)?,
+                created_at: row.get(4)?,
+                updated_at: row.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn create_automation(
+    db: tauri::State<Database>,
+    project_id: i64,
+    name: String,
+    steps: String,
+) -> Result<Automation, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT INTO automations (project_id, name, steps) VALUES (?1, ?2, ?3)",
+        params![project_id, name, steps],
+    )
+    .map_err(|e| e.to_string())?;
+    let id = conn.last_insert_rowid();
+    conn.query_row(
+        "SELECT id, project_id, name, steps, created_at, updated_at FROM automations WHERE id = ?1",
+        params![id],
+        |row| Ok(Automation {
+            id: row.get(0)?,
+            project_id: row.get(1)?,
+            name: row.get(2)?,
+            steps: row.get(3)?,
+            created_at: row.get(4)?,
+            updated_at: row.get(5)?,
+        }),
+    )
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn update_automation(
+    db: tauri::State<Database>,
+    id: i64,
+    name: String,
+    steps: String,
+) -> Result<Automation, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE automations SET name = ?1, steps = ?2, updated_at = CURRENT_TIMESTAMP WHERE id = ?3",
+        params![name, steps, id],
+    )
+    .map_err(|e| e.to_string())?;
+    conn.query_row(
+        "SELECT id, project_id, name, steps, created_at, updated_at FROM automations WHERE id = ?1",
+        params![id],
+        |row| Ok(Automation {
+            id: row.get(0)?,
+            project_id: row.get(1)?,
+            name: row.get(2)?,
+            steps: row.get(3)?,
+            created_at: row.get(4)?,
+            updated_at: row.get(5)?,
+        }),
+    )
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_automation(db: tauri::State<Database>, id: i64) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM automations WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn save_automation_run(
+    db: tauri::State<Database>,
+    automation_id: i64,
+    status: String,
+    results: String,
+    duration_ms: i64,
+) -> Result<AutomationRun, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT INTO automation_runs (automation_id, status, results, duration_ms) VALUES (?1, ?2, ?3, ?4)",
+        params![automation_id, status, results, duration_ms],
+    )
+    .map_err(|e| e.to_string())?;
+    let id = conn.last_insert_rowid();
+    conn.query_row(
+        "SELECT id, automation_id, status, results, duration_ms, created_at FROM automation_runs WHERE id = ?1",
+        params![id],
+        |row| Ok(AutomationRun {
+            id: row.get(0)?,
+            automation_id: row.get(1)?,
+            status: row.get(2)?,
+            results: row.get(3)?,
+            duration_ms: row.get(4)?,
+            created_at: row.get(5)?,
+        }),
+    )
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_automation_runs(
+    db: tauri::State<Database>,
+    automation_id: i64,
+    limit: i64,
+) -> Result<Vec<AutomationRun>, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT id, automation_id, status, results, duration_ms, created_at FROM automation_runs WHERE automation_id = ?1 ORDER BY created_at DESC LIMIT ?2")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![automation_id, limit], |row| {
+            Ok(AutomationRun {
+                id: row.get(0)?,
+                automation_id: row.get(1)?,
+                status: row.get(2)?,
+                results: row.get(3)?,
+                duration_ms: row.get(4)?,
+                created_at: row.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn clear_automation_runs(db: tauri::State<Database>, automation_id: i64) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM automation_runs WHERE automation_id = ?1", params![automation_id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_automation_run(db: tauri::State<Database>, id: i64) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM automation_runs WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
     Ok(())
 }

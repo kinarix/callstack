@@ -153,7 +153,9 @@ async fn cancel_request(state: tauri::State<'_, CancelHandle>) -> Result<(), Str
 fn reset_all_data(db: tauri::State<'_, Database>, app: tauri::AppHandle) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     conn.execute_batch(
-        "DELETE FROM responses;
+        "DELETE FROM automation_runs;
+         DELETE FROM automations;
+         DELETE FROM responses;
          DELETE FROM requests;
          DELETE FROM environments;
          DELETE FROM folders;
@@ -162,6 +164,78 @@ fn reset_all_data(db: tauri::State<'_, Database>, app: tauri::AppHandle) -> Resu
     .map_err(|e| e.to_string())?;
     drop(conn);
     app.restart();
+}
+
+#[tauri::command]
+fn get_full_snapshot(db: tauri::State<'_, Database>) -> Result<serde_json::Value, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+
+    fn dump_table(conn: &rusqlite::Connection, sql: &str) -> Result<serde_json::Value, String> {
+        let mut stmt = conn.prepare(sql).map_err(|e| e.to_string())?;
+        let col_count = stmt.column_count();
+        let col_names: Vec<String> = (0..col_count)
+            .map(|i| stmt.column_name(i).unwrap_or("").to_string())
+            .collect();
+        let rows = stmt
+            .query_map([], |row| {
+                let mut obj = serde_json::Map::new();
+                for (i, name) in col_names.iter().enumerate() {
+                    let val = match row.get_ref(i).map_err(|_| rusqlite::Error::InvalidQuery)? {
+                        rusqlite::types::ValueRef::Null => serde_json::Value::Null,
+                        rusqlite::types::ValueRef::Integer(n) => serde_json::Value::from(n),
+                        rusqlite::types::ValueRef::Real(f) => serde_json::Value::from(f),
+                        rusqlite::types::ValueRef::Text(t) => {
+                            serde_json::Value::String(String::from_utf8_lossy(t).into_owned())
+                        }
+                        rusqlite::types::ValueRef::Blob(b) => {
+                            serde_json::Value::String(format!("<blob {} bytes>", b.len()))
+                        }
+                    };
+                    obj.insert(name.clone(), val);
+                }
+                Ok(serde_json::Value::Object(obj))
+            })
+            .map_err(|e| e.to_string())?;
+        let mut out = Vec::new();
+        for r in rows {
+            out.push(r.map_err(|e| e.to_string())?);
+        }
+        Ok(serde_json::Value::Array(out))
+    }
+
+    Ok(serde_json::json!({
+        "projects":        dump_table(&conn, "SELECT * FROM projects")?,
+        "folders":         dump_table(&conn, "SELECT * FROM folders")?,
+        "requests":        dump_table(&conn, "SELECT * FROM requests")?,
+        "responses":       dump_table(&conn, "SELECT * FROM responses")?,
+        "environments":    dump_table(&conn, "SELECT * FROM environments")?,
+        "automations":     dump_table(&conn, "SELECT * FROM automations")?,
+        "automation_runs": dump_table(&conn, "SELECT * FROM automation_runs")?,
+    }))
+}
+
+#[tauri::command]
+fn get_db_stats(db: tauri::State<'_, Database>) -> Result<serde_json::Value, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let count = |table: &str| -> Result<i64, String> {
+        conn.query_row(&format!("SELECT COUNT(*) FROM {}", table), [], |row| row.get::<_, i64>(0))
+            .map_err(|e| e.to_string())
+    };
+    let db_path = crate::database::db_path()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let db_size_bytes: i64 = std::fs::metadata(&db_path).map(|m| m.len() as i64).unwrap_or(0);
+    Ok(serde_json::json!({
+        "projects":        count("projects")?,
+        "requests":        count("requests")?,
+        "responses":       count("responses")?,
+        "folders":         count("folders")?,
+        "environments":    count("environments")?,
+        "automations":     count("automations")?,
+        "automation_runs": count("automation_runs")?,
+        "dbPath":          db_path,
+        "dbSizeBytes":     db_size_bytes,
+    }))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -206,11 +280,21 @@ pub fn run() {
             database::create_environment,
             database::update_environment,
             database::delete_environment,
+            database::list_automations,
+            database::create_automation,
+            database::update_automation,
+            database::delete_automation,
+            database::save_automation_run,
+            database::list_automation_runs,
+            database::clear_automation_runs,
+            database::delete_automation_run,
             save_file,
             save_binary_file,
             pick_file,
             pick_attachment_files,
             reset_all_data,
+            get_db_stats,
+            get_full_snapshot,
             write_clipboard,
         ])
         .run(tauri::generate_context!())

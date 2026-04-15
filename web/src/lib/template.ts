@@ -63,7 +63,7 @@ export function resolveTemplate(text: string, variables: KeyValue[]): string {
 }
 
 /** CodeMirror completion source for template tokens */
-export function templateCompletion(envVarKeys: string[] = []) {
+export function templateCompletion(envVarKeys: string[] = [], secretKeys: string[] = []) {
   return (ctx: CompletionContext): CompletionResult | null => {
     const before = ctx.state.doc.sliceString(Math.max(0, ctx.pos - 100), ctx.pos);
     const match = before.match(/\{\{([\w.$-]*)$/);
@@ -79,6 +79,14 @@ export function templateCompletion(envVarKeys: string[] = []) {
       })
     );
 
+    const secretOptions = secretKeys.map((key) =>
+      snippetCompletion(key, {
+        label: key,
+        detail: 'secret',
+        type: 'variable',
+      })
+    );
+
     const fakerOptions = FAKER_TOKENS.map((token) =>
       snippetCompletion(token.name, {
         label: token.name,
@@ -87,7 +95,7 @@ export function templateCompletion(envVarKeys: string[] = []) {
       })
     );
 
-    const all = [...envOptions, ...fakerOptions];
+    const all = [...envOptions, ...secretOptions, ...fakerOptions];
     const filtered = all.filter((c) =>
       c.label.toLowerCase().includes(partial.toLowerCase())
     );

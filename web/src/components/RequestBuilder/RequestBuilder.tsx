@@ -270,11 +270,72 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
     }
   };
 
+  const buildUrlWithParams = (baseUrl: string, params: KeyValue[]): string => {
+    const questionMarkIndex = baseUrl.indexOf('?');
+    const urlWithoutQuery = questionMarkIndex !== -1 ? baseUrl.substring(0, questionMarkIndex) : baseUrl;
+
+    const enabledParams = params.filter(p => p.enabled !== false && p.key);
+    if (enabledParams.length === 0) {
+      return urlWithoutQuery;
+    }
+
+    const queryString = enabledParams
+      .map(p => `${p.key}=${p.value}`)
+      .join('&');
+
+    return `${urlWithoutQuery}?${queryString}`;
+  };
+
+  const handleUrlBlur = (url: string) => {
+    if (request) {
+      // Extract query parameters from URL if present (only on blur)
+      let extractedParams: KeyValue[] = [];
+
+      const questionMarkIndex = url.indexOf('?');
+      if (questionMarkIndex !== -1) {
+        // URL has query string, extract it
+        const queryString = url.substring(questionMarkIndex + 1);
+
+        // Parse query string manually
+        if (queryString) {
+          const params = new URLSearchParams(queryString);
+          params.forEach((value, key) => {
+            extractedParams.push({
+              key,
+              value,
+              enabled: true,
+            });
+          });
+        }
+      }
+
+      // Merge extracted params with existing params (avoid duplicates - extracted params take precedence)
+      const newParams = [
+        ...request.params.filter(p => !extractedParams.some(ep => ep.key === p.key)),
+        ...extractedParams,
+      ];
+
+      // Keep the URL as-is (with query string), just update params to avoid duplicates
+      dispatch({ type: 'UPDATE_REQUEST', payload: { ...request, url, params: newParams } });
+      saveToDb(request.id, { url, params: newParams });
+    }
+  };
+
   const handleRequestChange = (changes: Partial<Request>) => {
     if (request) {
       setBodyError(null);
-      dispatch({ type: 'UPDATE_REQUEST', payload: { ...request, ...changes } });
-      saveToDb(request.id, changes);
+
+      // If params are being updated, rebuild the URL with the new query string
+      if (changes.params && changes.url === undefined) {
+        const baseUrl = request.url;
+        const updatedUrl = buildUrlWithParams(baseUrl, changes.params);
+        const finalChanges = { ...changes, url: updatedUrl };
+        dispatch({ type: 'UPDATE_REQUEST', payload: { ...request, ...finalChanges } });
+        saveToDb(request.id, finalChanges);
+      } else {
+        dispatch({ type: 'UPDATE_REQUEST', payload: { ...request, ...changes } });
+        saveToDb(request.id, changes);
+      }
     }
   };
 
@@ -564,6 +625,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         onExpand={onExpand}
         onMethodChange={handleMethodChange}
         onUrlChange={handleUrlChange}
+        onUrlBlur={handleUrlBlur}
         onNameChange={(name) => handleRequestChange({ name })}
         onSend={handleSend}
         onCancel={cancelRequest}
@@ -572,6 +634,8 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         environments={projectEnvironments}
         activeEnvId={activeEnvId}
         onEnvSelect={handleEnvSelect}
+        envVars={envVars}
+        secrets={secrets}
       />
       {urlError && (
         <div className={styles.bodyError}>

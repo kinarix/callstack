@@ -89,14 +89,18 @@ export interface Environment {
 export interface LogEntry {
   id: number;
   timestamp: number;
-  method: string;
-  url: string;
-  curl: string;
+  kind?: 'http' | 'automation';
+  // HTTP log fields
+  method?: string;
+  url?: string;
+  curl?: string;
   status?: number;
   statusText?: string;
   time?: number;
   size?: number;
   error?: string;
+  // Automation log fields
+  message?: string;
 }
 
 export interface AppState {
@@ -112,6 +116,10 @@ export interface AppState {
   expandedProjects: Set<number>;
   expandedFolders: Set<number>;
   logs: LogEntry[];
+  automations: Automation[];
+  activeView: 'request' | 'automation' | 'environment';
+  activeAutomationId: number | null;
+  activeEnvironmentId: number | null;
 }
 
 export interface AppContextType {
@@ -146,4 +154,68 @@ export type AppAction =
   | { type: 'UPDATE_ENVIRONMENT'; payload: Environment }
   | { type: 'DELETE_ENVIRONMENT'; payload: number }
   | { type: 'ADD_LOG'; payload: LogEntry }
-  | { type: 'CLEAR_LOGS' };
+  | { type: 'CLEAR_LOGS' }
+  | { type: 'SET_AUTOMATIONS'; payload: Automation[] }
+  | { type: 'ADD_AUTOMATION'; payload: Automation }
+  | { type: 'UPDATE_AUTOMATION'; payload: Automation }
+  | { type: 'DELETE_AUTOMATION'; payload: number }
+  | { type: 'SET_VIEW'; payload: 'request' | 'automation' | 'environment' }
+  | { type: 'SET_ACTIVE_AUTOMATION'; payload: number | null }
+  | { type: 'SET_ACTIVE_ENVIRONMENT'; payload: number | null };
+
+export type BranchCondition =
+  | { type: 'lastRequestPass' }
+  | { type: 'lastRequestFail' }
+  | { type: 'lastStatusGte'; value: number }
+  | { type: 'lastStatusLt'; value: number }
+  | { type: 'emittedEquals'; key: string; value: string }
+  | { type: 'emittedExists'; key: string }
+  | { type: 'emittedTruthy'; key: string };
+
+export type LogScope = 'request' | 'response' | 'env' | 'emitter';
+
+export type AutomationStep =
+  | { id: string; type: 'request'; requestId: number }
+  | { id: string; type: 'delay'; delayMs: number }
+  | { id: string; type: 'repeat'; count: number; steps: AutomationStep[] }
+  | { id: string; type: 'branch'; condition: BranchCondition; trueSteps: AutomationStep[]; falseSteps: AutomationStep[] }
+  | { id: string; type: 'fanout'; lanes: AutomationStep[][] }
+  | { id: string; type: 'stop' }
+  | { id: string; type: 'log'; scope: LogScope; object: string };
+
+export interface Automation {
+  id: number;
+  projectId: number;
+  name: string;
+  steps: AutomationStep[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AutomationRequestResult {
+  requestId: number;
+  requestName: string;
+  method: string;
+  url: string;
+  status: number;
+  statusText: string;
+  timeMs: number;
+  testResults: TestResult[];
+  testStatus: TestStatus | null;
+  error?: string;
+  curl?: string;
+  responseBody?: string;
+  responseHeaders?: { key: string; value: string }[];
+  requestParams?: { key: string; value: string }[];
+  requestHeaders?: { key: string; value: string }[];
+  requestBody?: string;
+}
+
+export interface AutomationRun {
+  id: number;
+  automationId: number;
+  status: TestStatus | 'ERROR';
+  results: AutomationRequestResult[];
+  durationMs: number;
+  createdAt: string;
+}

@@ -8,13 +8,15 @@ interface TemplateInputProps {
   onChange: (value: string) => void;
   placeholder?: string;
   envVars?: KeyValue[];
+  secrets?: KeyValue[];
   disabled?: boolean;
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
 }
 
 interface Suggestion {
   label: string;
-  type: 'env' | 'faker';
+  type: 'env' | 'secret' | 'faker';
   detail: string;
   example?: string;
 }
@@ -24,8 +26,10 @@ export function TemplateInput({
   onChange,
   placeholder = '',
   envVars = [],
+  secrets = [],
   disabled = false,
   onKeyDown: onKeyDownProp,
+  onBlur: onBlurProp,
 }: TemplateInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -58,6 +62,13 @@ export function TemplateInput({
       detail: 'environment variable',
     }));
 
+    const activeSecrets = secrets.filter((s) => s.enabled !== false && s.key);
+    const secretOptions: Suggestion[] = activeSecrets.map((s) => ({
+      label: s.key,
+      type: 'secret',
+      detail: 'secret',
+    }));
+
     const fakerOptions: Suggestion[] = FAKER_TOKENS.map((t) => ({
       label: t.name,
       type: 'faker',
@@ -65,7 +76,7 @@ export function TemplateInput({
       example: t.example,
     }));
 
-    const all = [...envOptions, ...fakerOptions];
+    const all = [...envOptions, ...secretOptions, ...fakerOptions];
     const filtered = all.filter((s) => s.label.toLowerCase().includes(ctx.partial.toLowerCase()));
 
     setSuggestions(filtered);
@@ -164,6 +175,7 @@ export function TemplateInput({
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
+        onBlur={onBlurProp}
         placeholder={placeholder}
         disabled={disabled}
         autoComplete="off"

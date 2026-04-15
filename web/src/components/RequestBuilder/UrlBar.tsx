@@ -20,6 +20,7 @@ interface UrlBarProps {
   onExpand?: () => void;
   onMethodChange: (method: HTTPMethod) => void;
   onUrlChange: (url: string) => void;
+  onUrlBlur?: (url: string) => void;
   onNameChange: (name: string) => void;
   onSend: () => void;
   onCancel?: () => void;
@@ -29,6 +30,7 @@ interface UrlBarProps {
   activeEnvId: number | null;
   onEnvSelect: (env: Environment) => void;
   envVars?: KeyValue[];
+  secrets?: KeyValue[];
 }
 
 const METHODS: HTTPMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
@@ -101,6 +103,7 @@ export function UrlBar({
   onExpand,
   onMethodChange,
   onUrlChange,
+  onUrlBlur,
   onNameChange,
   onSend,
   onCancel,
@@ -110,7 +113,14 @@ export function UrlBar({
   activeEnvId,
   onEnvSelect,
   envVars = [],
+  secrets = [],
 }: UrlBarProps) {
+  const handleUrlBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const url = e.target.value;
+    if (onUrlBlur) {
+      onUrlBlur(url);
+    }
+  };
   const method = request?.method ?? 'GET';
   const url = request?.url ?? '';
   return (
@@ -152,7 +162,9 @@ export function UrlBar({
           onChange={onUrlChange}
           placeholder="https://api.example.com/endpoint"
           envVars={envVars}
+          secrets={secrets}
           onKeyDown={(e) => { if (e.key === 'Enter') onSend(); }}
+          onBlur={handleUrlBlur}
         />
         <label className={styles.redirectToggle} title="Follow 3xx redirects automatically">
           <input

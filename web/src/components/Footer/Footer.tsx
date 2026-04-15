@@ -37,6 +37,27 @@ function CopyButton({ text }: { text: string }) {
 
 function LogRow({ entry }: { entry: LogEntry }) {
   const [expanded, setExpanded] = useState(false);
+
+  if (entry.kind === 'automation') {
+    const [label, ...rest] = (entry.message ?? '').split('\n');
+    const body = rest.join('\n').trim();
+    return (
+      <div className={`${styles.logRow} ${styles.logRowAutomation}`}>
+        <div className={styles.logSummary} onClick={() => body ? setExpanded(e => !e) : undefined}>
+          {body ? <span className={styles.logChevron}>{expanded ? '▾' : '▸'}</span> : <span className={styles.logChevronSpacer} />}
+          <span className={styles.logTime}>{formatTimestamp(entry.timestamp)}</span>
+          <span className={styles.logAutomationBadge}>automation</span>
+          <span className={styles.logAutomationLabel}>{label}</span>
+        </div>
+        {expanded && body && (
+          <div className={styles.logDetail}>
+            <pre className={styles.curlPre}>{body}</pre>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const statusColor = entry.status ? getStatusColor(entry.status) : '#6b7280';
 
   return (
@@ -66,7 +87,7 @@ function LogRow({ entry }: { entry: LogEntry }) {
         <div className={styles.logDetail}>
           <div className={styles.curlHeader}>
             <span className={styles.curlLabel}>curl</span>
-            <CopyButton text={entry.curl} />
+            <CopyButton text={entry.curl ?? ''} />
           </div>
           <pre className={styles.curlPre}>{entry.curl}</pre>
         </div>
@@ -127,9 +148,18 @@ export function Footer() {
         )}
         {!open && state.logs.length > 0 && (() => {
           const last = state.logs[state.logs.length - 1];
+          if (last.kind === 'automation') {
+            const label = (last.message ?? '').split('\n')[0];
+            return (
+              <span className={styles.lastRequestSummary}>
+                <span className={styles.lastAutomationBadge}>automation</span>
+                <span className={styles.lastUrl}>{label}</span>
+              </span>
+            );
+          }
           return (
             <span className={styles.lastRequestSummary}>
-              <span className={styles.lastMethod} style={{ color: `var(--accent-${last.method.toLowerCase()}, var(--accent))` }}>{last.method}</span>
+              <span className={styles.lastMethod} style={{ color: `var(--accent-${(last.method ?? '').toLowerCase()}, var(--accent))` }}>{last.method}</span>
               <span className={styles.lastUrl}>{last.url}</span>
               {last.status != null && (
                 <span className={styles.lastStatus} data-ok={last.status < 400}>{last.status}</span>

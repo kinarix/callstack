@@ -526,6 +526,7 @@ function makeCompletionSource(isPost: boolean, envVarKeys: string[] = [], secret
 // ── Props ────────────────────────────────────────────────────────────────────
 
 interface ScriptEditorProps {
+  requestId?: number;
   preScript: string;
   postScript: string;
   onChange: (changes: { pre_script?: string; post_script?: string }) => void;
@@ -538,8 +539,29 @@ interface ScriptEditorProps {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function ScriptEditor({ preScript, postScript, onChange, consoleLogs, onClearLogs, envVars = [], secrets = [], onTest }: ScriptEditorProps) {
-  const [activeTab, setActiveTab] = useState<ScriptTab>('pre');
+const VALID_SCRIPT_TABS: ScriptTab[] = ['pre', 'post', 'examples'];
+
+function loadScriptTab(requestId?: number): ScriptTab {
+  if (requestId == null) return 'pre';
+  const stored = localStorage.getItem('callstack.scriptTab.' + requestId);
+  if (stored && (VALID_SCRIPT_TABS as string[]).includes(stored)) {
+    return stored as ScriptTab;
+  }
+  return 'pre';
+}
+
+export function ScriptEditor({ requestId, preScript, postScript, onChange, consoleLogs, onClearLogs, envVars = [], secrets = [], onTest }: ScriptEditorProps) {
+  const [activeTab, setActiveTab] = useState<ScriptTab>(() => loadScriptTab(requestId));
+
+  useEffect(() => {
+    setActiveTab(loadScriptTab(requestId));
+  }, [requestId]);
+
+  useEffect(() => {
+    if (requestId != null) {
+      localStorage.setItem('callstack.scriptTab.' + requestId, activeTab);
+    }
+  }, [activeTab, requestId]);
   const [envOpen, setEnvOpen] = useState(false);
   const [envHeight, setEnvHeight] = useState(110);
   const [consoleHeight, setConsoleHeight] = useState(120);

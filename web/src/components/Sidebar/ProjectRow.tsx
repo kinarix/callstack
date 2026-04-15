@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Environment, Folder, Project, Request } from '../../lib/types';
+import type { Automation, Environment, Folder, Project, Request } from '../../lib/types';
 import { RequestItem } from './RequestItem';
 import {
+  AutomationIcon,
+  AutomationsFolderIcon,
   BinIcon,
   Chevron,
   CopyIcon,
@@ -10,6 +12,7 @@ import {
   FolderIcon,
   ImportedFolderIcon,
   ImportIcon,
+  NewAutomationIcon,
   NewEnvIcon,
   NewFolderIcon,
   PenIcon,
@@ -73,6 +76,9 @@ export interface ProjectRowProps {
   editingRequestId: number | null;
   onEditRequest: (id: number | null) => void;
   currentRequestId: number | null;
+  activeView: 'request' | 'automation' | 'environment';
+  activeAutomationId: number | null;
+  activeEnvironmentId: number | null;
   executingRequestId: number | null;
   dragOver: DragOver;
   dragging: React.MutableRefObject<{ kind: 'request' | 'folder'; id: number } | null>;
@@ -91,6 +97,18 @@ export interface ProjectRowProps {
   onDeleteFolder: (id: number, e: React.MouseEvent) => void;
   onDeleteRequest: (id: number, e: React.MouseEvent) => void;
   onDeleteEnv: (id: number, name: string, e: React.MouseEvent) => void;
+  editingEnvId: number | null;
+  onStartEditEnv: (id: number) => void;
+  onEnvRenameCommit: (id: number, name: string) => void;
+  projectAutomations: Automation[];
+  expandedAutomationSections: Set<number>;
+  setExpandedAutomationSections: React.Dispatch<React.SetStateAction<Set<number>>>;
+  onCreateAutomation: (projectId: number, e: React.MouseEvent) => void;
+  onOpenAutomation: (automation: Automation) => void;
+  onDeleteAutomation: (id: number, name: string, e: React.MouseEvent) => void;
+  editingAutomationId: number | null;
+  onStartEditAutomation: (id: number) => void;
+  onAutomationRenameCommit: (id: number, name: string) => void;
   onProjectImport: (e: React.MouseEvent, projectId: number) => void;
   onFolderImport: (e: React.MouseEvent, folderId: number, projectId: number) => void;
   onProjectExport: (e: React.MouseEvent, projectId: number) => void;
@@ -125,6 +143,9 @@ export function ProjectRow({
   editingRequestId,
   onEditRequest,
   currentRequestId,
+  activeView,
+  activeAutomationId,
+  activeEnvironmentId,
   executingRequestId,
   dragOver,
   dragging,
@@ -143,6 +164,18 @@ export function ProjectRow({
   onDeleteFolder,
   onDeleteRequest,
   onDeleteEnv,
+  editingEnvId,
+  onStartEditEnv,
+  onEnvRenameCommit,
+  projectAutomations,
+  expandedAutomationSections,
+  setExpandedAutomationSections,
+  onCreateAutomation,
+  onOpenAutomation,
+  onDeleteAutomation,
+  editingAutomationId,
+  onStartEditAutomation,
+  onAutomationRenameCommit,
   onProjectImport,
   onFolderImport,
   onProjectExport,
@@ -164,6 +197,7 @@ export function ProjectRow({
 
   const isProjectDragOver = dragOver?.type === 'project' && dragOver.id === project.id;
   const envsExpanded = expandedEnvSections.has(project.id);
+  const automationsExpanded = expandedAutomationSections.has(project.id);
 
   function renderRequestRow(request: Request) {
     return (
@@ -177,6 +211,8 @@ export function ProjectRow({
           onDragStart={(e) => {
             dragging.current = { kind: 'request', id: request.id };
             e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('callstack/request', JSON.stringify({ id: request.id, projectId: request.project_id }));
+            e.dataTransfer.setData(`callstack/request-project-${request.project_id}`, '1');
             e.stopPropagation();
           }}
           onDragEnd={() => {
@@ -189,7 +225,7 @@ export function ProjectRow({
         >
           <RequestItem
             request={request}
-            isSelected={currentRequestId === request.id}
+            isSelected={activeView === 'request' && currentRequestId === request.id}
             isEditing={editingRequestId === request.id}
             isExecuting={executingRequestId === request.id}
             onSelect={onSelect}
@@ -339,6 +375,9 @@ export function ProjectRow({
                       {folder.imported && <ImportedFolderIcon />}
                     </span>
                   )}
+                  {folderRequests.length > 0 && (
+                    <span className={styles.countBadge}>{folderRequests.length}</span>
+                  )}
                   <button
                     className={`${styles.iconBtn} ${styles.addBtn}`}
                     onClick={(e) => { e.stopPropagation(); onCreateFolderRequest(project.id, folder.id, e); }}
@@ -423,6 +462,9 @@ export function ProjectRow({
               <Chevron expanded={envsExpanded} />
               <EnvIcon />
               <span className={styles.folderName}>Environments</span>
+              {projectEnvs.length > 0 && (
+                <span className={styles.countBadge}>{projectEnvs.length}</span>
+              )}
               <button
                 className={`${styles.iconBtn} ${styles.folderAddBtn} ${styles.addBtn}`}
                 onClick={(e) => onCreateEnvironment(project.id, e)}
@@ -439,15 +481,99 @@ export function ProjectRow({
                   projectEnvs.map((env) => (
                     <div
                       key={env.id}
-                      className={`${styles.treeRow} ${styles.envRow}`}
-                      onClick={() => onEnvClick(env)}
+                      className={`${styles.treeRow} ${styles.envRow} ${activeView === 'environment' && activeEnvironmentId === env.id ? styles.selected : ''}`}
+                      onClick={() => editingEnvId !== env.id && onEnvClick(env)}
                     >
                       <EnvIcon />
-                      <span className={styles.envName}>{env.name}</span>
+                      {editingEnvId === env.id ? (
+                        <InlineNameInput
+                          initialValue={env.name}
+                          className={styles.folderNameInput}
+                          onCommit={(name) => onEnvRenameCommit(env.id, name)}
+                          onCancel={() => onEnvRenameCommit(env.id, env.name)}
+                        />
+                      ) : (
+                        <span className={styles.envName}>{env.name}</span>
+                      )}
+                      <button
+                        className={`${styles.iconBtn} ${styles.renameBtn}`}
+                        onClick={(e) => { e.stopPropagation(); onStartEditEnv(env.id); }}
+                        title="Rename environment"
+                      >
+                        <PenIcon />
+                      </button>
                       <button
                         className={`${styles.iconBtn} ${styles.deleteBtn}`}
                         onClick={(e) => onDeleteEnv(env.id, env.name, e)}
                         title="Delete environment"
+                      >
+                        <BinIcon />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Automations group */}
+          <div className={styles.folder}>
+            <div
+              className={styles.folderRow}
+              onClick={() => setExpandedAutomationSections((prev) => {
+                const next = new Set(prev);
+                if (next.has(project.id)) next.delete(project.id);
+                else next.add(project.id);
+                return next;
+              })}
+            >
+              <Chevron expanded={automationsExpanded} />
+              <AutomationsFolderIcon />
+              <span className={styles.folderName}>Automations</span>
+              {projectAutomations.length > 0 && (
+                <span className={styles.countBadge}>{projectAutomations.length}</span>
+              )}
+              <button
+                className={`${styles.iconBtn} ${styles.folderAddBtn} ${styles.addBtn}`}
+                onClick={(e) => onCreateAutomation(project.id, e)}
+                title="Add automation"
+              >
+                <NewAutomationIcon />
+              </button>
+            </div>
+            {automationsExpanded && (
+              <div className={styles.folderChildren}>
+                {projectAutomations.length === 0 ? (
+                  <div className={`${styles.treeRow} ${styles.emptyRow}`}>No automations</div>
+                ) : (
+                  projectAutomations.map((automation) => (
+                    <div
+                      key={automation.id}
+                      className={`${styles.treeRow} ${styles.automationRow} ${activeView === 'automation' && activeAutomationId === automation.id ? styles.selected : ''}`}
+                      onClick={() => editingAutomationId !== automation.id && onOpenAutomation(automation)}
+                    >
+                      <AutomationIcon />
+                      {editingAutomationId === automation.id ? (
+                        <InlineNameInput
+                          initialValue={automation.name}
+                          className={styles.folderNameInput}
+                          onCommit={(name) => onAutomationRenameCommit(automation.id, name)}
+                          onCancel={() => onAutomationRenameCommit(automation.id, automation.name)}
+                        />
+                      ) : (
+                        <span className={styles.automationName}>{automation.name}</span>
+                      )}
+                      <button
+                        className={`${styles.iconBtn} ${styles.renameBtn}`}
+                        onClick={(e) => { e.stopPropagation(); onStartEditAutomation(automation.id); }}
+                        title="Rename automation"
+                      >
+                        <PenIcon />
+                      </button>
+                      <button
+                        className={`${styles.iconBtn} ${styles.deleteBtn}`}
+                        onClick={(e) => onDeleteAutomation(automation.id, automation.name, e)}
+                        title="Delete automation"
                       >
                         <BinIcon />
                       </button>

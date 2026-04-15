@@ -111,6 +111,32 @@ export function NewFolderIcon() {
   );
 }
 
+export function AutomationIcon() {
+  return (
+    <svg className={`${styles.treeIcon} ${styles.treeIconAutomation}`} width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <polygon points="3,2 11,6.5 3,11" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" fill="currentColor" fillOpacity="0.25" />
+    </svg>
+  );
+}
+
+export function AutomationsFolderIcon() {
+  return (
+    <svg className={`${styles.treeIcon} ${styles.treeIconAutomation}`} width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M1.5 3.5h10M1.5 6.5h10M1.5 9.5h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <polygon points="9,7.5 12,9 9,10.5" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" fill="currentColor" fillOpacity="0.5" />
+    </svg>
+  );
+}
+
+export function NewAutomationIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" style={{ color: 'var(--accent-get)' }}>
+      <polygon points="3,2 11,7 3,12" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+      <path d="M10.5 3.5V7.5M8.5 5.5H12.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function ImportedFolderIcon() {
   return (
     <svg

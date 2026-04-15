@@ -1,4 +1,4 @@
-import React, { createContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useReducer, useEffect, ReactNode } from 'react';
 import type { AppContextType, AppAction, AppState } from '../lib/types';
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -18,15 +18,34 @@ function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         projects: state.projects.map((p) => (p.id === action.payload.id ? action.payload : p)),
       };
-    case 'DELETE_PROJECT':
+    case 'DELETE_PROJECT': {
+      const deletedProjectId = action.payload;
+      const deletedEnvIds = new Set(
+        state.environments.filter((e) => e.project_id === deletedProjectId).map((e) => e.id)
+      );
+      const deletedAutomationIds = new Set(
+        state.automations.filter((a) => a.projectId === deletedProjectId).map((a) => a.id)
+      );
+      const deletedRequestIds = new Set(
+        state.requests.filter((r) => r.project_id === deletedProjectId).map((r) => r.id)
+      );
+      const activeEnvGone = state.activeEnvironmentId != null && deletedEnvIds.has(state.activeEnvironmentId);
+      const activeAutomationGone = state.activeAutomationId != null && deletedAutomationIds.has(state.activeAutomationId);
+      const activeRequestGone = state.currentRequestId != null && deletedRequestIds.has(state.currentRequestId);
       return {
         ...state,
-        projects: state.projects.filter((p) => p.id !== action.payload),
-        folders: state.folders.filter((f) => f.project_id !== action.payload),
-        requests: state.requests.filter((r) => r.project_id !== action.payload),
-        environments: state.environments.filter((e) => e.project_id !== action.payload),
-        currentProjectId: state.currentProjectId === action.payload ? null : state.currentProjectId,
+        projects: state.projects.filter((p) => p.id !== deletedProjectId),
+        folders: state.folders.filter((f) => f.project_id !== deletedProjectId),
+        requests: state.requests.filter((r) => r.project_id !== deletedProjectId),
+        environments: state.environments.filter((e) => e.project_id !== deletedProjectId),
+        automations: state.automations.filter((a) => a.projectId !== deletedProjectId),
+        currentProjectId: state.currentProjectId === deletedProjectId ? null : state.currentProjectId,
+        currentRequestId: activeRequestGone ? null : state.currentRequestId,
+        activeEnvironmentId: activeEnvGone ? null : state.activeEnvironmentId,
+        activeAutomationId: activeAutomationGone ? null : state.activeAutomationId,
+        activeView: activeEnvGone || activeAutomationGone ? 'request' : state.activeView,
       };
+    }
     case 'SET_REQUESTS':
       return { ...state, requests: action.payload };
     case 'ADD_REQUEST':
@@ -108,8 +127,17 @@ function appReducer(state: AppState, action: AppAction): AppState {
       }
       return { ...state, expandedFolders: next };
     }
-    case 'SET_ENVIRONMENTS':
-      return { ...state, environments: action.payload };
+    case 'SET_ENVIRONMENTS': {
+      const ids = new Set(action.payload.map((e) => e.id));
+      const stillValid = state.activeEnvironmentId != null && ids.has(state.activeEnvironmentId);
+      return {
+        ...state,
+        environments: action.payload,
+        activeEnvironmentId: stillValid ? state.activeEnvironmentId : null,
+        activeView:
+          !stillValid && state.activeView === 'environment' ? 'request' : state.activeView,
+      };
+    }
     case 'ADD_ENVIRONMENT':
       return { ...state, environments: [...state.environments, action.payload] };
     case 'UPDATE_ENVIRONMENT':
@@ -117,15 +145,43 @@ function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         environments: state.environments.map((e) => (e.id === action.payload.id ? action.payload : e)),
       };
-    case 'DELETE_ENVIRONMENT':
+    case 'DELETE_ENVIRONMENT': {
+      const isActive = state.activeEnvironmentId === action.payload;
       return {
         ...state,
         environments: state.environments.filter((e) => e.id !== action.payload),
+        activeEnvironmentId: isActive ? null : state.activeEnvironmentId,
+        activeView: isActive && state.activeView === 'environment' ? 'request' : state.activeView,
       };
+    }
     case 'ADD_LOG':
       return { ...state, logs: [...state.logs, action.payload] };
     case 'CLEAR_LOGS':
       return { ...state, logs: [] };
+    case 'SET_AUTOMATIONS': {
+      const ids = new Set(action.payload.map((a) => a.id));
+      const stillValid = state.activeAutomationId != null && ids.has(state.activeAutomationId);
+      return {
+        ...state,
+        automations: action.payload,
+        activeAutomationId: stillValid ? state.activeAutomationId : null,
+      };
+    }
+    case 'ADD_AUTOMATION':
+      return { ...state, automations: [...state.automations, action.payload] };
+    case 'UPDATE_AUTOMATION':
+      return {
+        ...state,
+        automations: state.automations.map((a) => (a.id === action.payload.id ? action.payload : a)),
+      };
+    case 'DELETE_AUTOMATION':
+      return { ...state, automations: state.automations.filter((a) => a.id !== action.payload) };
+    case 'SET_VIEW':
+      return { ...state, activeView: action.payload };
+    case 'SET_ACTIVE_AUTOMATION':
+      return { ...state, activeAutomationId: action.payload };
+    case 'SET_ACTIVE_ENVIRONMENT':
+      return { ...state, activeEnvironmentId: action.payload };
     default:
       return state;
   }
@@ -150,8 +206,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
       expandedProjects: parseIds('callstack.expandedProjects'),
       expandedFolders: parseIds('callstack.expandedFolders'),
       logs: [],
+      automations: [],
+      activeView: ((): 'request' | 'automation' | 'environment' => {
+        const v = localStorage.getItem('callstack.activeView');
+        if (v === 'automation') return 'automation';
+        if (v === 'environment') return 'environment';
+        return 'request';
+      })(),
+      activeAutomationId: ((): number | null => {
+        const v = localStorage.getItem('callstack.activeAutomationId');
+        if (!v) return null;
+        const n = parseInt(v, 10);
+        return Number.isFinite(n) ? n : null;
+      })(),
+      activeEnvironmentId: ((): number | null => {
+        const v = localStorage.getItem('callstack.activeEnvironmentId');
+        if (!v) return null;
+        const n = parseInt(v, 10);
+        return Number.isFinite(n) ? n : null;
+      })(),
     };
   });
+
+  useEffect(() => {
+    localStorage.setItem('callstack.activeView', state.activeView);
+  }, [state.activeView]);
+
+  useEffect(() => {
+    if (state.activeAutomationId == null) {
+      localStorage.removeItem('callstack.activeAutomationId');
+    } else {
+      localStorage.setItem('callstack.activeAutomationId', String(state.activeAutomationId));
+    }
+  }, [state.activeAutomationId]);
+
+  useEffect(() => {
+    if (state.activeEnvironmentId == null) {
+      localStorage.removeItem('callstack.activeEnvironmentId');
+    } else {
+      localStorage.setItem('callstack.activeEnvironmentId', String(state.activeEnvironmentId));
+    }
+  }, [state.activeEnvironmentId]);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>

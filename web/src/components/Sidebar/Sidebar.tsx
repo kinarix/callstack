@@ -7,7 +7,6 @@ import { useShortcuts } from '../../hooks/useShortcuts';
 import { ShortcutModal } from '../ShortcutModal/ShortcutModal';
 import { NewProjectModal } from './NewProjectModal';
 import { NewFolderModal } from './NewFolderModal';
-import { EnvModal } from '../EnvModal/EnvModal';
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 import { ImportModal } from '../ImportModal/ImportModal';
 import { ExportModal } from '../ExportModal/ExportModal';
@@ -17,7 +16,7 @@ import { exportFolderAsPostman, exportProjectAsPostman } from '../../utils/postm
 import { exportProject as exportCallstackProject, exportProjectPlain, importArchive } from '../../utils/callstackArchive';
 import type { ArchivePreview } from '../../lib/callstackSchema';
 import { invoke } from '@tauri-apps/api/core';
-import type { Environment, Request } from '../../lib/types';
+import type { Automation, Environment, Request } from '../../lib/types';
 import { FilePickerModal } from '../FilePickerModal/FilePickerModal';
 import { ProjectRow } from './ProjectRow';
 import type { DragOver } from './ProjectRow';
@@ -29,7 +28,8 @@ type PendingDelete =
   | { type: 'project'; id: number; name: string; requestCount: number; folderCount: number; envCount: number }
   | { type: 'folder'; id: number; name: string; requestCount: number }
   | { type: 'request'; id: number; name: string; method: string }
-  | { type: 'env'; id: number; name: string };
+  | { type: 'env'; id: number; name: string }
+  | { type: 'automation'; id: number; name: string };
 
 interface SidebarProps {
   collapsed: boolean;
@@ -68,6 +68,9 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     createEnvironment,
     updateEnvironment,
     deleteEnvironment,
+    createAutomation,
+    updateAutomation,
+    deleteAutomation,
     moveRequest,
     moveFolder,
     reorderRequests,
@@ -78,16 +81,32 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     saveResponse,
   } = useDatabase();
 
-  const { projects, requests, folders, environments, currentRequestId, expandedProjects, expandedFolders } = state;
+  const { projects, requests, folders, environments, automations, currentRequestId, expandedProjects, expandedFolders } = state;
 
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [folderModalProjectId, setFolderModalProjectId] = useState<number | null>(null);
   const [editingRequestId, setEditingRequestId] = useState<number | null>(null);
   const [editingProjectId, setEditingProjectId] = useState<number | null>(null);
   const [editingFolderId, setEditingFolderId] = useState<number | null>(null);
+  const [editingEnvId, setEditingEnvId] = useState<number | null>(null);
+  const [editingAutomationId, setEditingAutomationId] = useState<number | null>(null);
   const [newFolderId, setNewFolderId] = useState<number | null>(null);
-  const [envModalEnv, setEnvModalEnv] = useState<Environment | null>(null);
-  const [expandedEnvSections, setExpandedEnvSections] = useState<Set<number>>(new Set());
+  const [expandedEnvSections, setExpandedEnvSections] = useState<Set<number>>(() => {
+    try { return new Set<number>(JSON.parse(localStorage.getItem('callstack.expandedEnvSections') || '[]')); }
+    catch { return new Set<number>(); }
+  });
+  const [expandedAutomationSections, setExpandedAutomationSections] = useState<Set<number>>(() => {
+    try { return new Set<number>(JSON.parse(localStorage.getItem('callstack.expandedAutomationSections') || '[]')); }
+    catch { return new Set<number>(); }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('callstack.expandedEnvSections', JSON.stringify([...expandedEnvSections]));
+  }, [expandedEnvSections]);
+
+  useEffect(() => {
+    localStorage.setItem('callstack.expandedAutomationSections', JSON.stringify([...expandedAutomationSections]));
+  }, [expandedAutomationSections]);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [shortcutModalRequestId, setShortcutModalRequestId] = useState<number | null>(null);
   const { shortcuts, assignShortcut, removeShortcut, getShortcutForRequest } = useShortcuts();
@@ -129,6 +148,41 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     setNewFolderId(null);
   }, [newFolderId, folders]);
 
+  // After data loads, auto-expand whatever contains the active selection so it's visible
+  const didAutoExpand = useRef(false);
+  useEffect(() => {
+    if (didAutoExpand.current) return;
+    if (state.projects.length === 0) return;
+    didAutoExpand.current = true;
+
+    // Active automation: expand its project + the automation section under that project
+    if (state.activeView === 'automation' && state.activeAutomationId != null) {
+      const auto = state.automations.find((a) => a.id === state.activeAutomationId);
+      if (auto) {
+        if (!state.expandedProjects.has(auto.projectId)) {
+          dispatch({ type: 'TOGGLE_PROJECT', payload: auto.projectId });
+        }
+        setExpandedAutomationSections((prev) => {
+          if (prev.has(auto.projectId)) return prev;
+          const next = new Set(prev); next.add(auto.projectId); return next;
+        });
+      }
+    }
+
+    // Active request: expand its project (and folder, if any)
+    if (state.currentRequestId != null) {
+      const req = state.requests.find((r) => r.id === state.currentRequestId);
+      if (req) {
+        if (!state.expandedProjects.has(req.project_id)) {
+          dispatch({ type: 'TOGGLE_PROJECT', payload: req.project_id });
+        }
+        if (req.folder_id != null && !state.expandedFolders.has(req.folder_id)) {
+          dispatch({ type: 'TOGGLE_FOLDER', payload: req.folder_id });
+        }
+      }
+    }
+  }, [state.projects.length, state.automations.length, state.requests.length]);
+
   // Keyboard shortcut from App.tsx triggers inline rename
   useEffect(() => {
     if (externalRenameRequestId != null) setEditingRequestId(externalRenameRequestId);
@@ -161,6 +215,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
 
   const handleSelect = (id: number) => {
     dispatch({ type: 'SET_CURRENT_REQUEST', payload: id });
+    dispatch({ type: 'SET_VIEW', payload: 'request' });
   };
 
   const requestDeleteProject = (projectId: number, e: React.MouseEvent) => {
@@ -190,6 +245,25 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     setPendingDelete({ type: 'env', id, name });
   };
 
+  const requestDeleteAutomation = (id: number, name: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPendingDelete({ type: 'automation', id, name });
+  };
+
+  const handleCreateAutomation = async (projectId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const automation = await createAutomation(projectId, 'New Automation', []);
+    dispatch({ type: 'ADD_AUTOMATION', payload: automation });
+    dispatch({ type: 'SET_VIEW', payload: 'automation' });
+    dispatch({ type: 'SET_ACTIVE_AUTOMATION', payload: automation.id });
+    setExpandedAutomationSections((prev) => new Set(prev).add(projectId));
+  };
+
+  const handleOpenAutomation = (automation: Automation) => {
+    dispatch({ type: 'SET_VIEW', payload: 'automation' });
+    dispatch({ type: 'SET_ACTIVE_AUTOMATION', payload: automation.id });
+  };
+
   const handleConfirmDelete = useCallback(async () => {
     if (!pendingDelete) return;
     const pd = pendingDelete;
@@ -214,12 +288,15 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
         console.log('Deleting environment:', pd.id);
         await deleteEnvironment(pd.id);
         dispatch({ type: 'DELETE_ENVIRONMENT', payload: pd.id });
+      } else if (pd.type === 'automation') {
+        await deleteAutomation(pd.id);
+        dispatch({ type: 'DELETE_AUTOMATION', payload: pd.id });
       }
     } catch (error) {
       console.error('Delete failed:', error);
       setPendingDelete(pd);
     }
-  }, [pendingDelete, deleteProject, deleteFolder, deleteRequest, deleteEnvironment, removeShortcut, dispatch]);
+  }, [pendingDelete, deleteProject, deleteFolder, deleteRequest, deleteEnvironment, deleteAutomation, removeShortcut, dispatch]);
 
   const handleCreateFolder = (projectId: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -230,7 +307,13 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     e.stopPropagation();
     const env = await createEnvironment(projectId, 'New Environment');
     dispatch({ type: 'ADD_ENVIRONMENT', payload: env });
-    setEnvModalEnv(env);
+    dispatch({ type: 'SET_ACTIVE_ENVIRONMENT', payload: env.id });
+    dispatch({ type: 'SET_VIEW', payload: 'environment' });
+  };
+
+  const handleOpenEnvironment = (env: Environment) => {
+    dispatch({ type: 'SET_ACTIVE_ENVIRONMENT', payload: env.id });
+    dispatch({ type: 'SET_VIEW', payload: 'environment' });
   };
 
   const handleFolderModalConfirm = async (name: string) => {
@@ -262,6 +345,22 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     setEditingFolderId(null);
     const updated = await updateFolder(id, name);
     dispatch({ type: 'UPDATE_FOLDER', payload: updated });
+  };
+
+  const handleEnvRenameCommit = async (id: number, name: string) => {
+    setEditingEnvId(null);
+    const env = environments.find((e) => e.id === id);
+    if (!env) return;
+    const updated = await updateEnvironment(id, name, env.variables);
+    dispatch({ type: 'UPDATE_ENVIRONMENT', payload: updated });
+  };
+
+  const handleAutomationRenameCommit = async (id: number, name: string) => {
+    setEditingAutomationId(null);
+    const automation = automations.find((a) => a.id === id);
+    if (!automation) return;
+    const updated = await updateAutomation(id, name, automation.steps);
+    dispatch({ type: 'UPDATE_AUTOMATION', payload: updated });
   };
 
   const handleDuplicateRequest = async (requestId: number) => {
@@ -738,16 +837,6 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
           onCancel={() => setFolderModalProjectId(null)}
         />
       )}
-      {envModalEnv && (
-        <EnvModal
-          env={envModalEnv}
-          onClose={() => setEnvModalEnv(null)}
-          onSave={async (id, name, variables) => {
-            const updated = await updateEnvironment(id, name, variables);
-            dispatch({ type: 'UPDATE_ENVIRONMENT', payload: updated });
-          }}
-        />
-      )}
       {pendingDelete && (
         <ConfirmModal
           title={
@@ -799,6 +888,12 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
           {pendingDelete.type === 'env' && (
             <>
               <p>Permanently delete environment <strong>{pendingDelete.name}</strong>?</p>
+              <p>This action cannot be undone.</p>
+            </>
+          )}
+          {pendingDelete.type === 'automation' && (
+            <>
+              <p>Permanently delete automation <strong>{pendingDelete.name}</strong>?</p>
               <p>This action cannot be undone.</p>
             </>
           )}
@@ -860,6 +955,9 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
                 editingRequestId={editingRequestId}
                 onEditRequest={setEditingRequestId}
                 currentRequestId={currentRequestId}
+                activeView={state.activeView}
+                activeAutomationId={state.activeAutomationId}
+                activeEnvironmentId={state.activeEnvironmentId}
                 executingRequestId={state.executingRequestId}
                 dragOver={dragOver}
                 dragging={dragging}
@@ -878,13 +976,25 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
                 onDeleteFolder={requestDeleteFolder}
                 onDeleteRequest={requestDeleteRequest}
                 onDeleteEnv={requestDeleteEnv}
+                editingEnvId={editingEnvId}
+                onStartEditEnv={setEditingEnvId}
+                onEnvRenameCommit={handleEnvRenameCommit}
+                projectAutomations={automations.filter((a) => a.projectId === project.id)}
+                expandedAutomationSections={expandedAutomationSections}
+                setExpandedAutomationSections={setExpandedAutomationSections}
+                onCreateAutomation={handleCreateAutomation}
+                onOpenAutomation={handleOpenAutomation}
+                onDeleteAutomation={requestDeleteAutomation}
+                editingAutomationId={editingAutomationId}
+                onStartEditAutomation={setEditingAutomationId}
+                onAutomationRenameCommit={handleAutomationRenameCommit}
                 onProjectImport={handleProjectImportClick}
                 onFolderImport={handleFolderImportClick}
                 onProjectExport={handleProjectExportClick}
                 onFolderExport={handleFolderExportClick}
                 getShortcutForRequest={getShortcutForRequest}
                 onOpenShortcutModal={setShortcutModalRequestId}
-                onEnvClick={setEnvModalEnv}
+                onEnvClick={handleOpenEnvironment}
                 onToggleProject={() => dispatch({ type: 'TOGGLE_PROJECT', payload: project.id })}
                 onToggleFolder={(id) => dispatch({ type: 'TOGGLE_FOLDER', payload: id })}
                 onDropOnProject={handleDropOnProject}

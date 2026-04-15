@@ -3,6 +3,7 @@ import type { Request, KeyValue, FileAttachment } from '../../lib/types';
 import { KeyValueEditor } from './KeyValueEditor';
 import { FileUpload } from './FileUpload';
 import { ScriptEditor } from './ScriptEditor';
+import { ContentTypeSelector } from './ContentTypeSelector';
 import { resolveTemplate } from '../../lib/template';
 import { FAKER_TOKENS } from '../../lib/templateTokens';
 import styles from './TabPanel.module.css';
@@ -74,6 +75,19 @@ function savePinned(requestId: number, pinned: Set<PinnableTab>) {
   localStorage.setItem(key, JSON.stringify([...pinned]));
 }
 
+const VALID_TABS: TabName[] = ['params', 'headers', 'body', 'files', 'script'];
+
+function loadActiveTab(requestId: number, pinned: Set<PinnableTab>): TabName {
+  const stored = localStorage.getItem('callstack.activeTab.' + requestId);
+  if (stored && (VALID_TABS as string[]).includes(stored)) {
+    const tab = stored as TabName;
+    if (!PINNABLE.includes(tab as PinnableTab) || !pinned.has(tab as PinnableTab)) {
+      return tab;
+    }
+  }
+  return pinned.has('params') ? 'body' : 'params';
+}
+
 function detectContentType(body: string): string {
   const trimmed = body.trim();
   if (!trimmed) return '';
@@ -136,19 +150,24 @@ interface TabPanelProps {
 export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, secrets, onScriptTest, copyFlash }: TabPanelProps) {
   const [pinned, setPinned] = useState<Set<PinnableTab>>(() => request ? loadPinned(request.id) : new Set());
   const [activeTab, setActiveTab] = useState<TabName>(() => {
-    const p = request ? loadPinned(request.id) : new Set<PinnableTab>();
-    return p.has('params') ? 'body' : 'params';
+    if (!request) return 'params';
+    const p = loadPinned(request.id);
+    return loadActiveTab(request.id, p);
   });
 
   useEffect(() => {
     if (request) {
       const loaded = loadPinned(request.id);
       setPinned(loaded);
-      setActiveTab(prev =>
-        PINNABLE.includes(prev as PinnableTab) && loaded.has(prev as PinnableTab) ? 'body' : prev
-      );
+      setActiveTab(loadActiveTab(request.id, loaded));
     }
   }, [request?.id]);
+
+  useEffect(() => {
+    if (request) {
+      localStorage.setItem('callstack.activeTab.' + request.id, activeTab);
+    }
+  }, [activeTab, request?.id]);
 
   if (!request) {
     return <div className={styles.empty}>Select a request to get started</div>;
@@ -200,10 +219,10 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
 
   function renderPinnedContent(p: PinnableTab) {
     if (p === 'params') {
-      return <KeyValueEditor items={request!.params} onChange={(params) => onRequestChange({ params })} envVars={envVars} />;
+      return <KeyValueEditor items={request!.params} onChange={(params) => onRequestChange({ params })} envVars={envVars} secrets={secrets} />;
     }
     if (p === 'headers') {
-      return <KeyValueEditor items={request!.headers} onChange={(headers) => onRequestChange({ headers })} envVars={envVars} />;
+      return <KeyValueEditor items={request!.headers} onChange={(headers) => onRequestChange({ headers })} envVars={envVars} secrets={secrets} />;
     }
     return <FileUpload files={files} onChange={onFilesChange} />;
   }
@@ -218,6 +237,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
     <div className={styles.tabPanel}>
       <div className={styles.header}>
         <span className={styles.sectionLabel}>Request</span>
+        <ContentTypeSelector value={currentContentType} onChange={handleContentTypeChange} />
         <div className={styles.spacer} />
         {bodySize && <span className={styles.sizeTag}>{bodySize}</span>}
         {request.body.trim() && (
@@ -283,6 +303,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
             items={request.params}
             onChange={(params) => onRequestChange({ params })}
             envVars={envVars}
+            secrets={secrets}
           />
         )}
         {activeTab === 'headers' && (
@@ -290,6 +311,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
             items={request.headers}
             onChange={(headers) => onRequestChange({ headers })}
             envVars={envVars}
+            secrets={secrets}
           />
         )}
         {activeTab === 'body' && (
@@ -298,9 +320,9 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
               body={request.body}
               contentType={currentContentType}
               onChange={handleBodyChange}
-              onContentTypeChange={handleContentTypeChange}
               copyFlash={copyFlash}
               envVars={envVars}
+              secrets={secrets}
             />
           </Suspense>
         )}
@@ -309,6 +331,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
         )}
         {activeTab === 'script' && (
           <ScriptEditor
+            requestId={request.id}
             preScript={request.pre_script}
             postScript={request.post_script}
             onChange={onRequestChange}
