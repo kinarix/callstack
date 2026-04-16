@@ -11,10 +11,11 @@ import styles from './BodyEditor.module.css';
 
 interface JsonTemplateState {
   inTemplateString: boolean;
+  depth: number;
 }
 
 const jsonTemplateMode: StreamLanguage<JsonTemplateState> = StreamLanguage.define({
-  startState: () => ({ inTemplateString: false }),
+  startState: () => ({ inTemplateString: false, depth: 0 }),
   token(stream: StringStream, state: JsonTemplateState): string | null {
     if (stream.eatSpace()) return null;
 
@@ -68,26 +69,17 @@ const jsonTemplateMode: StreamLanguage<JsonTemplateState> = StreamLanguage.defin
     // Punctuation
     const ch = stream.next();
     if (ch === ':') return 'punctuation';
-    if (ch === ',' || ch === '{' || ch === '}' || ch === '[' || ch === ']') return 'punctuation';
+    if (ch === '{' || ch === '[') { state.depth++; return 'punctuation'; }
+    if (ch === '}' || ch === ']') { state.depth = Math.max(0, state.depth - 1); return 'punctuation'; }
+    if (ch === ',') return 'punctuation';
 
     return null;
   },
   indent(state: JsonTemplateState, textAfter: string, context) {
     const unit = context.unit;
     const closing = /^\s*[}\]]/.test(textAfter);
-    // Count open vs close braces/brackets before current line
-    const doc = context.state.doc;
-    const line = context.state.doc.lineAt(context.pos);
-    let depth = 0;
-    for (let i = 1; i < line.number; i++) {
-      const l = doc.line(i).text;
-      for (const c of l) {
-        if (c === '{' || c === '[') depth++;
-        if (c === '}' || c === ']') depth--;
-      }
-    }
-    if (closing) depth--;
-    return Math.max(0, depth) * unit;
+    const depth = closing ? Math.max(0, state.depth - 1) : state.depth;
+    return depth * unit;
   },
 });
 
