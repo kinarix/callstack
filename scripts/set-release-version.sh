@@ -13,6 +13,34 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CARGO_FILE="$REPO_ROOT/src-tauri/Cargo.toml"
 CONF_FILE="$REPO_ROOT/src-tauri/tauri.conf.json"
 
+# ── Detect docs-only changes ────────────────────────────────────
+# Check both staged+unstaged changes and unpushed commits.
+# If every changed file lives under docs/, skip the version bump.
+cd "$REPO_ROOT"
+
+ALL_CHANGED=$(git diff --name-only HEAD 2>/dev/null; git diff --name-only 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null)
+NON_DOCS=$(echo "$ALL_CHANGED" | grep -v '^docs/' | grep -v '^$' || true)
+
+if [ -z "$NON_DOCS" ] && [ -n "$ALL_CHANGED" ]; then
+    CURRENT_VERSION=$(grep -m1 'version = ' "$CARGO_FILE" | sed 's/.*version = "\([^"]*\)".*/\1/')
+    echo -e "${YELLOW}Only docs/ files changed — skipping version bump (staying at v$CURRENT_VERSION).${NC}"
+    echo ""
+
+    read -p "$(echo -e ${BLUE})Commit message$(echo -e ${NC}): " COMMIT_MSG
+    COMMIT_MSG="${COMMIT_MSG:-Update website}"
+
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    git add docs/
+    git commit -m "$COMMIT_MSG"
+    echo -e "${GREEN}✓${NC} Committed: $COMMIT_MSG"
+
+    git push origin "$CURRENT_BRANCH"
+    echo -e "${GREEN}✓${NC} Pushed to origin/$CURRENT_BRANCH (no release triggered)"
+    exit 0
+fi
+
+# ── Normal release flow ─────────────────────────────────────────
+
 # Get current version
 CURRENT_VERSION=$(grep -m1 'version = ' "$CARGO_FILE" | sed 's/.*version = "\([^"]*\)".*/\1/')
 
