@@ -165,6 +165,15 @@ impl Database {
                 duration_ms INTEGER NOT NULL DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (automation_id) REFERENCES automations(id) ON DELETE CASCADE
+            );
+            CREATE TABLE IF NOT EXISTS data_files (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                content TEXT NOT NULL DEFAULT '',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             );",
         )
         .map_err(|e| format!("Cannot create tables: {e}"))?;
@@ -1278,6 +1287,118 @@ pub fn clear_automation_runs(db: tauri::State<Database>, automation_id: i64) -> 
 pub fn delete_automation_run(db: tauri::State<Database>, id: i64) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM automation_runs WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// --- Data file commands ---
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DataFile {
+    pub id: i64,
+    pub project_id: i64,
+    pub name: String,
+    pub content: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[tauri::command]
+pub fn list_data_files(
+    db: tauri::State<Database>,
+    project_id: i64,
+) -> Result<Vec<DataFile>, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, project_id, name, content, created_at, updated_at
+             FROM data_files WHERE project_id = ?1 ORDER BY created_at ASC",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let rows = stmt
+        .query_map(params![project_id], |row| {
+            Ok(DataFile {
+                id: row.get(0)?,
+                project_id: row.get(1)?,
+                name: row.get(2)?,
+                content: row.get(3)?,
+                created_at: row.get(4)?,
+                updated_at: row.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn create_data_file(
+    db: tauri::State<Database>,
+    project_id: i64,
+    name: String,
+    content: String,
+) -> Result<DataFile, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "INSERT INTO data_files (project_id, name, content) VALUES (?1, ?2, ?3)",
+        params![project_id, name, content],
+    )
+    .map_err(|e| e.to_string())?;
+
+    let id = conn.last_insert_rowid();
+
+    conn.query_row(
+        "SELECT id, project_id, name, content, created_at, updated_at FROM data_files WHERE id = ?1",
+        params![id],
+        |row| Ok(DataFile {
+            id: row.get(0)?,
+            project_id: row.get(1)?,
+            name: row.get(2)?,
+            content: row.get(3)?,
+            created_at: row.get(4)?,
+            updated_at: row.get(5)?,
+        }),
+    )
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn update_data_file(
+    db: tauri::State<Database>,
+    id: i64,
+    name: String,
+    content: String,
+) -> Result<DataFile, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "UPDATE data_files SET name = ?1, content = ?2, updated_at = CURRENT_TIMESTAMP WHERE id = ?3",
+        params![name, content, id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    conn.query_row(
+        "SELECT id, project_id, name, content, created_at, updated_at FROM data_files WHERE id = ?1",
+        params![id],
+        |row| Ok(DataFile {
+            id: row.get(0)?,
+            project_id: row.get(1)?,
+            name: row.get(2)?,
+            content: row.get(3)?,
+            created_at: row.get(4)?,
+            updated_at: row.get(5)?,
+        }),
+    )
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_data_file(db: tauri::State<Database>, id: i64) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM data_files WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
     Ok(())
 }

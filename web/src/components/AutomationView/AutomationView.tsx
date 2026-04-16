@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useApp } from '../../context/AppContext';
 import { useDatabase } from '../../hooks/useDatabase';
 import { useAutomationRunner } from '../../hooks/useAutomationRunner';
-import type { AutomationRequestResult, AutomationRun, AutomationStep, BranchCondition, LogScope } from '../../lib/types';
+import type { AutomationRequestResult, AutomationRun, AutomationStep, BranchCondition, DataFile, LogScope } from '../../lib/types';
+import { parseCsv } from '../../lib/parseCsv';
 import { invoke } from '@tauri-apps/api/core';
 import { formatBody } from '../../lib/formatBody';
 import styles from './AutomationView.module.css';
@@ -58,6 +59,69 @@ function resultFailed(result: AutomationRequestResult): boolean {
   return result.status >= 400 || result.status === 0;
 }
 
+function formatResultAsText(result: AutomationRequestResult, idx: number): string {
+  const lines: string[] = [];
+  const sep = '─'.repeat(60);
+
+  lines.push(`Result #${idx + 1}: ${result.method} ${result.requestName}`);
+  lines.push(sep);
+
+  if (result.rowData && Object.keys(result.rowData).length > 0) {
+    lines.push(`Data Row ${result.rowIndex}`);
+    for (const [k, v] of Object.entries(result.rowData)) lines.push(`  ${k}: ${v}`);
+    lines.push('');
+  }
+
+  lines.push('REQUEST');
+  lines.push(`  ${result.url}`);
+  if (result.requestParams && result.requestParams.length > 0) {
+    lines.push('  Params:');
+    for (const p of result.requestParams) lines.push(`    ${p.key}: ${p.value}`);
+  }
+  if (result.requestHeaders && result.requestHeaders.length > 0) {
+    lines.push('  Headers:');
+    for (const h of result.requestHeaders) lines.push(`    ${h.key}: ${h.value}`);
+  }
+  if (result.requestBody) {
+    lines.push('  Body:');
+    lines.push(`    ${result.requestBody}`);
+  }
+  lines.push('');
+
+  if (result.error) {
+    lines.push('ERROR');
+    lines.push(`  ${result.error}`);
+  } else {
+    lines.push('RESPONSE');
+    lines.push(`  ${result.status} ${result.statusText} · ${result.timeMs}ms`);
+    if (result.responseHeaders && result.responseHeaders.length > 0) {
+      lines.push('  Headers:');
+      for (const h of result.responseHeaders) lines.push(`    ${h.key}: ${h.value}`);
+    }
+    if (result.responseBody) {
+      lines.push('  Body:');
+      lines.push(`    ${result.responseBody}`);
+    }
+  }
+
+  if (result.testResults.length > 0) {
+    lines.push('');
+    const passed = result.testResults.filter((t) => t.passed).length;
+    lines.push(`TESTS (${passed}/${result.testResults.length} passed)`);
+    for (const t of result.testResults) {
+      lines.push(`  ${t.passed ? '✓' : '✗'} ${t.description}${t.error ? ' — ' + t.error : ''}`);
+    }
+  }
+
+  if (result.curl) {
+    lines.push('');
+    lines.push('CURL');
+    lines.push(result.curl);
+  }
+
+  return lines.join('\n');
+}
+
 function newStep(type: AutomationStep['type'], requestId?: number): AutomationStep {
   const id = crypto.randomUUID();
   switch (type) {
@@ -68,6 +132,7 @@ function newStep(type: AutomationStep['type'], requestId?: number): AutomationSt
     case 'fanout': return { id, type: 'fanout', lanes: [[], []] };
     case 'stop': return { id, type: 'stop' };
     case 'log': return { id, type: 'log', scope: 'request', object: 'all' };
+    case 'csv_iterator': return { id, type: 'csv_iterator', dataFileId: null, steps: [] };
   }
 }
 
@@ -76,6 +141,7 @@ function newStep(type: AutomationStep['type'], requestId?: number): AutomationSt
 const PALETTE_ITEMS: { type: AutomationStep['type']; label: string; color: string; icon: string; hint: string }[] = [
   { type: 'delay', label: 'Delay', color: '#f59e0b', icon: '⏱', hint: 'Wait before next step' },
   { type: 'repeat', label: 'Repeat', color: '#a855f7', icon: '↻', hint: 'Loop elements N times' },
+  { type: 'csv_iterator', label: 'Iterator', color: 'var(--accent-patch)', icon: '⊞', hint: 'Run steps once per CSV row' },
   { type: 'branch', label: 'Branch', color: '#f97316', icon: '⑂', hint: 'If/else fork' },
   { type: 'fanout', label: 'Fanout', color: '#06b6d4', icon: '⑃', hint: 'Run all lanes sequentially with same input' },
   { type: 'log', label: 'Log', color: '#0ea5e9', icon: '⊕', hint: 'Log a value to the console' },
@@ -448,6 +514,100 @@ function FanoutStep({ step, onChange, requests, automationProjectId, depth, drag
   );
 }
 
+// ── CSV Iterator step (needs own useState for dropdown) ──────
+
+function CsvIteratorStep({ step, onChange, requests, automationProjectId, depth, dragSourceRef, dragPath, setDragPath, path, deleteStepPath, setDeleteStepPath, onConfirmDelete }: {
+  step: Extract<AutomationStep, { type: 'csv_iterator' }>;
+  onChange: (step: AutomationStep) => void;
+  requests: { id: number; name: string; method: string; folder_id: number | null }[];
+  automationProjectId: number;
+  depth: number;
+  dragSourceRef: React.MutableRefObject<DragSource | null>;
+  dragPath: number[] | null;
+  setDragPath: (path: number[] | null) => void;
+  path: number[];
+  deleteStepPath: number[] | null;
+  setDeleteStepPath: (path: number[] | null) => void;
+  onConfirmDelete: (path: number[]) => void;
+}) {
+  const { state } = useApp();
+  const projectDataFiles = state.dataFiles.filter((d: DataFile) => d.project_id === automationProjectId);
+  const selected = step.dataFileId != null ? state.dataFiles.find((d: DataFile) => d.id === step.dataFileId) : null;
+  const headers = selected ? parseCsv(selected.content).headers : [];
+
+  const isConfirmingDelete = deleteStepPath !== null && deleteStepPath.length === path.length && deleteStepPath.every((p, i) => p === path[i]);
+
+  const fileOptions: { value: string; label: string }[] = [
+    { value: '', label: 'No file selected' },
+    ...projectDataFiles.map((d: DataFile) => ({ value: String(d.id), label: d.name })),
+  ];
+
+  return (
+    <div className={styles.stepContainer}>
+      <div className={styles.stepInner}>
+        <span className={styles.stepDragHandle}>⠿</span>
+        <span className={`${styles.stepTypeChip} ${styles.chipCsvIterator}`}><span className={styles.chipIcon}>⊞</span>Iterator</span>
+        <span className={styles.iteratorDatasetLabel}>Dataset:</span>
+        <ConditionSelector
+          value={step.dataFileId != null ? String(step.dataFileId) : ''}
+          onChange={(v) => onChange({ ...step, dataFileId: v ? parseInt(v, 10) : null })}
+          options={fileOptions}
+        />
+        <span className={styles.iteratorDatasetLabel}>Limit:</span>
+        <input
+          type="number"
+          min={1}
+          placeholder="all"
+          value={step.limit != null ? step.limit : ''}
+          onChange={(e) => {
+            const val = e.target.value;
+            onChange({ ...step, limit: val === '' ? null : Math.max(1, parseInt(val, 10)) });
+          }}
+          className={styles.iteratorLimitInput}
+          title="Max rows to process (leave blank for all)"
+        />
+        {isConfirmingDelete ? (
+          <span className={styles.stepConfirm}>
+            <button className={styles.stepConfirmYes} onClick={(e) => { e.stopPropagation(); onConfirmDelete(path); }} title="Confirm delete">Yes</button>
+            <button className={styles.stepConfirmNo} onClick={(e) => { e.stopPropagation(); setDeleteStepPath(null); }} title="Cancel">No</button>
+          </span>
+        ) : (
+          <button className={styles.stepRemove} onClick={(e) => { e.stopPropagation(); setDeleteStepPath(path); }} title="Remove step">×</button>
+        )}
+      </div>
+      {headers.length > 0 && (
+        <div className={styles.csvIteratorVars}>
+          {headers.map((h) => (
+            <span key={h} className={styles.csvIteratorVar}>{`{{${h}}}`}</span>
+          ))}
+        </div>
+      )}
+      {selected == null && step.dataFileId != null && (
+        <div className={styles.csvIteratorNoFile}>Data file not found</div>
+      )}
+      <div className={styles.nestedContainer}>
+        <StepList
+          steps={step.steps}
+          onChange={(s) => onChange({ ...step, steps: s })}
+          requests={requests}
+          automationProjectId={automationProjectId}
+          depth={depth + 1}
+          dragSourceRef={dragSourceRef}
+          dragPath={dragPath}
+          setDragPath={setDragPath}
+          path={path}
+          deleteStepPath={deleteStepPath}
+          setDeleteStepPath={setDeleteStepPath}
+          onConfirmDelete={onConfirmDelete}
+        />
+        {step.steps.length === 0 && (
+          <div className={styles.nestedEmpty}>Drop elements here or use the palette</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Individual step cards ────────────────────────────────────
 
 interface StepCardProps {
@@ -706,6 +866,24 @@ function StepCard({ step, requests, automationProjectId, onChange, onRemove, dra
         />
       );
 
+    case 'csv_iterator':
+      return (
+        <CsvIteratorStep
+          step={step}
+          onChange={onChange}
+          requests={requests}
+          automationProjectId={automationProjectId}
+          depth={depth}
+          dragSourceRef={dragSourceRef}
+          dragPath={dragPath}
+          setDragPath={setDragPath}
+          path={path}
+          deleteStepPath={deleteStepPath}
+          setDeleteStepPath={setDeleteStepPath}
+          onConfirmDelete={onConfirmDelete}
+        />
+      );
+
     case 'stop':
       return (
         <div className={styles.stepInner}>
@@ -792,12 +970,17 @@ export default function AutomationView({ automationId, showExpandBtn, onExpand }
   const [editingName, setEditingName] = useState(automation?.name ?? '');
   const [localSteps, setLocalSteps] = useState<AutomationStep[]>(automation?.steps ?? []);
   const [pastRuns, setPastRuns] = useState<AutomationRun[]>([]);
+  const [isLoadingRuns, setIsLoadingRuns] = useState(() => {
+    const storedMode = localStorage.getItem(`callstack.automation.mode.${automationId}`);
+    return storedMode === 'results';
+  });
   const [confirmClearRuns, setConfirmClearRuns] = useState(false);
   const [runsCollapsed, setRunsCollapsed] = useState(() => {
     return localStorage.getItem(`callstack.automation.runsCollapsed.${automationId}`) === '1';
   });
   const [showJsonModal, setShowJsonModal] = useState(false);
   const [copiedCurlIdx, setCopiedCurlIdx] = useState<number | null>(null);
+  const [copiedResultIdx, setCopiedResultIdx] = useState<number | null>(null);
   const [confirmDeleteRunId, setConfirmDeleteRunId] = useState<number | null>(null);
   const [deleteStepPath, setDeleteStepPath] = useState<number[] | null>(null);
   const [mode, setMode] = useState<'configure' | 'running' | 'results'>(() => {
@@ -817,9 +1000,45 @@ export default function AutomationView({ automationId, showExpandBtn, onExpand }
     return saved ? parseInt(saved, 10) : null;
   });
 
+  const [resultFilter, setResultFilter] = useState<'all' | 'pass' | 'partial' | 'error'>('all');
+  const [currentPage, setCurrentPage] = useState(0);
+  const [listHeight, setListHeight] = useState(0);
+  const [leftPaneWidth, setLeftPaneWidth] = useState(300);
+  const isDraggingRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const dragStartWidthRef = useRef(0);
+
+  const onResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+    dragStartXRef.current = e.clientX;
+    dragStartWidthRef.current = leftPaneWidth;
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+      const delta = ev.clientX - dragStartXRef.current;
+      setLeftPaneWidth(Math.max(180, Math.min(600, dragStartWidthRef.current + delta)));
+    };
+    const onMouseUp = () => {
+      isDraggingRef.current = false;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  }, [leftPaneWidth]);
+  const listContainerRef = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    setListHeight(el.getBoundingClientRect().height);
+    const ro = new ResizeObserver((entries) => {
+      const h = entries[0]?.contentRect.height;
+      if (h) setListHeight(h);
+    });
+    ro.observe(el);
+  }, []);
+  const rowRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+
   // Drag state for flow editor
   const dragSourceRef = useRef<DragSource | null>(null);
-  const resultSectionRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [dragPath, setDragPath] = useState<number[] | null>(null);
 
   useEffect(() => {
@@ -840,17 +1059,19 @@ export default function AutomationView({ automationId, showExpandBtn, onExpand }
 
     setRunsCollapsed(localStorage.getItem(`callstack.automation.runsCollapsed.${automationId}`) === '1');
 
+    // Read storedRunId BEFORE setViewingRun(null) triggers the cleanup effect that removes it
+    const storedRunId = localStorage.getItem(`callstack.automation.viewingRunId.${automationId}`);
     setViewingRun(null);
-    reset();
+    if (storedMode !== 'results') reset();
+    setIsLoadingRuns(true);
     listAutomationRuns(automationId, 10).then((runs) => {
       setPastRuns(runs);
-      const storedRunId = localStorage.getItem(`callstack.automation.viewingRunId.${automationId}`);
       if (storedRunId) {
         const id = parseInt(storedRunId, 10);
         const found = runs.find((r) => r.id === id);
         if (found) setViewingRun(found);
       }
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => setIsLoadingRuns(false));
   }, [automationId, automation?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -878,10 +1099,11 @@ export default function AutomationView({ automationId, showExpandBtn, onExpand }
   }, [viewingRun, automationId]);
 
   useEffect(() => {
-    if (selectedResultIdx === null) return;
-    const el = resultSectionRefs.current[selectedResultIdx];
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (selectedResultIdx != null) {
+      rowRefs.current.get(selectedResultIdx)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
   }, [selectedResultIdx]);
+
 
   const saveName = useCallback(async () => {
     if (!automation) return;
@@ -913,20 +1135,22 @@ export default function AutomationView({ automationId, showExpandBtn, onExpand }
     setMode('running');
     setViewingRun(null);
     setSelectedResultIdx(null);
+    setResultFilter('all');
 
     const { results, durationMs, overallStatus } = await run(localSteps, requestMap, envVars, activeEnvId, (entry) => {
       dispatch({ type: 'ADD_LOG', payload: { ...entry, id: Date.now() ^ (Math.random() * 0xffffffff | 0) } });
-    });
+    }, state.dataFiles);
     const saved = await saveAutomationRun(automationId, overallStatus, results, durationMs);
     setPastRuns((prev) => [saved, ...prev.slice(0, 9)]);
     setMode('results');
     setSelectedResultIdx(null);
-  }, [automation, localSteps, state.requests, state.environments, activeEnvId, run, saveAutomationRun, automationId]);
+  }, [automation, localSteps, state.requests, state.environments, state.dataFiles, activeEnvId, run, saveAutomationRun, automationId]);
 
   const handleViewRun = useCallback((runEntry: AutomationRun) => {
     setViewingRun(runEntry);
     setMode('results');
     setSelectedResultIdx(null);
+    setResultFilter('all');
   }, []);
 
   const handleBack = useCallback(() => {
@@ -1005,6 +1229,8 @@ export default function AutomationView({ automationId, showExpandBtn, onExpand }
       if (s.type === 'request' && s.requestId != null && s.requestId > 0) n++;
       else if (s.type === 'repeat') n += countRunnable(s.steps);
       else if (s.type === 'branch') n += countRunnable(s.trueSteps) + countRunnable(s.falseSteps);
+      else if (s.type === 'csv_iterator') n += countRunnable(s.steps);
+      else if (s.type === 'fanout') n += s.lanes.reduce((sum, lane) => sum + countRunnable(lane), 0);
     }
     return n;
   }
@@ -1137,6 +1363,18 @@ export default function AutomationView({ automationId, showExpandBtn, onExpand }
 
   // ── Results mode ──────────────────────────────────────────
 
+  if (isResults && isLoadingRuns) {
+    return (
+      <div className={styles.root}>
+        {header}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '24px 16px', color: 'var(--text-secondary)', fontSize: 13 }}>
+          <div className={styles.spinner} />
+          Loading…
+        </div>
+      </div>
+    );
+  }
+
   if (isResults) {
     const overallStatus = viewingRun ? viewingRun.status : (runState.overallStatus ?? 'ERROR');
     const durationMs = viewingRun ? viewingRun.durationMs : (runState.durationMs ?? 0);
@@ -1147,6 +1385,30 @@ export default function AutomationView({ automationId, showExpandBtn, onExpand }
       overallStatus === 'FAIL' ? styles.summaryStatusFail :
       overallStatus === 'PARTIAL' ? styles.summaryStatusPartial :
       styles.summaryStatusError;
+
+    const resultCategory = (r: AutomationRequestResult): 'pass' | 'partial' | 'error' => {
+      if (resultPassed(r)) return 'pass';
+      if (r.testStatus === 'PARTIAL') return 'partial';
+      return 'error';
+    };
+
+    const filterCounts = {
+      all: displayResults.length,
+      pass: displayResults.filter((r) => resultCategory(r) === 'pass').length,
+      partial: displayResults.filter((r) => resultCategory(r) === 'partial').length,
+      error: displayResults.filter((r) => resultCategory(r) === 'error').length,
+    };
+
+    const filteredWithIdx = displayResults
+      .map((r, i) => ({ result: r, origIdx: i }))
+      .filter(({ result }) => resultFilter === 'all' || resultCategory(result) === resultFilter);
+
+    const pageSize = Math.max(1, Math.floor((listHeight - 12) / 40));
+    const totalPages = Math.max(1, Math.ceil(filteredWithIdx.length / pageSize));
+    const clampedPage = Math.min(currentPage, totalPages - 1);
+    const pageItems = filteredWithIdx.slice(clampedPage * pageSize, (clampedPage + 1) * pageSize);
+
+    const selectedResult = selectedResultIdx != null ? displayResults[selectedResultIdx] ?? null : null;
 
     return (
       <div className={styles.root}>
@@ -1177,52 +1439,97 @@ export default function AutomationView({ automationId, showExpandBtn, onExpand }
           )}
         </div>
         <div className={styles.splitPane}>
-          <div className={styles.resultsList}>
-            {displayResults.map((result, idx) => {
-              const pass = resultPassed(result);
-              const fail = resultFailed(result);
-              const isSelected = selectedResultIdx === idx;
-              return (
-                <div
-                  key={idx}
+          <div className={styles.resultsList} style={{ width: leftPaneWidth }}>
+            {/* Filter bar */}
+            <div className={styles.filterBar}>
+              {(['all', 'pass', 'partial', 'error'] as const).map((f) => (
+                <button
+                  key={f}
                   className={[
-                    styles.reqRow,
-                    styles.reqRowSelectable,
-                    isSelected ? styles.reqRowSelected : '',
-                    !isSelected && pass ? styles.reqRowPass : '',
-                    !isSelected && fail ? styles.reqRowFail : '',
+                    styles.filterBtn,
+                    resultFilter === f ? styles.filterBtnActive : '',
+                    f === 'pass' ? styles.filterBtnPass : '',
+                    f === 'partial' ? styles.filterBtnPartial : '',
+                    f === 'error' ? styles.filterBtnError : '',
                   ].filter(Boolean).join(' ')}
-                  onClick={() => setSelectedResultIdx(isSelected ? null : idx)}
+                  onClick={() => { setResultFilter(f); setSelectedResultIdx(null); setCurrentPage(0); }}
                 >
-                  <div className={styles.reqStatus}>
-                    {pass && <span className={styles.reqStatusPass}>✓</span>}
-                    {fail && <span className={styles.reqStatusFail}>✗</span>}
-                  </div>
-                  <span className={styles.methodBadge} style={{ background: methodColor(result.method) }}>
-                    {result.method}
-                  </span>
-                  <span className={styles.reqName}>{result.requestName}</span>
-                  {!result.error && result.status > 0 && (
-                    <span className={styles.reqMeta}>
-                      {result.status} · {formatDuration(result.timeMs)}
-                    </span>
-                  )}
+                  {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+                  <span className={styles.filterCount}>{filterCounts[f]}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Scrollable list */}
+            <div className={styles.resultsListScroll} ref={listContainerRef}>
+              {filteredWithIdx.length === 0 ? (
+                <div className={styles.filterEmpty}>
+                  No {resultFilter === 'all' ? 'results' : resultFilter} results
                 </div>
-              );
-            })}
+              ) : (
+                pageItems.map(({ result, origIdx }) => {
+                  const pass = resultPassed(result);
+                  const fail = resultFailed(result);
+                  const isSelected = selectedResultIdx === origIdx;
+                  return (
+                    <div
+                      key={origIdx}
+                      ref={(el) => { if (el) rowRefs.current.set(origIdx, el); else rowRefs.current.delete(origIdx); }}
+                      className={[
+                        styles.reqRow,
+                        styles.reqRowSelectable,
+                        isSelected ? styles.reqRowSelected : '',
+                        !isSelected && pass ? styles.reqRowPass : '',
+                        !isSelected && fail ? styles.reqRowFail : '',
+                      ].filter(Boolean).join(' ')}
+                      onClick={() => setSelectedResultIdx(isSelected ? null : origIdx)}
+                    >
+                      <div className={styles.reqStatus}>
+                        {pass && <span className={styles.reqStatusPass}>✓</span>}
+                        {fail && <span className={styles.reqStatusFail}>✗</span>}
+                      </div>
+                      <span className={styles.reqRowNum}>#{origIdx + 1}</span>
+                      <span className={styles.methodBadge} style={{ background: methodColor(result.method) }}>
+                        {result.method}
+                      </span>
+                      <span className={styles.reqName}>
+                        {result.containerLabel ? `${result.containerLabel}-${result.requestName}` : result.requestName}
+                      </span>
+                      {!result.error && result.status > 0 && (
+                        <span className={styles.reqMeta}>
+                          {result.status} · {formatDuration(result.timeMs)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Pagination bar */}
+            {totalPages > 1 && (
+              <div className={styles.paginationBar}>
+                <button className={styles.pageBtn} disabled={clampedPage === 0} onClick={() => setCurrentPage(0)} title="First">«</button>
+                <button className={styles.pageBtn} disabled={clampedPage === 0} onClick={() => setCurrentPage((p) => p - 1)} title="Previous">‹</button>
+                <span className={styles.pageInfo}>{clampedPage + 1} / {totalPages}</span>
+                <button className={styles.pageBtn} disabled={clampedPage >= totalPages - 1} onClick={() => setCurrentPage((p) => p + 1)} title="Next">›</button>
+                <button className={styles.pageBtn} disabled={clampedPage >= totalPages - 1} onClick={() => setCurrentPage(totalPages - 1)} title="Last">»</button>
+              </div>
+            )}
           </div>
 
+          <div className={styles.resizeHandle} onMouseDown={onResizeMouseDown} />
           <div className={styles.detailPane}>
-            {displayResults.map((result, idx) => {
-              const isSelected = selectedResultIdx === idx;
+            {selectedResult == null ? (
+              <div className={styles.detailEmpty}>Select a result to view details</div>
+            ) : (() => {
+              const result = selectedResult;
+              const idx = selectedResultIdx!;
               return (
-                <div
-                  key={idx}
-                  ref={(el) => { resultSectionRefs.current[idx] = el; }}
-                  className={`${styles.resultLogBlock}${isSelected ? ` ${styles.resultLogBlockSelected}` : ''}`}
-                >
+                <div className={`${styles.resultLogBlock} ${styles.resultLogBlockSelected}`}>
                   {/* ── Block header ── */}
                   <div className={styles.resultLogBlockHeader}>
+                    <span className={styles.reqRowNum}>#{idx + 1}</span>
                     <span className={styles.methodBadge} style={{ background: methodColor(result.method), color: '#fff' }}>{result.method}</span>
                     <span className={styles.logBlockName}>{result.requestName}</span>
                     <span className={styles.logBlockGap} />
@@ -1236,7 +1543,59 @@ export default function AutomationView({ automationId, showExpandBtn, onExpand }
                         <span className={styles.statusTime}>{formatDuration(result.timeMs)}</span>
                       </>
                     )}
+                    <button
+                      className={`${styles.resultActionBtn} ${styles.resultActionBtnCopy}`}
+                      title="Copy result"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const text = formatResultAsText(result, idx);
+                        invoke('write_clipboard', { text }).then(() => {
+                          setCopiedResultIdx(idx);
+                          setTimeout(() => setCopiedResultIdx((prev) => (prev === idx ? null : prev)), 1500);
+                        });
+                      }}
+                    >
+                      {copiedResultIdx === idx ? '✓' : '⎘'}
+                    </button>
+                    <button
+                      className={`${styles.resultActionBtn} ${styles.resultActionBtnEmail}`}
+                      title="Email result"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const text = formatResultAsText(result, idx);
+                        const subject = encodeURIComponent(`Result #${idx + 1}: ${result.method} ${result.requestName}`);
+                        const body = encodeURIComponent(text);
+                        window.open(`mailto:?subject=${subject}&body=${body}`);
+                      }}
+                    >
+                      ✉
+                    </button>
                   </div>
+
+                  {/* ── Row data ── */}
+                  {result.rowData && Object.keys(result.rowData).length > 0 && (
+                    <div className={styles.logSection}>
+                      <div className={styles.logSectionLabel}>Data Row {result.rowIndex}</div>
+                      <div className={styles.rowDataTableWrap}>
+                        <table className={styles.rowDataTable}>
+                          <thead>
+                            <tr>
+                              {Object.keys(result.rowData).map((k) => (
+                                <th key={k} className={styles.rowDataTh}>{k}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              {Object.values(result.rowData).map((v, i) => (
+                                <td key={i} className={styles.rowDataTd}>{v}</td>
+                              ))}
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
 
                   {/* ── Request ── */}
                   <div className={styles.logSection}>
@@ -1383,7 +1742,7 @@ export default function AutomationView({ automationId, showExpandBtn, onExpand }
                   )}
                 </div>
               );
-            })}
+            })()}
           </div>
         </div>
       </div>

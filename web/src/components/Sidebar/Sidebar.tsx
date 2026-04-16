@@ -16,7 +16,7 @@ import { exportFolderAsPostman, exportProjectAsPostman } from '../../utils/postm
 import { exportProject as exportCallstackProject, exportProjectPlain, importArchive, deserializeAutomationStep } from '../../utils/callstackArchive';
 import type { ArchivePreview } from '../../lib/callstackSchema';
 import { invoke } from '@tauri-apps/api/core';
-import type { Automation, Environment, Request } from '../../lib/types';
+import type { Automation, DataFile, Environment, Request } from '../../lib/types';
 import { FilePickerModal } from '../FilePickerModal/FilePickerModal';
 import { ProjectRow } from './ProjectRow';
 import type { DragOver } from './ProjectRow';
@@ -29,7 +29,8 @@ type PendingDelete =
   | { type: 'folder'; id: number; name: string; requestCount: number }
   | { type: 'request'; id: number; name: string; method: string }
   | { type: 'env'; id: number; name: string }
-  | { type: 'automation'; id: number; name: string };
+  | { type: 'automation'; id: number; name: string }
+  | { type: 'dataFile'; id: number; name: string };
 
 interface SidebarProps {
   collapsed: boolean;
@@ -71,6 +72,9 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     createAutomation,
     updateAutomation,
     deleteAutomation,
+    createDataFile,
+    updateDataFile,
+    deleteDataFile,
     moveRequest,
     moveFolder,
     reorderRequests,
@@ -81,7 +85,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     saveResponse,
   } = useDatabase();
 
-  const { projects, requests, folders, environments, automations, currentRequestId, expandedProjects, expandedFolders } = state;
+  const { projects, requests, folders, environments, automations, dataFiles, currentRequestId, expandedProjects, expandedFolders } = state;
 
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [folderModalProjectId, setFolderModalProjectId] = useState<number | null>(null);
@@ -107,6 +111,14 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
   useEffect(() => {
     localStorage.setItem('callstack.expandedAutomationSections', JSON.stringify([...expandedAutomationSections]));
   }, [expandedAutomationSections]);
+  const [expandedDataFileSections, setExpandedDataFileSections] = useState<Set<number>>(() => {
+    try { return new Set<number>(JSON.parse(localStorage.getItem('callstack.expandedDataFileSections') || '[]')); }
+    catch { return new Set<number>(); }
+  });
+  const [editingDataFileId, setEditingDataFileId] = useState<number | null>(null);
+  useEffect(() => {
+    localStorage.setItem('callstack.expandedDataFileSections', JSON.stringify([...expandedDataFileSections]));
+  }, [expandedDataFileSections]);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [shortcutModalRequestId, setShortcutModalRequestId] = useState<number | null>(null);
   const { shortcuts, assignShortcut, removeShortcut, getShortcutForRequest } = useShortcuts();
@@ -264,6 +276,33 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     dispatch({ type: 'SET_ACTIVE_AUTOMATION', payload: automation.id });
   };
 
+  const handleCreateDataFile = async (projectId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const dataFile = await createDataFile(projectId, 'New Data File', '');
+    dispatch({ type: 'ADD_DATA_FILE', payload: dataFile });
+    dispatch({ type: 'SET_ACTIVE_DATA_FILE', payload: dataFile.id });
+    dispatch({ type: 'SET_VIEW', payload: 'dataFile' });
+    setExpandedDataFileSections((prev) => new Set(prev).add(projectId));
+  };
+
+  const handleOpenDataFile = (dataFile: DataFile) => {
+    dispatch({ type: 'SET_ACTIVE_DATA_FILE', payload: dataFile.id });
+    dispatch({ type: 'SET_VIEW', payload: 'dataFile' });
+  };
+
+  const requestDeleteDataFile = (id: number, name: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPendingDelete({ type: 'dataFile', id, name });
+  };
+
+  const handleDataFileRenameCommit = async (id: number, name: string) => {
+    setEditingDataFileId(null);
+    const dataFile = dataFiles.find((d) => d.id === id);
+    if (!dataFile) return;
+    const updated = await updateDataFile(id, name, dataFile.content);
+    dispatch({ type: 'UPDATE_DATA_FILE', payload: updated });
+  };
+
   const handleConfirmDelete = useCallback(async () => {
     if (!pendingDelete) return;
     const pd = pendingDelete;
@@ -291,12 +330,15 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
       } else if (pd.type === 'automation') {
         await deleteAutomation(pd.id);
         dispatch({ type: 'DELETE_AUTOMATION', payload: pd.id });
+      } else if (pd.type === 'dataFile') {
+        await deleteDataFile(pd.id);
+        dispatch({ type: 'DELETE_DATA_FILE', payload: pd.id });
       }
     } catch (error) {
       console.error('Delete failed:', error);
       setPendingDelete(pd);
     }
-  }, [pendingDelete, deleteProject, deleteFolder, deleteRequest, deleteEnvironment, deleteAutomation, removeShortcut, dispatch]);
+  }, [pendingDelete, deleteProject, deleteFolder, deleteRequest, deleteEnvironment, deleteAutomation, deleteDataFile, removeShortcut, dispatch]);
 
   const handleCreateFolder = (projectId: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -856,6 +898,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
             pendingDelete.type === 'project' ? `Delete project "${pendingDelete.name}"?` :
             pendingDelete.type === 'folder' ? `Delete folder "${pendingDelete.name}"?` :
             pendingDelete.type === 'request' ? `Delete request "${pendingDelete.name}"?` :
+            pendingDelete.type === 'dataFile' ? `Delete data file "${pendingDelete.name}"?` :
             `Delete environment "${pendingDelete.name}"?`
           }
           onConfirm={handleConfirmDelete}
@@ -907,6 +950,12 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
           {pendingDelete.type === 'automation' && (
             <>
               <p>Permanently delete automation <strong>{pendingDelete.name}</strong>?</p>
+              <p>This action cannot be undone.</p>
+            </>
+          )}
+          {pendingDelete.type === 'dataFile' && (
+            <>
+              <p>Permanently delete data file <strong>{pendingDelete.name}</strong>?</p>
               <p>This action cannot be undone.</p>
             </>
           )}
@@ -971,6 +1020,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
                 activeView={state.activeView}
                 activeAutomationId={state.activeAutomationId}
                 activeEnvironmentId={state.activeEnvironmentId}
+                activeDataFileId={state.activeDataFileId}
                 executingRequestId={state.executingRequestId}
                 dragOver={dragOver}
                 dragging={dragging}
@@ -1001,6 +1051,15 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
                 editingAutomationId={editingAutomationId}
                 onStartEditAutomation={setEditingAutomationId}
                 onAutomationRenameCommit={handleAutomationRenameCommit}
+                projectDataFiles={dataFiles.filter((d) => d.project_id === project.id)}
+                expandedDataFileSections={expandedDataFileSections}
+                setExpandedDataFileSections={setExpandedDataFileSections}
+                onCreateDataFile={handleCreateDataFile}
+                onDataFileClick={handleOpenDataFile}
+                onDeleteDataFile={requestDeleteDataFile}
+                editingDataFileId={editingDataFileId}
+                onStartEditDataFile={setEditingDataFileId}
+                onDataFileRenameCommit={handleDataFileRenameCommit}
                 onProjectImport={handleProjectImportClick}
                 onFolderImport={handleFolderImportClick}
                 onProjectExport={handleProjectExportClick}

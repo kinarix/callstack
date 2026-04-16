@@ -348,6 +348,10 @@
   color: var(--accent-patch);
 }
 
+.treeIconDataset {
+  color: var(--accent-delete);
+}
+
 .countBadge {
   flex-shrink: 0;
   font-size: 10px;

@@ -4,7 +4,7 @@ import { KeyValueEditor } from './KeyValueEditor';
 import { FileUpload } from './FileUpload';
 import { ScriptEditor } from './ScriptEditor';
 import { ContentTypeSelector } from './ContentTypeSelector';
-import { resolveTemplate } from '../../lib/template';
+import { resolveTemplate, replaceTokensForValidation } from '../../lib/template';
 import { FAKER_TOKENS } from '../../lib/templateTokens';
 import styles from './TabPanel.module.css';
 
@@ -39,7 +39,7 @@ function validateBody(body: string, contentType: string, envVars: KeyValue[] = [
   if (!trimmed) return { valid: true };
 
   // Resolve templates for validation
-  const resolvedBody = resolveTemplatesForValidation(trimmed, envVars);
+  const resolvedBody = replaceTokensForValidation(trimmed, contentType);
 
   if (contentType.includes('json')) {
     try { JSON.parse(resolvedBody); return { valid: true }; }

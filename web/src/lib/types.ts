@@ -86,6 +86,15 @@ export interface Environment {
   updated_at: string;
 }
 
+export interface DataFile {
+  id: number;
+  project_id: number;
+  name: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface LogEntry {
   id: number;
   timestamp: number;
@@ -110,6 +119,7 @@ export interface AppState {
   requests: Request[];
   folders: Folder[];
   environments: Environment[];
+  dataFiles: DataFile[];
   currentResponse: Response | null;
   isLoading: boolean;
   executingRequestId: number | null;
@@ -117,9 +127,10 @@ export interface AppState {
   expandedFolders: Set<number>;
   logs: LogEntry[];
   automations: Automation[];
-  activeView: 'request' | 'automation' | 'environment';
+  activeView: 'request' | 'automation' | 'environment' | 'dataFile';
   activeAutomationId: number | null;
   activeEnvironmentId: number | null;
+  activeDataFileId: number | null;
 }
 
 export interface AppContextType {
@@ -159,7 +170,12 @@ export type AppAction =
   | { type: 'ADD_AUTOMATION'; payload: Automation }
   | { type: 'UPDATE_AUTOMATION'; payload: Automation }
   | { type: 'DELETE_AUTOMATION'; payload: number }
-  | { type: 'SET_VIEW'; payload: 'request' | 'automation' | 'environment' }
+  | { type: 'SET_VIEW'; payload: 'request' | 'automation' | 'environment' | 'dataFile' }
+  | { type: 'SET_DATA_FILES'; payload: DataFile[] }
+  | { type: 'ADD_DATA_FILE'; payload: DataFile }
+  | { type: 'UPDATE_DATA_FILE'; payload: DataFile }
+  | { type: 'DELETE_DATA_FILE'; payload: number }
+  | { type: 'SET_ACTIVE_DATA_FILE'; payload: number | null }
   | { type: 'SET_ACTIVE_AUTOMATION'; payload: number | null }
   | { type: 'SET_ACTIVE_ENVIRONMENT'; payload: number | null };
 
@@ -178,6 +194,7 @@ export type AutomationStep =
   | { id: string; type: 'request'; requestId: number | null }
   | { id: string; type: 'delay'; delayMs: number }
   | { id: string; type: 'repeat'; count: number; steps: AutomationStep[] }
+  | { id: string; type: 'csv_iterator'; dataFileId: number | null; limit?: number | null; steps: AutomationStep[] }
   | { id: string; type: 'branch'; condition: BranchCondition; trueSteps: AutomationStep[]; falseSteps: AutomationStep[] }
   | { id: string; type: 'fanout'; lanes: AutomationStep[][] }
   | { id: string; type: 'stop' }
@@ -209,6 +226,9 @@ export interface AutomationRequestResult {
   requestParams?: { key: string; value: string }[];
   requestHeaders?: { key: string; value: string }[];
   requestBody?: string;
+  rowIndex?: number;
+  rowData?: Record<string, string>;
+  containerLabel?: string;
 }
 
 export interface AutomationRun {

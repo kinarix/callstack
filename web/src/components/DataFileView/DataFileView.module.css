@@ -1,0 +1,477 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  height: 44px;
+  border-bottom: 1px solid var(--border-primary);
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+}
+
+.expandBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-secondary);
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  font-size: 18px;
+  margin-right: 2px;
+}
+
+.expandBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-primary);
+}
+
+.nameWrapper {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.nameBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.nameBtn:hover {
+  background: var(--bg-hover);
+}
+
+.nameBtn svg {
+  opacity: 0.5;
+}
+
+.nameInput {
+  background: var(--bg-input);
+  border: 1px solid var(--border-focus);
+  border-radius: var(--radius-sm);
+  outline: none;
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 3px 6px;
+  min-width: 200px;
+}
+
+.importBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.importBtn:hover {
+  border-color: var(--border-primary);
+  color: var(--text-primary);
+}
+
+/* ── Body / Grid wrapper ─────────────────────────────────────────────────── */
+
+.body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.gridWrapper {
+  flex: 1;
+  overflow: hidden;
+  height: 100%;
+  position: relative;
+}
+
+.gridWrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 40px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--bg-primary));
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 10;
+}
+
+.gridWrapperScrollRight::after {
+  opacity: 1;
+}
+
+.grid {
+  height: 100%;
+  block-size: 100%;
+}
+
+/* Two-class specificity beats .rdg (one class) regardless of stylesheet order */
+.gridWrapper :global(.rdg) {
+  font-family: 'JetBrains Mono', monospace;
+  --rdg-color: var(--text-primary);
+  --rdg-border-color: var(--border-primary);
+  --rdg-summary-border-color: var(--border-primary);
+  --rdg-background-color: var(--bg-primary);
+  --rdg-header-background-color: var(--bg-secondary);
+  --rdg-header-draggable-background-color: var(--bg-hover);
+  --rdg-row-hover-background-color: var(--bg-hover);
+  --rdg-row-selected-background-color: color-mix(in srgb, var(--accent-get) 12%, transparent);
+  --rdg-row-selected-hover-background-color: color-mix(in srgb, var(--accent-get) 20%, transparent);
+  --rdg-checkbox-color: var(--accent-get);
+  --rdg-checkbox-focus-color: var(--accent-get);
+  --rdg-checkbox-disabled-border-color: var(--border-primary);
+  --rdg-checkbox-disabled-background-color: var(--bg-secondary);
+  --rdg-selection-color: var(--accent-get);
+  --rdg-font-size: 12px;
+}
+
+/* ── Row number column ───────────────────────────────────────────────────── */
+
+.rowNumCell {
+  padding: 0 !important;
+  color: var(--text-secondary) !important;
+  font-size: 11px !important;
+}
+
+.rowNumInner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  position: relative;
+}
+
+.rowNumLabel {
+  user-select: none;
+}
+
+.deleteRowBtnInline {
+  display: none;
+  position: absolute;
+  right: 2px;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+}
+
+.rowNumInner:hover .rowNumLabel {
+  opacity: 0;
+}
+
+.rowNumInner:hover .deleteRowBtnInline {
+  display: flex;
+}
+
+.deleteRowBtnInline:hover {
+  color: var(--accent-delete);
+  background: var(--bg-hover);
+}
+
+/* ── Editable column headers ─────────────────────────────────────────────── */
+
+.headerCellInner {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0 4px;
+}
+
+.headerCellInnerWithFilter {
+  justify-content: flex-start;
+  padding-top: 4px;
+  gap: 4px;
+}
+
+.headerTop {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 26px;
+}
+
+.headerLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: default;
+  user-select: none;
+}
+
+.headerInput {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-input, var(--bg-hover));
+  border: 1px solid var(--border-focus, var(--accent-get));
+  border-radius: 3px;
+  outline: none;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 5px;
+}
+
+.deleteColBtn {
+  flex-shrink: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+}
+
+.headerTop:hover .deleteColBtn {
+  display: flex;
+}
+
+.deleteColBtn:hover {
+  color: var(--accent-delete);
+  background: var(--bg-hover);
+}
+
+/* ── Filter row inside header ────────────────────────────────────────────── */
+
+.filterRow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+}
+
+.filterInput {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 3px;
+  outline: none;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 0 5px;
+}
+
+.filterInput::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+.filterInput:focus {
+  border-color: var(--accent-get);
+}
+
+.filterInputActive {
+  border-color: var(--accent-get);
+  background: color-mix(in srgb, var(--accent-get) 8%, var(--bg-primary));
+}
+
+.filterClearBtn {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.filterClearBtn:hover {
+  color: var(--accent-delete);
+  background: var(--bg-hover);
+}
+
+/* ── Cell padding ────────────────────────────────────────────────────────── */
+
+.gridWrapper :global(.rdg-cell) {
+  padding-inline: 8px;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-top: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.addBtn {
+  padding: 4px 10px;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.addBtn:hover {
+  border-color: var(--border-primary);
+  color: var(--text-primary);
+}
+
+.filterToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.filterToggleBtn:hover {
+  border-color: var(--border-primary);
+  color: var(--text-primary);
+}
+
+.filterToggleBtnActive {
+  border-color: var(--accent-get);
+  color: var(--accent-get);
+}
+
+.filterToggleBtnActive:hover {
+  border-color: var(--accent-get);
+  color: var(--accent-get);
+  background: color-mix(in srgb, var(--accent-get) 8%, transparent);
+}
+
+.filterBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent-get);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.clearFiltersBtn {
+  padding: 4px 10px;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.clearFiltersBtn:hover {
+  border-color: var(--accent-delete);
+  color: var(--accent-delete);
+}
+
+.stats {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-tertiary, var(--text-secondary));
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Empty states ────────────────────────────────────────────────────────── */
+
+.emptyGrid {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.emptyActions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+  font-size: 13px;
+}

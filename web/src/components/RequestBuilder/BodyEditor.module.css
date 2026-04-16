@@ -258,3 +258,12 @@
   70% { opacity: 1; }
   100% { opacity: 0; }
 }
+
+.csvInfo {
+  font-size: 11px;
+  font-family: 'Outfit', sans-serif;
+  color: #f59e0b;
+  padding: 4px 8px;
+  background: rgba(245, 158, 11, 0.08);
+  border-radius: var(--radius-sm);
+}
