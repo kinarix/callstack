@@ -53,6 +53,7 @@ interface DbStats {
   environments: number;
   automations: number;
   automation_runs: number;
+  data_files: number;
   dbPath: string;
   dbSizeBytes: number;
 }
@@ -338,6 +339,7 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onReset, onR
                       <div className={styles.statCell}><span className={styles.statLabel}>Requests</span><span className={styles.statValue}>{dbStats.requests}</span></div>
                       <div className={styles.statCell}><span className={styles.statLabel}>Responses</span><span className={styles.statValue}>{dbStats.responses}</span></div>
                       <div className={styles.statCell}><span className={styles.statLabel}>Environments</span><span className={styles.statValue}>{dbStats.environments}</span></div>
+                      <div className={styles.statCell}><span className={styles.statLabel}>Data files</span><span className={styles.statValue}>{dbStats.data_files}</span></div>
                       <div className={styles.statCell}><span className={styles.statLabel}>Automations</span><span className={styles.statValue}>{dbStats.automations}</span></div>
                       <div className={styles.statCell}><span className={styles.statLabel}>Automation runs</span><span className={styles.statValue}>{dbStats.automation_runs}</span></div>
                       <div className={styles.statCell}><span className={styles.statLabel}>DB size</span><span className={styles.statValue}>{formatBytes(dbStats.dbSizeBytes)}</span></div>

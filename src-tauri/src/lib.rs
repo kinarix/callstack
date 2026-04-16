@@ -240,6 +240,7 @@ fn get_db_stats(db: tauri::State<'_, Database>) -> Result<serde_json::Value, Str
         "environments":    count("environments")?,
         "automations":     count("automations")?,
         "automation_runs": count("automation_runs")?,
+        "data_files":      count("data_files")?,
         "dbPath":          db_path,
         "dbSizeBytes":     db_size_bytes,
     }))
