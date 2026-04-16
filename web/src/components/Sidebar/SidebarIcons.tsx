@@ -1,4 +1,5 @@
 import styles from './Sidebar.module.css';
+import { getEnvColor } from '../../lib/envUtils';
 
 export function Chevron({ expanded }: { expanded: boolean }) {
   return (
@@ -62,51 +63,30 @@ export function FolderIcon({ open }: { open: boolean }) {
   );
 }
 
-export function EnvIcon() {
+/** Default — globe */
+export function EnvIcon({ color }: { color?: string }) {
   return (
-    <svg className={`${styles.treeIcon} ${styles.treeIconEnv}`} width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.3" />
-      <path d="M4.5 6.5H8.5M6 4.5L8.5 6.5L6 8.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    <svg className={`${styles.treeIcon} ${styles.treeIconEnv}`} style={color ? { color } : undefined} width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M4 6.5H9M6.5 2.5C5.3 3.4 4.6 4.8 4.6 6.5s.7 3.1 1.9 4C7.7 9.6 8.4 8.2 8.4 6.5s-.7-3.1-1.9-4z" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
     </svg>
   );
 }
 
-/** Local env — monitor/desktop */
-export function EnvLocalIcon() {
+/** Prod — lock */
+export function EnvProdIcon({ color }: { color?: string }) {
   return (
-    <svg className={`${styles.treeIcon} ${styles.treeIconEnv}`} width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <rect x="1.5" y="2" width="10" height="7" rx="1" stroke="currentColor" strokeWidth="1.2" fill="currentColor" fillOpacity="0.12" />
-      <path d="M4.5 11h4M6.5 9v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    <svg className={`${styles.treeIcon} ${styles.treeIconEnv}`} style={color ? { color } : undefined} width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <rect x="3" y="6" width="7" height="5.5" rx="0.8" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M4.5 6V4.5a2 2 0 0 1 4 0V6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
   );
 }
 
-/** Dev env — wrench/spanner */
-export function EnvDevIcon() {
+/** Staging — rocket */
+export function EnvStagingIcon({ color }: { color?: string }) {
   return (
-    <svg className={`${styles.treeIcon} ${styles.treeIconEnv}`} width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <path d="M9.5 2.5a2.5 2.5 0 0 0-2.4 3.1L2.8 9.9a.9.9 0 1 0 1.3 1.3l4.3-4.3A2.5 2.5 0 0 0 9.5 2.5z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" fill="currentColor" fillOpacity="0.12" />
-      <circle cx="9.5" cy="3.5" r="0.6" fill="currentColor" />
-    </svg>
-  );
-}
-
-/** Testing/QA/UAT/Canary — flask/beaker */
-export function EnvTestIcon() {
-  return (
-    <svg className={`${styles.treeIcon} ${styles.treeIconEnv}`} width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <path d="M4.5 2h4M5 2v4L2.5 10a.8.8 0 0 0 .7 1.2h6.6a.8.8 0 0 0 .7-1.2L8 6V2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M3 8.5h7" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
-      <circle cx="5.5" cy="9.5" r="0.6" fill="currentColor" />
-      <circle cx="7.5" cy="10" r="0.5" fill="currentColor" />
-    </svg>
-  );
-}
-
-/** Prod env — rocket */
-export function EnvProdIcon() {
-  return (
-    <svg className={`${styles.treeIcon} ${styles.treeIconEnv}`} width="13" height="13" viewBox="0 0 13 13" fill="none">
+    <svg className={`${styles.treeIcon} ${styles.treeIconEnv}`} style={color ? { color } : undefined} width="13" height="13" viewBox="0 0 13 13" fill="none">
       <path d="M6.5 1.5C6.5 1.5 9.5 3 9.5 6.5L8 8H5L3.5 6.5C3.5 3 6.5 1.5 6.5 1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" fill="currentColor" fillOpacity="0.15" />
       <path d="M5 8l-.8 2.5M8 8l.8 2.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
       <circle cx="6.5" cy="5.5" r="1" stroke="currentColor" strokeWidth="1" />
@@ -114,13 +94,44 @@ export function EnvProdIcon() {
   );
 }
 
+/** Dev / Local — code brackets */
+export function EnvDevIcon({ color }: { color?: string }) {
+  return (
+    <svg className={`${styles.treeIcon} ${styles.treeIconEnv}`} style={color ? { color } : undefined} width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M5 4L2 6.5L5 9M8 4L11 6.5L8 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Test / QA — flask */
+export function EnvTestIcon({ color }: { color?: string }) {
+  return (
+    <svg className={`${styles.treeIcon} ${styles.treeIconEnv}`} style={color ? { color } : undefined} width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M4.5 2h4M5 2v4L2.5 10a.8.8 0 0 0 .7 1.2h6.6a.8.8 0 0 0 .7-1.2L8 6V2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3 8.5h7" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Sandbox / Demo — grid */
+export function EnvSandboxIcon({ color }: { color?: string }) {
+  return (
+    <svg className={`${styles.treeIcon} ${styles.treeIconEnv}`} style={color ? { color } : undefined} width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <rect x="2" y="2" width="9" height="9" rx="1" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M2 6.5H11M6.5 2V11" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function EnvIconFor({ name }: { name: string }) {
+  const color = getEnvColor(name);
   const n = name.toLowerCase();
-  if (n.includes('local')) return <EnvLocalIcon />;
-  if (n.includes('prod')) return <EnvProdIcon />;
-  if (n.includes('dev')) return <EnvDevIcon />;
-  if (n.includes('test') || n.includes('qa') || n.includes('uat') || n.includes('canary') || n.includes('staging')) return <EnvTestIcon />;
-  return <EnvIcon />;
+  if (/prod|production/.test(n)) return <EnvProdIcon color={color} />;
+  if (/stag|staging/.test(n)) return <EnvStagingIcon color={color} />;
+  if (/dev|local|development/.test(n)) return <EnvDevIcon color={color} />;
+  if (/test|qa|testing|uat|canary/.test(n)) return <EnvTestIcon color={color} />;
+  if (/sandbox|demo/.test(n)) return <EnvSandboxIcon color={color} />;
+  return <EnvIcon color={color} />;
 }
 
 export function ImportIcon() {

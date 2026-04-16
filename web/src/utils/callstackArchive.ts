@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import type { Project, Folder, Request, Environment, Response, Automation, AutomationStep } from '../lib/types';
+import type { Project, Folder, Request, Environment, Response, Automation, AutomationStep, DataFile } from '../lib/types';
 import type {
   CallstackManifest,
   ExportFolder,
@@ -7,6 +7,7 @@ import type {
   ExportResponse,
   ExportAutomation,
   ExportAutomationStep,
+  ExportDataFile,
   ArchivePreview,
 } from '../lib/callstackSchema';
 import { CALLSTACK_SCHEMA_VERSION } from '../lib/callstackSchema';
@@ -19,12 +20,13 @@ interface ExportOptions {
   requests: Request[];
   environments: Environment[];
   automations?: Automation[];
+  dataFiles?: DataFile[];
   responses?: Response[];
   selectedEnvironmentName?: string;
 }
 
 // Helper: serialize AutomationStep recursively, mapping requestIds to requestRefs
-function serializeAutomationStep(step: AutomationStep, requestRefMap: Map<number, string>): ExportAutomationStep {
+function serializeAutomationStep(step: AutomationStep, requestRefMap: Map<number, string>, dataFileRefMap: Map<number, string>, envRefMap: Map<number, string>): ExportAutomationStep {
   const base = { id: step.id, type: step.type } as ExportAutomationStep;
 
   if (step.type === 'request') {
@@ -46,7 +48,16 @@ function serializeAutomationStep(step: AutomationStep, requestRefMap: Map<number
       id: step.id,
       type: 'repeat',
       count: step.count,
-      steps: step.steps.map((s) => serializeAutomationStep(s, requestRefMap)),
+      steps: step.steps.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap, envRefMap)),
+    };
+  }
+  if (step.type === 'csv_iterator') {
+    return {
+      id: step.id,
+      type: 'csv_iterator',
+      dataFileRef: step.dataFileId != null ? (dataFileRefMap.get(step.dataFileId) ?? null) : null,
+      limit: step.limit ?? null,
+      steps: step.steps.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap, envRefMap)),
     };
   }
   if (step.type === 'branch') {
@@ -54,15 +65,22 @@ function serializeAutomationStep(step: AutomationStep, requestRefMap: Map<number
       id: step.id,
       type: 'branch',
       condition: step.condition as any, // BranchCondition type is identical in export
-      trueSteps: step.trueSteps.map((s) => serializeAutomationStep(s, requestRefMap)),
-      falseSteps: step.falseSteps.map((s) => serializeAutomationStep(s, requestRefMap)),
+      trueSteps: step.trueSteps.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap, envRefMap)),
+      falseSteps: step.falseSteps.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap, envRefMap)),
     };
   }
   if (step.type === 'fanout') {
     return {
       id: step.id,
       type: 'fanout',
-      lanes: step.lanes.map((lane) => lane.map((s) => serializeAutomationStep(s, requestRefMap))),
+      lanes: step.lanes.map((lane) => lane.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap, envRefMap))),
+    };
+  }
+  if (step.type === 'set_env') {
+    return {
+      id: step.id,
+      type: 'set_env',
+      envRef: step.envId != null ? (envRefMap.get(step.envId) ?? null) : null,
     };
   }
   if (step.type === 'stop') {
@@ -84,7 +102,7 @@ function serializeAutomationStep(step: AutomationStep, requestRefMap: Map<number
 }
 
 export async function exportProject(opts: ExportOptions): Promise<Blob> {
-  const { project, folders, requests, environments, automations, responses, selectedEnvironmentName } = opts;
+  const { project, folders, requests, environments, automations, dataFiles, responses, selectedEnvironmentName } = opts;
 
   const zip = new JSZip();
 
@@ -138,6 +156,21 @@ export async function exportProject(opts: ExportOptions): Promise<Blob> {
       }));
   }
 
+  // Build data files
+  const dataFileRefMap = new Map<number, string>();
+  let exportDataFiles: ExportDataFile[] | undefined;
+  if (dataFiles && dataFiles.length > 0) {
+    exportDataFiles = dataFiles.map((d, i) => {
+      const ref = `df-${i}`;
+      dataFileRefMap.set(d.id, ref);
+      return { _ref: ref, name: d.name, content: d.content };
+    });
+  }
+
+  // Build env ref map: env ID → env name (used by set_env steps)
+  const envRefMap = new Map<number, string>();
+  environments.forEach((e) => envRefMap.set(e.id, e.name));
+
   // Build automations with serialized steps
   let exportAutomations: ExportAutomation[] | undefined;
   if (automations && automations.length > 0) {
@@ -148,7 +181,8 @@ export async function exportProject(opts: ExportOptions): Promise<Blob> {
       return {
         _ref: ref,
         name: a.name,
-        steps: a.steps.map((s) => serializeAutomationStep(s, requestRefMap)),
+        envName: a.envId != null ? (envRefMap.get(a.envId) ?? null) : null,
+        steps: a.steps.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap, envRefMap)),
       };
     });
   }
@@ -169,6 +203,7 @@ export async function exportProject(opts: ExportOptions): Promise<Blob> {
       variables: e.variables,
     })),
     ...(exportAutomations ? { automations: exportAutomations } : {}),
+    ...(exportDataFiles ? { dataFiles: exportDataFiles } : {}),
     ...(exportResponses ? { responses: exportResponses } : {}),
   };
 
@@ -178,7 +213,7 @@ export async function exportProject(opts: ExportOptions): Promise<Blob> {
 }
 
 export async function exportProjectPlain(opts: ExportOptions): Promise<string> {
-  const { project, folders, requests, environments, automations, responses, selectedEnvironmentName } = opts;
+  const { project, folders, requests, environments, automations, dataFiles, responses, selectedEnvironmentName } = opts;
 
   const folderRefMap = new Map<number, string>();
   const exportFolders: ExportFolder[] = folders.map((f, i) => {
@@ -227,6 +262,21 @@ export async function exportProjectPlain(opts: ExportOptions): Promise<string> {
       }));
   }
 
+  // Build data files
+  const dataFileRefMap = new Map<number, string>();
+  let exportDataFiles: ExportDataFile[] | undefined;
+  if (dataFiles && dataFiles.length > 0) {
+    exportDataFiles = dataFiles.map((d, i) => {
+      const ref = `df-${i}`;
+      dataFileRefMap.set(d.id, ref);
+      return { _ref: ref, name: d.name, content: d.content };
+    });
+  }
+
+  // Build env ref map: env ID → env name (used by set_env steps)
+  const envRefMapPlain = new Map<number, string>();
+  environments.forEach((e) => envRefMapPlain.set(e.id, e.name));
+
   // Build automations with serialized steps
   let exportAutomations: ExportAutomation[] | undefined;
   if (automations && automations.length > 0) {
@@ -237,7 +287,8 @@ export async function exportProjectPlain(opts: ExportOptions): Promise<string> {
       return {
         _ref: ref,
         name: a.name,
-        steps: a.steps.map((s) => serializeAutomationStep(s, requestRefMap)),
+        envName: a.envId != null ? (envRefMapPlain.get(a.envId) ?? null) : null,
+        steps: a.steps.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap, envRefMapPlain)),
       };
     });
   }
@@ -258,6 +309,7 @@ export async function exportProjectPlain(opts: ExportOptions): Promise<string> {
       variables: e.variables,
     })),
     ...(exportAutomations ? { automations: exportAutomations } : {}),
+    ...(exportDataFiles ? { dataFiles: exportDataFiles } : {}),
     ...(exportResponses ? { responses: exportResponses } : {}),
   };
 
@@ -270,6 +322,8 @@ export async function exportProjectPlain(opts: ExportOptions): Promise<string> {
 export function deserializeAutomationStep(
   step: ExportAutomationStep,
   requestRefToId: Map<string, number>,
+  dataFileRefToId?: Map<string, number>,
+  envNameToId?: Map<string, number>,
 ): AutomationStep {
   const base = { id: step.id, type: step.type } as AutomationStep;
 
@@ -292,7 +346,16 @@ export function deserializeAutomationStep(
       id: step.id,
       type: 'repeat',
       count: step.count,
-      steps: step.steps.map((s) => deserializeAutomationStep(s, requestRefToId)),
+      steps: step.steps.map((s) => deserializeAutomationStep(s, requestRefToId, dataFileRefToId, envNameToId)),
+    };
+  }
+  if (step.type === 'csv_iterator') {
+    return {
+      id: step.id,
+      type: 'csv_iterator',
+      dataFileId: step.dataFileRef != null && dataFileRefToId ? (dataFileRefToId.get(step.dataFileRef) ?? null) : null,
+      limit: step.limit ?? null,
+      steps: step.steps.map((s) => deserializeAutomationStep(s, requestRefToId, dataFileRefToId, envNameToId)),
     };
   }
   if (step.type === 'branch') {
@@ -300,15 +363,22 @@ export function deserializeAutomationStep(
       id: step.id,
       type: 'branch',
       condition: step.condition as any,
-      trueSteps: step.trueSteps.map((s) => deserializeAutomationStep(s, requestRefToId)),
-      falseSteps: step.falseSteps.map((s) => deserializeAutomationStep(s, requestRefToId)),
+      trueSteps: step.trueSteps.map((s) => deserializeAutomationStep(s, requestRefToId, dataFileRefToId, envNameToId)),
+      falseSteps: step.falseSteps.map((s) => deserializeAutomationStep(s, requestRefToId, dataFileRefToId, envNameToId)),
     };
   }
   if (step.type === 'fanout') {
     return {
       id: step.id,
       type: 'fanout',
-      lanes: step.lanes.map((lane) => lane.map((s) => deserializeAutomationStep(s, requestRefToId))),
+      lanes: step.lanes.map((lane) => lane.map((s) => deserializeAutomationStep(s, requestRefToId, dataFileRefToId, envNameToId))),
+    };
+  }
+  if (step.type === 'set_env') {
+    return {
+      id: step.id,
+      type: 'set_env',
+      envId: step.envRef != null && envNameToId ? (envNameToId.get(step.envRef) ?? null) : null,
     };
   }
   if (step.type === 'stop') {
@@ -402,6 +472,7 @@ export async function previewArchive(file: File): Promise<ArchivePreview> {
     requestCount: manifest.requests.length,
     environmentCount: manifest.environments.length,
     automationCount: manifest.automations ? manifest.automations.length : 0,
+    dataFileCount: manifest.dataFiles ? manifest.dataFiles.length : 0,
     hasResponses: Array.isArray(manifest.responses) && manifest.responses.length > 0,
   };
 }

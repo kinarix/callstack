@@ -152,6 +152,10 @@
   min-width: 0;
 }
 
+.urlInputWrapper input {
+  padding: var(--space-1) 130px var(--space-1) var(--space-2);
+}
+
 .urlOverlay {
   position: absolute;
   inset: 1px; /* sits inside the 1px border */

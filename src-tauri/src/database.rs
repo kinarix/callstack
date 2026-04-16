@@ -33,6 +33,7 @@ pub struct Request {
     pub created_at: String,
     pub updated_at: String,
     pub imported: bool,
+    pub env_id: Option<i64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -228,6 +229,14 @@ impl Database {
             "ALTER TABLE automations ADD COLUMN steps TEXT NOT NULL DEFAULT '[]'",
             [],
         );
+        let _ = conn.execute(
+            "ALTER TABLE requests ADD COLUMN env_id INTEGER REFERENCES environments(id)",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE automations ADD COLUMN env_id INTEGER REFERENCES environments(id)",
+            [],
+        );
 
         Ok(Self {
             conn: Mutex::new(conn),
@@ -349,6 +358,10 @@ pub fn delete_project(db: tauri::State<Database>, id: i64) -> Result<(), String>
     .map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM requests WHERE project_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM automations WHERE project_id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM data_files WHERE project_id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM environments WHERE project_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM folders WHERE project_id = ?1", params![id])
@@ -369,7 +382,7 @@ pub fn list_requests(
 
     let mut stmt = conn
         .prepare(
-            "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script
+            "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id
              FROM requests WHERE project_id = ?1 ORDER BY position ASC",
         )
         .map_err(|e| e.to_string())?;
@@ -394,6 +407,7 @@ pub fn list_requests(
                 imported: row.get::<_, i64>(14)? != 0,
                 pre_script: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
                 post_script: row.get::<_, Option<String>>(16)?.unwrap_or_default(),
+                env_id: row.get(17)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -431,7 +445,7 @@ pub fn create_request(
     let id = conn.last_insert_rowid();
 
     conn.query_row(
-        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script FROM requests WHERE id = ?1",
+        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id FROM requests WHERE id = ?1",
         params![id],
         |row| {
             Ok(Request {
@@ -452,6 +466,7 @@ pub fn create_request(
                 imported: row.get::<_, i64>(14)? != 0,
                 pre_script: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
                 post_script: row.get::<_, Option<String>>(16)?.unwrap_or_default(),
+                env_id: row.get(17)?,
             })
         },
     )
@@ -472,6 +487,7 @@ pub fn update_request(
     attachments: Option<String>,
     pre_script: Option<String>,
     post_script: Option<String>,
+    env_id: Option<Option<i64>>,
 ) -> Result<Request, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
 
@@ -519,6 +535,10 @@ pub fn update_request(
         sets.push(format!("post_script = ?{}", values.len() + 1));
         values.push(Box::new(v));
     }
+    if let Some(v) = env_id {
+        sets.push(format!("env_id = ?{}", values.len() + 1));
+        values.push(Box::new(v));
+    }
 
     let id_param_idx = values.len() + 1;
     values.push(Box::new(id));
@@ -534,7 +554,7 @@ pub fn update_request(
         .map_err(|e| e.to_string())?;
 
     conn.query_row(
-        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script FROM requests WHERE id = ?1",
+        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id FROM requests WHERE id = ?1",
         params![id],
         |row| {
             Ok(Request {
@@ -555,6 +575,7 @@ pub fn update_request(
                 imported: row.get::<_, i64>(14)? != 0,
                 pre_script: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
                 post_script: row.get::<_, Option<String>>(16)?.unwrap_or_default(),
+                env_id: row.get(17)?,
             })
         },
     )
@@ -775,7 +796,7 @@ pub fn duplicate_request(db: tauri::State<Database>, id: i64) -> Result<Request,
     let new_id = conn.last_insert_rowid();
 
     conn.query_row(
-        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script FROM requests WHERE id = ?1",
+        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id FROM requests WHERE id = ?1",
         params![new_id],
         |row| {
             Ok(Request {
@@ -796,6 +817,7 @@ pub fn duplicate_request(db: tauri::State<Database>, id: i64) -> Result<Request,
                 imported: row.get::<_, i64>(14)? != 0,
                 pre_script: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
                 post_script: row.get::<_, Option<String>>(16)?.unwrap_or_default(),
+                env_id: row.get(17)?,
             })
         },
     )
@@ -866,6 +888,7 @@ pub fn duplicate_folder(db: tauri::State<Database>, id: i64) -> Result<Duplicate
                 imported: row.get::<_, i64>(14)? != 0,
                 pre_script: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
                 post_script: row.get::<_, Option<String>>(16)?.unwrap_or_default(),
+                env_id: row.get(17)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -913,7 +936,7 @@ pub fn import_requests(
         let id = conn.last_insert_rowid();
         let request = conn
             .query_row(
-                "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script FROM requests WHERE id = ?1",
+                "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id FROM requests WHERE id = ?1",
                 params![id],
                 |row| {
                     Ok(Request {
@@ -934,6 +957,7 @@ pub fn import_requests(
                         imported: row.get::<_, i64>(14)? != 0,
                         pre_script: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
                         post_script: row.get::<_, Option<String>>(16)?.unwrap_or_default(),
+                        env_id: row.get(17)?,
                     })
                 },
             )
@@ -1119,6 +1143,7 @@ pub struct Automation {
     pub steps: String, // JSON array of AutomationStep
     pub created_at: String,
     pub updated_at: String,
+    pub env_id: Option<i64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -1138,7 +1163,7 @@ pub struct AutomationRun {
 pub fn list_automations(db: tauri::State<Database>, project_id: i64) -> Result<Vec<Automation>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
-        .prepare("SELECT id, project_id, name, steps, created_at, updated_at FROM automations WHERE project_id = ?1 ORDER BY created_at ASC")
+        .prepare("SELECT id, project_id, name, steps, created_at, updated_at, env_id FROM automations WHERE project_id = ?1 ORDER BY created_at ASC")
         .map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map(params![project_id], |row| {
@@ -1149,6 +1174,7 @@ pub fn list_automations(db: tauri::State<Database>, project_id: i64) -> Result<V
                 steps: row.get(3)?,
                 created_at: row.get(4)?,
                 updated_at: row.get(5)?,
+                env_id: row.get(6)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -1170,7 +1196,7 @@ pub fn create_automation(
     .map_err(|e| e.to_string())?;
     let id = conn.last_insert_rowid();
     conn.query_row(
-        "SELECT id, project_id, name, steps, created_at, updated_at FROM automations WHERE id = ?1",
+        "SELECT id, project_id, name, steps, created_at, updated_at, env_id FROM automations WHERE id = ?1",
         params![id],
         |row| Ok(Automation {
             id: row.get(0)?,
@@ -1179,6 +1205,7 @@ pub fn create_automation(
             steps: row.get(3)?,
             created_at: row.get(4)?,
             updated_at: row.get(5)?,
+            env_id: row.get(6)?,
         }),
     )
     .map_err(|e| e.to_string())
@@ -1190,15 +1217,22 @@ pub fn update_automation(
     id: i64,
     name: String,
     steps: String,
+    env_id: Option<Option<i64>>,
 ) -> Result<Automation, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    conn.execute(
-        "UPDATE automations SET name = ?1, steps = ?2, updated_at = CURRENT_TIMESTAMP WHERE id = ?3",
-        params![name, steps, id],
-    )
+    match env_id {
+        Some(eid) => conn.execute(
+            "UPDATE automations SET name = ?1, steps = ?2, env_id = ?3, updated_at = CURRENT_TIMESTAMP WHERE id = ?4",
+            params![name, steps, eid, id],
+        ),
+        None => conn.execute(
+            "UPDATE automations SET name = ?1, steps = ?2, updated_at = CURRENT_TIMESTAMP WHERE id = ?3",
+            params![name, steps, id],
+        ),
+    }
     .map_err(|e| e.to_string())?;
     conn.query_row(
-        "SELECT id, project_id, name, steps, created_at, updated_at FROM automations WHERE id = ?1",
+        "SELECT id, project_id, name, steps, created_at, updated_at, env_id FROM automations WHERE id = ?1",
         params![id],
         |row| Ok(Automation {
             id: row.get(0)?,
@@ -1207,6 +1241,7 @@ pub fn update_automation(
             steps: row.get(3)?,
             created_at: row.get(4)?,
             updated_at: row.get(5)?,
+            env_id: row.get(6)?,
         }),
     )
     .map_err(|e| e.to_string())

@@ -1,0 +1,734 @@
+{
+  "schemaVersion": "1.0.0",
+  "exportedAt": "2026-04-16T14:46:16.676Z",
+  "generator": "callstack/0.6.1",
+  "project": {
+    "name": "Sample",
+    "description": null
+  },
+  "folders": [
+    {
+      "_ref": "folder-0",
+      "name": "Auth"
+    },
+    {
+      "_ref": "folder-1",
+      "name": "Health"
+    },
+    {
+      "_ref": "folder-2",
+      "name": "Products"
+    },
+    {
+      "_ref": "folder-3",
+      "name": "Users"
+    }
+  ],
+  "requests": [
+    {
+      "_ref": "req-0",
+      "folderRef": "folder-3",
+      "name": "Update User Profile",
+      "method": "PATCH",
+      "url": "{{baseUrl}}/api/users/me",
+      "params": [],
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json",
+          "enabled": true
+        },
+        {
+          "key": "Authorization",
+          "value": "Bearer {{authToken}}",
+          "enabled": true
+        }
+      ],
+      "body": "{\n  \"name\": \"Jane Doe\",\n  \"preferences\": {\n    \"theme\": \"dark\",\n    \"notifications\": true\n  }\n}",
+      "preScript": "",
+      "postScript": "if (response.status === 200) {\n  console.log('Profile updated');\n} else {\n  throw new Error(`Profile update failed: ${response.status}`);\n}",
+      "position": 1,
+      "attachments": []
+    },
+    {
+      "_ref": "req-1",
+      "folderRef": "folder-3",
+      "name": "Get Current User",
+      "method": "GET",
+      "url": "{{baseUrl}}/api/users/me",
+      "params": [],
+      "headers": [
+        {
+          "key": "Authorization",
+          "value": "Bearer {{authToken}}",
+          "enabled": true
+        }
+      ],
+      "body": "",
+      "preScript": "",
+      "postScript": "if (response.status === 200) {\n  const body = response.json();\n  console.log(`Logged in as: ${body.name} (${body.email})`);\n} else if (response.status === 401) {\n  throw new Error('Not authenticated — run Login first');\n}",
+      "position": 0,
+      "attachments": []
+    },
+    {
+      "_ref": "req-2",
+      "folderRef": "folder-2",
+      "name": "Search Products",
+      "method": "GET",
+      "url": "{{baseUrl}}/api/products/search",
+      "params": [
+        {
+          "key": "q",
+          "value": "widget",
+          "enabled": true
+        },
+        {
+          "key": "minPrice",
+          "value": "10",
+          "enabled": true
+        },
+        {
+          "key": "maxPrice",
+          "value": "500",
+          "enabled": true
+        },
+        {
+          "key": "sort",
+          "value": "price:asc",
+          "enabled": true
+        }
+      ],
+      "headers": [
+        {
+          "key": "Authorization",
+          "value": "Bearer {{authToken}}",
+          "enabled": true
+        }
+      ],
+      "body": "",
+      "preScript": "",
+      "postScript": "const body = response.json;\n",
+      "position": 6,
+      "attachments": []
+    },
+    {
+      "_ref": "req-3",
+      "folderRef": "folder-2",
+      "name": "Delete Product",
+      "method": "DELETE",
+      "url": "{{baseUrl}}/api/products/{{productId}}",
+      "params": [],
+      "headers": [
+        {
+          "key": "Authorization",
+          "value": "Bearer {{authToken}}",
+          "enabled": true
+        }
+      ],
+      "body": "",
+      "preScript": "console.log(`Deleting product #${env.productId}`);",
+      "postScript": "if (response.status === 204 || response.status === 200) {\n  console.log('Product deleted successfully');\n} else if (response.status === 404) {\n  console.log('Product already deleted or not found');\n} else {\n  throw new Error(`Delete failed: ${response.status}`);\n}",
+      "position": 5,
+      "attachments": []
+    },
+    {
+      "_ref": "req-4",
+      "folderRef": "folder-2",
+      "name": "Patch Product Price",
+      "method": "PATCH",
+      "url": "{{baseUrl}}/api/products/{{productId}}",
+      "params": [],
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json",
+          "enabled": true
+        },
+        {
+          "key": "Authorization",
+          "value": "Bearer {{authToken}}",
+          "enabled": true
+        }
+      ],
+      "body": "{\n  \"price\": 19.99,\n  \"active\": false\n}",
+      "preScript": "",
+      "postScript": "if (response.status === 200) {\n  const body = response.json();\n  console.log(`Patched product — new price: $${body.price}`);\n} else {\n  throw new Error(`Patch failed: ${response.status}`);\n}",
+      "position": 4,
+      "attachments": []
+    },
+    {
+      "_ref": "req-5",
+      "folderRef": "folder-2",
+      "name": "Update Product",
+      "method": "PUT",
+      "url": "{{baseUrl}}/api/products/{{productId}}",
+      "params": [],
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json",
+          "enabled": true
+        },
+        {
+          "key": "Authorization",
+          "value": "Bearer {{authToken}}",
+          "enabled": true
+        }
+      ],
+      "body": "{\n  \"name\": \"Updated Widget\",\n  \"price\": 29.99,\n  \"active\": true,\n  \"category\": \"electronics\",\n  \"tags\": [\"updated\", \"sale\"]\n}",
+      "preScript": "",
+      "postScript": "if (response.status === 200) {\n  const body = response.json();\n  console.log(`Updated product #${body.id}`);\n} else if (response.status === 404) {\n  throw new Error('Product not found — cannot update');\n} else {\n  throw new Error(`Update failed: ${response.status}`);\n}",
+      "position": 3,
+      "attachments": []
+    },
+    {
+      "_ref": "req-6",
+      "folderRef": "folder-2",
+      "name": "Create Product",
+      "method": "POST",
+      "url": "{{baseUrl}}/api/products",
+      "params": [],
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json",
+          "enabled": true
+        },
+        {
+          "key": "Authorization",
+          "value": "Bearer {{authToken}}",
+          "enabled": true
+        }
+      ],
+      "body": "{\n  \"name\": \"{{cName}}\",\n  \"price\": {{cPrice}},\n  \"active\": {{cActive}},\n  \"category\": \"electronics\",\n  \"tags\": [\"new\", \"featured\"]\n}",
+      "preScript": "// Log what we're about to create\nconsole.log(`Creating product: ${env.cName || 'New Product'}`);",
+      "postScript": "const body = response.json();\n\nif (response.status === 201) {\n  emit('productId', String(body.id));\n  console.log(`Created product #${body.id}: ${body.name}`);\n} else if (response.status === 409) {\n  console.log(`Product already exists: ${body.message}`);\n} else {\n  throw new Error(`Create failed: ${response.status} — ${JSON.stringify(body)}`);\n}",
+      "position": 2,
+      "attachments": []
+    },
+    {
+      "_ref": "req-7",
+      "folderRef": "folder-2",
+      "name": "Get Product by ID",
+      "method": "GET",
+      "url": "{{baseUrl}}/api/products/{{productId}}",
+      "params": [],
+      "headers": [
+        {
+          "key": "Authorization",
+          "value": "Bearer {{authToken}}",
+          "enabled": true
+        }
+      ],
+      "body": "",
+      "preScript": "",
+      "postScript": "const body = response.json();\n\nif (response.status === 200) {\n  emit('productName', body.name);\n  emit('productPrice', String(body.price));\n  console.log(`Product: ${body.name} — $${body.price}`);\n} else if (response.status === 404) {\n  console.log('Product not found');\n} else {\n  throw new Error(`Unexpected status: ${response.status}`);\n}",
+      "position": 1,
+      "attachments": []
+    },
+    {
+      "_ref": "req-8",
+      "folderRef": "folder-2",
+      "name": "List Products",
+      "method": "GET",
+      "url": "{{baseUrl}}/api/products",
+      "params": [
+        {
+          "key": "page",
+          "value": "1",
+          "enabled": true
+        },
+        {
+          "key": "limit",
+          "value": "20",
+          "enabled": true
+        },
+        {
+          "key": "active",
+          "value": "true",
+          "enabled": false
+        }
+      ],
+      "headers": [
+        {
+          "key": "Authorization",
+          "value": "Bearer {{authToken}}",
+          "enabled": true
+        }
+      ],
+      "body": "",
+      "preScript": "",
+      "postScript": "// Validate list response\nconst body = response.json();\n\nif (response.status !== 200) {\n  throw new Error(`List products failed: ${response.status}`);\n}\n\nif (!Array.isArray(body.data)) {\n  throw new Error('Expected data array in response');\n}\n\nconsole.log(`Got ${body.data.length} products (total: ${body.total})`);",
+      "position": 0,
+      "attachments": []
+    },
+    {
+      "_ref": "req-9",
+      "folderRef": "folder-0",
+      "name": "Refresh Token",
+      "method": "POST",
+      "url": "{{baseUrl}}/auth/refresh",
+      "params": [],
+      "headers": [
+        {
+          "key": "Authorization",
+          "value": "Bearer {{authToken}}",
+          "enabled": true
+        }
+      ],
+      "body": "",
+      "preScript": "",
+      "postScript": "if (response.status === 200) {\n  const body = response.json();\n  emit('authToken', body.token);\n  console.log('Token refreshed');\n}",
+      "position": 1,
+      "attachments": []
+    },
+    {
+      "_ref": "req-10",
+      "folderRef": "folder-0",
+      "name": "Login",
+      "method": "POST",
+      "url": "{{baseUrl}}/auth/login",
+      "params": [],
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json",
+          "enabled": true
+        }
+      ],
+      "body": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"{{password}}\",\n  \"requestId\": \"{{$guid}}\"\n}",
+      "preScript": "// Log which environment we're hitting\nconsole.log(`Logging in to: ${env.baseUrl}`);",
+      "postScript": "// Extract and store the auth token\nconst body = response.json();\n\nif (response.status === 200 && body.token) {\n  emit('authToken', body.token);\n  emit('userId', body.user.id);\n  console.log('Login successful, token stored');\n} else {\n  throw new Error(`Login failed: ${response.status} — ${body.message}`);\n}",
+      "position": 0,
+      "attachments": []
+    },
+    {
+      "_ref": "req-11",
+      "folderRef": "folder-1",
+      "name": "Health Check",
+      "method": "GET",
+      "url": "{{baseUrl}}/health",
+      "params": [],
+      "headers": [],
+      "body": "",
+      "preScript": "",
+      "postScript": "// Verify the service is healthy\nif (response.status !== 200) {\n  throw new Error(`Health check failed: ${response.status}`);\n}\n\nconst body = response.json();\nif (body.status !== 'ok') {\n  throw new Error(`Unexpected health status: ${body.status}`);\n}\n\nconsole.log('Health check passed');",
+      "position": 0,
+      "attachments": []
+    }
+  ],
+  "environments": [
+    {
+      "name": "Local",
+      "variables": [
+        {
+          "key": "scheme",
+          "value": "http",
+          "enabled": true
+        },
+        {
+          "key": "host",
+          "value": "localhost",
+          "enabled": true
+        },
+        {
+          "key": "port",
+          "value": "8080",
+          "enabled": true
+        },
+        {
+          "key": "baseUrl",
+          "value": "{{scheme}}://{{host}}:{{port}}",
+          "enabled": true
+        },
+        {
+          "key": "password",
+          "value": "admin123",
+          "enabled": true
+        },
+        {
+          "key": "productId",
+          "value": "1",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "Production",
+      "variables": []
+    },
+    {
+      "name": "Staging",
+      "variables": []
+    },
+    {
+      "name": "Sandbox",
+      "variables": []
+    }
+  ],
+  "automations": [
+    {
+      "_ref": "auto-0",
+      "name": "CRUD Smoke Test",
+      "envName": null,
+      "steps": [
+        {
+          "id": "d8003389-8786-417a-8a82-a44e1f53ce95",
+          "type": "set_env",
+          "envRef": "Local"
+        },
+        {
+          "id": "s1",
+          "type": "log",
+          "scope": "env",
+          "object": "all"
+        },
+        {
+          "id": "s2",
+          "type": "request",
+          "requestRef": "req-11"
+        },
+        {
+          "id": "s3",
+          "type": "branch",
+          "condition": {
+            "type": "lastRequestPass"
+          },
+          "trueSteps": [
+            {
+              "id": "s4",
+              "type": "request",
+              "requestRef": "req-10"
+            },
+            {
+              "id": "s5",
+              "type": "branch",
+              "condition": {
+                "type": "lastRequestPass"
+              },
+              "trueSteps": [
+                {
+                  "id": "s6",
+                  "type": "request",
+                  "requestRef": "req-6"
+                },
+                {
+                  "id": "s7",
+                  "type": "delay",
+                  "delayMs": 500
+                },
+                {
+                  "id": "s8",
+                  "type": "request",
+                  "requestRef": "req-7"
+                },
+                {
+                  "id": "s9",
+                  "type": "request",
+                  "requestRef": "req-5"
+                },
+                {
+                  "id": "s10",
+                  "type": "request",
+                  "requestRef": "req-4"
+                },
+                {
+                  "id": "s11",
+                  "type": "request",
+                  "requestRef": "req-3"
+                },
+                {
+                  "id": "s12",
+                  "type": "log",
+                  "scope": "env",
+                  "object": "all"
+                }
+              ],
+              "falseSteps": [
+                {
+                  "id": "s13",
+                  "type": "log",
+                  "scope": "env",
+                  "object": "all"
+                },
+                {
+                  "id": "s14",
+                  "type": "stop"
+                }
+              ]
+            }
+          ],
+          "falseSteps": [
+            {
+              "id": "s15",
+              "type": "log",
+              "scope": "env",
+              "object": "all"
+            },
+            {
+              "id": "s16",
+              "type": "stop"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_ref": "auto-1",
+      "name": "Bulk Import Products",
+      "envName": null,
+      "steps": [
+        {
+          "id": "b1",
+          "type": "request",
+          "requestRef": "req-10"
+        },
+        {
+          "id": "b2",
+          "type": "branch",
+          "condition": {
+            "type": "lastRequestPass"
+          },
+          "trueSteps": [
+            {
+              "id": "b3",
+              "type": "csv_iterator",
+              "dataFileRef": "df-0",
+              "limit": 50,
+              "steps": [
+                {
+                  "id": "b4",
+                  "type": "request",
+                  "requestRef": "req-6"
+                },
+                {
+                  "id": "b5",
+                  "type": "branch",
+                  "condition": {
+                    "type": "lastRequestPass"
+                  },
+                  "trueSteps": [
+                    {
+                      "id": "b6",
+                      "type": "log",
+                      "scope": "env",
+                      "object": "all"
+                    }
+                  ],
+                  "falseSteps": [
+                    {
+                      "id": "b7",
+                      "type": "log",
+                      "scope": "env",
+                      "object": "all"
+                    }
+                  ]
+                },
+                {
+                  "id": "b8",
+                  "type": "delay",
+                  "delayMs": 200
+                }
+              ]
+            },
+            {
+              "id": "b9",
+              "type": "log",
+              "scope": "env",
+              "object": "all"
+            }
+          ],
+          "falseSteps": [
+            {
+              "id": "b10",
+              "type": "log",
+              "scope": "env",
+              "object": "all"
+            },
+            {
+              "id": "b11",
+              "type": "stop"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_ref": "auto-2",
+      "name": "Load Test (10 iterations)",
+      "envName": null,
+      "steps": [
+        {
+          "id": "l1",
+          "type": "request",
+          "requestRef": "req-10"
+        },
+        {
+          "id": "l2",
+          "type": "repeat",
+          "count": 10,
+          "steps": [
+            {
+              "id": "l3",
+              "type": "request",
+              "requestRef": "req-8"
+            },
+            {
+              "id": "l4",
+              "type": "branch",
+              "condition": {
+                "type": "lastStatusGte",
+                "value": 500
+              },
+              "trueSteps": [
+                {
+                  "id": "l5",
+                  "type": "log",
+                  "scope": "env",
+                  "object": "all"
+                },
+                {
+                  "id": "l6",
+                  "type": "stop"
+                }
+              ],
+              "falseSteps": [
+                {
+                  "id": "l7",
+                  "type": "delay",
+                  "delayMs": 100
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "l8",
+          "type": "log",
+          "scope": "env",
+          "object": "all"
+        }
+      ]
+    }
+  ],
+  "dataFiles": [
+    {
+      "_ref": "df-0",
+      "name": "products.csv",
+      "content": "cName,cPrice,cActive\nCore Monitor,742.06,true\nTurbo Backpack X,677.34,true\nBold Thermos,31.73,true\nTurbo Cable Air,28.47,true\nVibe Drone SE,420.67,false\nBold Speaker,759.28,true\nVibe Thermos Max,279.31,true\nSonic Webcam X,94.55,true\nFlex Bottle Max,604.51,true\nPeak Wallet SE,126.57,false\nClassic Stand 2.0,829.74,false\nBold Charger X,47.72,true\nSonic Mouse X,855.6,true\nRapid Speaker v2,636.4,false\nSmart Desk Max,211.08,false\nVibe Grip X,609.9,true\nLite Case Pro,165.07,false\nMega Grip SE,221.17,false\nPulse Hub,230.58,true\nZen Webcam Mini,269.2,true\nLuxe Pad Max,214.19,false\nRapid Pillow v2,144.58,true\nTurbo Case SE,539.89,false\nArc Pad Mini,363.26,true\nMax Watch X,756.26,true\nElite Drone Plus,792.49,false\nSwift Headphones Mini,382.85,false\nMax Speaker SE,861.05,true\nAce Case X,682.34,false\nSonic Drone Max,113.32,false\nSmart Wallet,953.9,false\nMax Hub Plus,508.66,true\nEdge Drone 2.0,841.98,true\nElite Desk Plus,540.29,true\nSwift Webcam v2,21.43,false\nArc Brush 2.0,240.96,true\nArc Pad X,87.47,false\nPulse Headphones SE,766.29,true\nAce Watch SE,166.79,false\nEco Grip SE,755.74,true\nVibe Mouse Mini,995.15,false\nHyper Pillow SE,452.57,true\nTurbo Headphones Max,22.98,true\nBold Lamp,72.84,true\nTurbo Headphones,859.91,true\nMax Lamp 2.0,669.63,true\nLite Backpack Air,577.05,true\nZen Watch Mini,192.02,true\nAce Thermos Max,424.72,false\nEdge Case,674.01,true\nUltra Chair Max,800.98,true\nTurbo Charger Pro,537.2,true\nNova Notebook 2.0,463.69,true\nHyper Adapter SE,99.7,true\nClassic Grip Pro,167.97,false\nPure Charger Mini,902.63,true\nRapid Blender Mini,266.66,false\nMini Thermos SE,662.54,false\nElite Charger 2.0,219.26,true\nBold Case SE,62.83,false\nUltra Keyboard Air,477.82,true\nUltra Cable X,851.63,true\nSwift Headphones Pro,404.96,true\nBold Tracker,620.13,false\nAce Pad Air,523.73,false\nEco Lens Max,240.2,false\nElite Lens 2.0,458.3,true\nPremium Wallet Air,998.45,true\nClassic Stand Pro,506.86,true\nLuxe Desk X,879.5,false\nMini Notebook v2,834.07,false\nSwift Adapter SE,9.8,false\nLuxe Lens X,939.04,true\nMega Monitor X,742.92,true\nMega Mouse Air,212.2,false\nEco Lens 2.0,506.39,false\nArc Grip,94.1,false\nPulse Speaker,5.53,true\nCore Speaker Plus,741.74,false\nLite Blender X,77.08,true\nLite Keyboard Max,583.33,true\nNova Backpack,309.63,true\nArc Desk Pro,682.69,true\nFlex Hub SE,884.36,false\nSwift Case Plus,925.9,true\nEdge Notebook Plus,881.64,true\nSmart Case Max,782.81,false\nZen Lens Pro,268.26,true\nRapid Bottle,858.87,true\nEco Brush v2,350.95,true\nTurbo Blender Pro,399.66,false\nEdge Headphones 2.0,352.43,false\nAce Brush SE,332.48,true\nPro Pillow 2.0,180.2,false\nUltra Monitor Air,435.68,false\nNova Tracker SE,117.4,true\nMega Keyboard Mini,3.68,true\nFlex Thermos X,948.97,false\nSwift Webcam X,720.3,false\nMax Mouse Mini,327.52,false\nLite Backpack Pro,421.6,false\nAce Case Plus,616.27,false\nRapid Stand,305.26,true\nNova Adapter Air,607.44,false\nHyper Wallet v2,676.27,false\nZen Pillow Plus,659.52,false\nMax Lens Air,336.51,true\nAce Mouse Pro,806.94,true\nPremium Keyboard Pro,983.96,true\nHyper Thermos Air,196.04,false\nPure Chair Pro,149.27,true\nArc Hub X,778.85,true\nSmart Adapter SE,465.61,true\nLuxe Bottle X,457.54,false\nAce Cable SE,596.25,false\nSwift Brush SE,427.88,false\nArc Notebook v2,451.16,true\nPulse Drone 2.0,766.27,false\nCore Lamp 2.0,440.98,false\nTurbo Speaker Max,321.06,true\nElite Backpack Pro,384.26,true\nVibe Charger X,416.03,false\nLite Wallet Mini,64.13,false\nRapid Pillow Air,946.16,true\nEdge Pillow Air,381.61,true\nFlex Mouse Mini,853.73,false\nLite Case SE,800.26,true\nPure Lamp 2.0,436.95,true\nRapid Webcam Mini,724.72,false\nLuxe Backpack Air,535.05,false\nBold Pad,85.77,false\nElite Bottle v2,183.36,false\nRapid Webcam Pro,455.78,false\nSonic Pillow Mini,279.69,false\nMega Brush X,471.36,true\nFlex Lamp X,781.66,true\nSonic Blender Pro,200.95,true\nSwift Backpack Pro,127.96,true\nBold Charger v2,700.06,false\nSmart Tracker Air,963.8,true\nSonic Brush Plus,964.78,true\nBold Blender 2.0,576.64,false\nRapid Filter Pro,77.83,true\nPro Filter 2.0,850.58,true\nZen Pad,348.5,false\nAce Desk X,506.94,false\nPremium Bottle Mini,822.68,true\nNova Desk v2,707.88,false\nSmart Case SE,965.53,false\nSwift Adapter SE,775.08,false\nNova Brush Air,269.85,true\nPulse Grip X,280.36,false\nTurbo Hub v2,570.7,false\nSlim Blender v2,851.24,true\nPure Charger Max,798.23,false\nMega Pillow Air,701.77,false\nLite Blender SE,948.16,true\nTurbo Case Mini,489.59,true\nVibe Watch v2,449.27,true\nClassic Mouse Pro,405.58,true\nMini Lens Air,370.27,false\nNova Case SE,332.12,false\nMega Mouse 2.0,232.07,true\nSlim Monitor SE,950.97,true\nEco Charger v2,277.94,false\nPro Brush Pro,297.64,false\nSmart Mouse,708.59,true\nMega Keyboard,554.24,true\nCore Bottle v2,104.37,true\nBold Mouse v2,479.75,false\nSmart Keyboard 2.0,941.17,false\nPro Brush X,401.9,true\nBold Drone,153.41,false\nClassic Lamp X,558.95,false\nSwift Tracker Air,227.23,false\nHyper Grip v2,298.75,false\nMini Pad Air,62.1,true\nSonic Charger Pro,266.11,true\nSmart Lamp Plus,552.88,true\nPremium Thermos v2,689.98,false\nMini Keyboard Pro,289.52,false\nVibe Bottle v2,73.03,true\nLuxe Speaker Air,661.85,true\nNova Monitor SE,226.35,true\nLuxe Speaker Plus,73.26,true\nZen Mouse Air,749.45,false\nHyper Monitor v2,689.29,false\nMega Cable SE,494.8,true\nSwift Keyboard Mini,735.05,false\nPremium Headphones Pro,961.98,true\nSonic Lens 2.0,577.08,true\nPure Cable v2,916.23,true\nBold Thermos v2,969.11,false\nFlex Thermos Max,322.41,true\nEdge Notebook Max,412.81,false\nMini Lens Mini,813.93,true\nHyper Headphones Max,253.88,true\nSonic Chair SE,825.27,true\nAce Bottle SE,463.04,true\nEco Cable Max,623.38,false\nCore Wallet,205.14,true\nLuxe Mouse v2,881.07,false\nPro Blender Air,799.71,true\nMini Stand,553.14,true\nTurbo Brush X,462.51,true\nCore Brush Plus,499.37,false\nMax Filter 2.0,416.65,false\nPure Lamp v2,552.15,false\nEco Grip Air,509.21,true\nEdge Headphones 2.0,773.12,false\nSlim Grip SE,268.63,true\nMini Case 2.0,837.79,false\nEdge Backpack v2,539.49,false\nSlim Stand SE,378.45,false\nEdge Charger Pro,572.64,true\nEdge Hub Mini,45.55,false\nVibe Grip Mini,387.3,true\nPure Keyboard Plus,503.28,false\nEdge Monitor v2,101.5,false\nPremium Case Plus,411.15,true\nClassic Watch 2.0,339.87,false\nCore Headphones Max,852.63,false\nSlim Drone v2,872.63,true\nSwift Headphones Pro,631.89,false\nTurbo Case X,435.09,true\nSonic Drone X,444.78,false\nArc Blender,325.72,true\nMini Desk Max,431.82,true\nMax Thermos Air,682.43,true\nSmart Notebook X,610.26,false\nSwift Lens Pro,498.66,true\nTurbo Wallet 2.0,460.64,true\nArc Adapter v2,901.4,true\nClassic Wallet Max,987.67,false\nCore Thermos 2.0,457.91,false\nEco Chair v2,108.43,false\nBold Desk Air,297.27,false\nPremium Brush Mini,275.92,true\nLuxe Tracker v2,833.16,false\nSonic Adapter Pro,607.84,false\nTurbo Drone Pro,621.64,true\nCore Monitor,310.31,false\nUltra Pad Max,732.89,true\nLuxe Mouse Max,747.98,true\nEco Backpack SE,876.7,false\nMax Cable 2.0,830.8,false\nLuxe Brush v2,967.44,false\nPeak Bottle Max,804.61,false\nClassic Backpack Pro,860.41,false\nEdge Adapter SE,367.03,false\nPremium Speaker SE,125.33,false\nAce Case 2.0,585.38,false\nPro Lens Pro,472.52,false\nLuxe Tracker Pro,648.35,false\nLuxe Filter 2.0,649.93,true\nElite Keyboard,305.75,false\nPro Monitor Pro,887.47,true\nRapid Wallet Max,671.14,false\nBold Case Plus,885.63,true\nPulse Watch Air,409.29,false\nUltra Filter Max,218.83,false\nTurbo Bottle Max,101.15,false\nLite Pillow Max,62.42,false\nEco Monitor v2,93.48,true\nCore Drone Air,971.14,true\nZen Webcam Pro,988.83,true\nClassic Brush SE,208.73,true\nPulse Bottle Pro,329.89,true\nZen Pillow Air,4.82,true\nElite Stand 2.0,798.91,true\nAce Bottle,133.53,false\nZen Adapter Pro,589.67,true\nSmart Speaker,128.5,false\nMax Monitor X,477.28,false\nMax Pad X,453.09,true\nSwift Keyboard SE,303.02,true\nUltra Watch Mini,427.41,true\nPure Filter v2,75.33,true\nSlim Tracker Plus,67.54,false\nSwift Drone Air,549.25,false\nRapid Tracker SE,296.3,false\nPro Adapter X,853.08,true\nNova Wallet Pro,414.98,false\nRapid Thermos X,313.91,false\nAce Speaker Max,953.68,false\nClassic Headphones X,95.03,true\nPeak Case Max,812.14,true\nBold Stand SE,330.98,true\nNova Desk Mini,868.35,true\nMini Tracker 2.0,352.93,true\nElite Lens v2,225.79,true\nFlex Bottle SE,368.82,false\nBold Lamp Mini,845.45,true\nSwift Grip 2.0,30.89,false\nVibe Hub 2.0,921.68,false\nPremium Notebook Plus,567.18,false\nClassic Backpack,93.56,true\nRapid Thermos v2,342.2,false\nMini Case Max,777.27,true\nArc Keyboard Plus,159.09,true\nAce Headphones 2.0,444.22,false\nPure Tracker v2,415.35,true\nSonic Cable X,346.47,true\nMini Lens Air,487.65,false\nUltra Lamp Mini,984.47,true\nPremium Charger 2.0,945.42,true\nSonic Speaker 2.0,329.46,true\nPure Case Mini,177.33,false\nLite Filter Pro,501.25,false\nClassic Chair,437.34,false\nLuxe Headphones Max,576.6,false\nVibe Drone Mini,290.93,false\nPremium Webcam Plus,801.71,false\nPulse Filter Max,89.94,true\nTurbo Thermos Air,401.64,true\nRapid Bottle 2.0,746.3,true\nSlim Hub Plus,78.22,true\nMax Cable Pro,906.1,false\nFlex Case Plus,237.79,true\nMega Charger Plus,603.18,true\nSmart Hub v2,465.02,false\nAce Grip Air,643.7,false\nEdge Drone Max,152.65,true\nPure Wallet 2.0,796.73,true\nFlex Cable X,311.78,false\nUltra Keyboard Max,832.02,true\nCore Bottle X,615.77,false\nHyper Pad SE,954.31,true\nHyper Grip Air,652.52,false\nSwift Watch SE,152.55,true\nHyper Monitor Max,982.41,true\nMax Drone Plus,41.05,false\nHyper Cable SE,610.58,false\nFlex Grip 2.0,388.63,false\nAce Tracker,789.64,false\nClassic Webcam X,558.84,false\nMini Speaker Air,873.52,false\nClassic Pad Plus,916.9,false\nCore Filter Mini,130.68,true\nMini Stand Mini,644.2,false\nPulse Backpack SE,95.26,false\nMax Desk,363.86,true\nEco Webcam v2,193.61,true\nElite Headphones 2.0,844.73,true\nMax Hub SE,835.44,true\nAce Webcam Air,132.78,false\nElite Notebook Plus,831.67,true\nPeak Wallet,412.03,true\nHyper Tracker 2.0,752.88,false\nTurbo Stand Pro,310.84,false\nArc Brush Pro,369.1,false\nHyper Hub 2.0,778.56,false\nSmart Brush Pro,801.65,true\nEdge Speaker,641.89,false\nLite Grip X,711.97,true\nMini Headphones Plus,274.24,true\nPulse Thermos X,946.51,true\nPulse Wallet Max,930.6,false\nUltra Chair SE,375.2,false\nClassic Desk Pro,30.12,true\nPulse Filter Max,791.79,true\nUltra Mouse v2,696.67,true\nSonic Filter v2,449.69,true\nArc Headphones,257.4,true\nLite Case Air,528.71,true\nSonic Mouse Pro,302.54,true\nTurbo Thermos Air,458.19,true\nPulse Pillow v2,597.54,true\nCore Cable Air,243.44,true\nMini Thermos,615.57,true\nBold Thermos Plus,665.03,true\nMax Desk X,953.49,true\nRapid Bottle v2,45.44,false\nFlex Speaker,358.37,true\nFlex Lamp X,771.95,false\nElite Keyboard Max,546.91,true\nPulse Hub v2,980.85,false\nCore Notebook Plus,64.96,false\nUltra Mouse Pro,45.71,true\nArc Keyboard Max,933.49,false\nPulse Stand v2,254.8,true\nMini Desk,866.06,false\nMega Monitor Max,438.07,false\nPeak Wallet Mini,340.35,true\nPure Filter v2,368.6,false\nZen Headphones Mini,80.76,true\nLite Mouse Max,104.38,false\nAce Mouse 2.0,447.01,false\nSmart Filter v2,352.83,true\nPeak Bottle Max,615.61,false\nMega Drone,76.88,false\nFlex Cable Plus,952.87,true\nEdge Tracker v2,36.72,true\nTurbo Hub Max,363.42,true\nSwift Backpack v2,948.92,false\nHyper Hub X,574.76,false\nRapid Webcam 2.0,251.1,true\nPremium Case Plus,500.04,false\nLuxe Stand X,263.24,false\nVibe Wallet Pro,996.36,false\nVibe Grip v2,201.77,true\nEdge Headphones v2,174.3,false\nClassic Adapter Max,668.49,true\nLite Stand 2.0,891.54,true\nVibe Filter Plus,794.1,true\nPro Charger Plus,238.25,false\nPremium Desk SE,573.12,false\nZen Stand Plus,612.71,true\nClassic Mouse Mini,999.59,false\nMax Thermos Mini,823.68,true\nElite Webcam X,451.06,false\nElite Pillow SE,640.5,true\nSonic Backpack Mini,503.85,true\nPulse Monitor SE,154.7,true\nSmart Webcam Pro,347.32,false\nEdge Headphones 2.0,197.9,false\nElite Drone 2.0,615.19,true\nMax Drone Plus,592.61,true\nSmart Lens Air,721.18,false\nPulse Grip Air,43.1,true\nClassic Keyboard Air,266.12,true\nSonic Pad Mini,618.86,true\nPure Pillow SE,291.08,false\nPure Lamp Mini,298.83,true\nVibe Keyboard Plus,440.72,false\nHyper Charger Max,607.44,false\nEdge Filter Max,734.72,false\nRapid Backpack Max,515.94,true\nSlim Lamp v2,124.27,false\nTurbo Backpack X,52.49,false\nEdge Tracker Mini,249.76,true\nPulse Webcam Air,721.68,true\nSonic Notebook v2,995.97,false\nPure Pillow 2.0,498.37,true\nRapid Cable v2,966.74,true\nBold Desk,52.43,false\nSwift Pillow v2,287.17,true\nEdge Monitor Mini,135.66,false\nPeak Desk Mini,367.2,false\nUltra Pad SE,196.26,false\nClassic Chair SE,451.44,false\nPulse Tracker Air,120.56,true\nRapid Desk Max,558.71,false\nSonic Backpack Pro,603.25,false\nMax Keyboard,40.83,false\nZen Watch SE,458.06,true\nSlim Grip Air,319.88,false\nSwift Case 2.0,594.53,false\nVibe Pad 2.0,475.93,true\nFlex Webcam X,979.93,false\nZen Pillow,597.71,false\nCore Adapter Air,578.47,true\nBold Watch Plus,525.17,false\nElite Brush Pro,33.5,true\nEco Blender v2,315.06,true\nNova Filter Pro,411.55,false\nEdge Bottle,706.35,true\nLite Webcam v2,526.42,false\nSmart Wallet SE,343.63,false\nAce Hub 2.0,610.85,true\nTurbo Speaker SE,299.89,false\nSonic Mouse Pro,690.85,false\nSlim Watch Max,561.36,false\nMini Monitor Air,677.26,false\nArc Chair Max,954.69,true\nMini Keyboard 2.0,955.39,true\nFlex Grip v2,656.65,false\nEco Charger SE,272.58,false\nElite Monitor Air,741.4,true\nTurbo Keyboard SE,227.21,true\nUltra Monitor Mini,331.62,false\nPro Lens Plus,7.16,true\nNova Drone v2,478.48,true\nSonic Mouse Max,286.83,true\nLuxe Hub X,652.98,true\nLite Case,913.39,true\nNova Pillow Plus,934.04,true\nPulse Chair v2,187.93,false\nArc Keyboard,299.79,true\nLuxe Webcam 2.0,455.43,false\nArc Backpack SE,469.07,true\nZen Monitor Max,164.16,false\nCore Speaker Plus,16.05,false\nZen Mouse Air,675.04,true\nSmart Tracker Mini,827.33,false\nClassic Chair X,186.4,true\nPure Webcam Pro,8.81,false\nTurbo Wallet 2.0,954.12,false\nBold Case Air,13.4,false\nVibe Lamp,668.44,false\nMini Notebook Mini,686.69,false\nVibe Monitor 2.0,368.8,true\nTurbo Backpack v2,154.87,false\nNova Filter SE,912.96,true\nSonic Lamp Air,873.38,true\nMax Wallet SE,704.35,true\nLuxe Pad X,63.62,true\nBold Stand Plus,166.2,false\nPro Lens Pro,717.47,false\nClassic Pillow SE,446.58,true\nHyper Backpack SE,416.58,true\nLite Wallet 2.0,723.82,false\nMega Brush,746.3,true\nUltra Thermos Max,700.97,true\nLuxe Pillow X,986.15,false\nUltra Mouse Mini,181.61,true\nSonic Drone Mini,375.7,false\nHyper Bottle Mini,376.88,true\nCore Bottle Max,120.39,false\nMax Backpack Pro,835.14,true\nMini Wallet SE,425.27,false\nPulse Lamp Pro,461.69,true\nMega Charger X,34.14,false\nSwift Hub,242.17,true\nPro Tracker,447.54,true\nTurbo Case,403.45,true\nLite Charger,141.85,false\nTurbo Brush Air,320.26,false\nTurbo Mouse Plus,985.71,true\nNova Mouse 2.0,62.83,true\nCore Lens Mini,556.73,true\nFlex Drone Mini,786.22,false\nVibe Thermos Mini,150.91,false\nSmart Hub SE,474.56,true\nMini Bottle Plus,806.15,true\nLite Thermos Mini,558.16,true\nRapid Lamp 2.0,204.92,true\nLuxe Wallet Max,94.27,true\nUltra Speaker Mini,674.31,true\nEdge Headphones Pro,805.03,true\nPure Charger Max,304.57,true\nEco Grip Pro,962.14,true\nPeak Hub v2,914.6,true\nRapid Grip Pro,552.97,false\nRapid Wallet SE,649.41,false\nMega Desk SE,883.04,false\nPro Adapter v2,762.1,false\nLuxe Charger Max,314.29,true\nBold Bottle Pro,741.76,true\nMega Stand Air,579.97,false\nMini Backpack Pro,331.2,false\nBold Brush Pro,500.29,false\nMega Hub v2,966.57,false\nHyper Notebook Max,170.92,false\nSmart Grip SE,990.33,true\nMax Keyboard X,945.29,true\nSonic Blender Mini,139.21,true\nClassic Filter Plus,11.11,false\nFlex Keyboard Air,638.44,false\nAce Watch,8.59,false\nPremium Blender SE,722.74,false\nPremium Cable Mini,806.55,true\nPro Grip X,525.33,true\nEco Tracker SE,253.9,false\nMega Adapter Mini,80.85,false\nHyper Pad Pro,990.24,true\nMini Lens X,654.42,true\nClassic Chair Mini,378.41,false\nUltra Drone,703.43,true\nPure Bottle Mini,645.61,false\nBold Bottle X,894.99,true\nTurbo Charger Air,476.54,true\nLuxe Headphones 2.0,899.5,true\nSmart Grip Max,17.62,true\nBold Backpack Mini,929.01,false\nSmart Pad Pro,567.55,false\nAce Pillow SE,333.06,true\nZen Filter X,501.78,false\nUltra Monitor Mini,233.67,true\nSlim Tracker Air,954.94,false\nSonic Webcam,634.84,false\nPure Lamp Max,553.92,false\nNova Notebook Air,661.34,true\nSonic Tracker 2.0,798.45,true\nClassic Speaker Plus,381.23,true\nPeak Chair Max,361.97,true\nPremium Mouse v2,361.19,false\nPro Backpack X,189.01,false\nLite Stand SE,409.22,true\nClassic Desk SE,94.87,false\nEdge Chair,293.25,false\nSonic Headphones SE,905.39,true\nBold Cable Plus,685.94,true\nElite Speaker 2.0,269.86,true\nClassic Notebook Mini,277.4,false\nPure Adapter X,362.39,true\nPeak Drone v2,594.61,true\nHyper Monitor Plus,306.04,false\nSlim Brush Air,381.12,false\nHyper Webcam Mini,815.83,true\nMini Webcam Air,947.37,true\nPure Webcam Plus,964.64,false\nMini Case v2,967.82,true\nSlim Chair 2.0,816.85,false\nFlex Monitor Air,201.39,true\nAce Hub SE,28.85,false\nVibe Charger v2,798.08,true\nPulse Bottle Mini,673.62,true\nCore Mouse Pro,254.17,true\nVibe Thermos Mini,75.81,false\nBold Chair SE,507.59,false\nLite Keyboard Max,702.22,true\nPro Hub Pro,658.28,false\nSmart Drone Air,46.2,false\nSonic Webcam Mini,107.72,true\nMega Lamp SE,747.35,true\nHyper Desk Mini,464.13,true\nFlex Blender v2,106.33,false\nLuxe Headphones X,831.65,true\nFlex Mouse Max,456.41,true\nMax Watch Max,477.2,false\nPeak Filter v2,320.26,false\nUltra Adapter X,24.53,false\nCore Monitor Plus,930.05,true\nMax Notebook SE,161.81,false\nHyper Lamp Mini,630.49,true\nCore Lens Mini,396.78,true\nHyper Pad Mini,390.05,true\nEco Speaker X,578.18,true\nFlex Webcam Pro,458.63,false\nAce Bottle v2,528.65,false\nSwift Chair Air,393.75,true\nFlex Desk v2,618.12,false\nLuxe Tracker Air,86.57,true\nSlim Monitor Pro,306.76,true\nFlex Filter Plus,511.79,false\nSwift Backpack Air,384.93,true\nPure Drone SE,694.04,true\nLite Notebook v2,290.25,true\nSlim Brush v2,620.16,false\nPremium Watch Plus,196.73,false\nLite Cable v2,410.31,false\nNova Filter v2,489.71,true\nBold Blender Pro,293.5,false\nTurbo Stand 2.0,169.86,false\nBold Case v2,550.62,true\nBold Monitor 2.0,775.55,false\nLite Brush,760.47,false\nLite Charger Mini,104.2,true\nMini Bottle,450.82,false\nEdge Brush X,440.18,true\nSonic Adapter Pro,211.45,false\nEdge Filter Air,633.5,true\nSwift Backpack Pro,813.89,true\nBold Desk SE,282.51,true\nSlim Filter 2.0,290.74,false\nEdge Cable X,137.31,false\nLuxe Keyboard 2.0,867.3,true\nVibe Bottle Plus,251.17,false\nPulse Lamp Mini,490.47,false\nCore Thermos Mini,453.08,true\nRapid Cable 2.0,695.3,false\nHyper Watch Max,582.78,true\nPeak Wallet Max,850.4,false\nEco Thermos Pro,495.72,false\nPulse Mouse Max,548.21,true\nBold Bottle v2,788.72,true\nUltra Monitor v2,18.24,true\nHyper Wallet,991.84,false\nEco Filter Plus,882.37,false\nSmart Bottle 2.0,95.14,false\nMega Headphones Max,665.17,true\nUltra Chair 2.0,726.53,true\nNova Drone X,704.28,true\nEco Watch X,134.42,true\nMax Lens v2,11.26,false\nPulse Monitor Mini,694.63,false\nClassic Lamp Mini,91.14,true\nPro Webcam Max,881.22,true\nRapid Hub Plus,642.28,true\nClassic Cable Air,10.45,true\nHyper Desk Pro,628.81,true\nLuxe Thermos Air,687.18,true\nClassic Pillow X,141.72,true\nBold Case Mini,352.82,false\nSlim Adapter Plus,249.28,true\nTurbo Stand Air,600.8,false\nSonic Filter,848.19,false\nEco Cable Air,510.49,false\nMini Drone,784.22,true\nPure Chair X,242.59,true\nMax Pillow,986.9,false\nElite Chair Air,422.01,true\nSonic Watch X,18.65,true\nPremium Speaker Pro,41.74,true\nZen Chair SE,287.9,false\nNova Filter Mini,84.25,true\nMega Headphones 2.0,80.85,true\nZen Backpack SE,328.09,true\nMini Filter Mini,730.49,true\nUltra Lamp X,924.77,true\nHyper Tracker Air,56.91,true\nPro Blender Plus,702.09,true\nPure Desk SE,518.18,false\nSmart Desk Plus,750.27,false\nPeak Pillow X,771.88,true\nSlim Adapter Mini,273.43,true\nMega Filter Air,628.27,false\nHyper Cable Max,57.32,true\nFlex Notebook 2.0,773.77,true\nTurbo Case SE,4.55,true\nTurbo Keyboard v2,365.24,true\nSmart Grip,553.75,false\nTurbo Webcam Pro,417.41,false\nMega Brush X,572.38,true\nMax Lens,180.98,true\nRapid Headphones v2,866.29,false\nSlim Headphones SE,457.82,false\nEco Mouse Air,784.93,true\nHyper Desk Air,971.9,true\nPeak Pillow SE,760.95,true\nElite Blender Mini,25.85,false\nCore Brush,951.08,true\nSonic Lens Mini,849.3,false\nPro Charger SE,983.14,false\nPure Keyboard Plus,712.22,true\nUltra Grip Pro,897.48,false\nVibe Pillow Max,459.53,true\nBold Monitor SE,135.24,false\nClassic Pad Air,64.15,true\nTurbo Mouse 2.0,851.2,false\nVibe Brush Max,319.41,false\nTurbo Headphones Pro,137.83,true\nElite Monitor Plus,450.66,false\nNova Monitor SE,359.56,true\nHyper Mouse v2,266.47,true\nClassic Notebook 2.0,826.72,true\nEco Brush Max,150.02,true\nFlex Chair SE,50.84,false\nMega Brush Plus,33.01,false\nEdge Wallet SE,748.57,true\nPro Wallet X,804.28,true\nPro Blender,830.7,true\nElite Charger Mini,373.49,true\nBold Pad 2.0,917.58,true\nPremium Headphones Pro,902.68,false\nZen Backpack X,905.26,false\nPro Keyboard v2,52.53,false\nPulse Case Mini,497.12,false\nAce Thermos Plus,355.23,true\nMega Speaker v2,883.65,true\nSwift Tracker Air,247.28,false\nPure Thermos SE,480.06,true\nMega Chair Plus,420.39,true\nCore Adapter SE,795.25,false\nZen Filter Max,480.72,false\nFlex Grip Air,503.38,false\nMega Notebook,320.23,true\nPremium Pillow 2.0,60.46,false\nMax Desk Air,999.6,true\nPro Lamp Pro,267.98,true\nSonic Lamp Air,846.8,false\nFlex Grip Plus,177.74,false\nZen Case Max,914.14,true\nVibe Filter Max,947.65,true\nBold Charger v2,543.03,true\nPure Keyboard X,58.05,true\nPremium Cable v2,2.67,true\nZen Backpack Max,717.49,false\nUltra Blender Plus,587.43,true\nSonic Monitor SE,860.94,true\nFlex Filter Mini,586.83,false\nMini Webcam Plus,975.9,false\nZen Drone v2,649.87,true\nVibe Stand Air,787.41,true\nAce Pad Plus,379.62,false\nElite Notebook,948.88,false\nEdge Hub Air,34.31,false\nLuxe Adapter Air,222.44,true\nLuxe Watch Plus,332.5,true\nTurbo Desk Max,169.54,true\nPulse Filter Max,447.73,false\nEco Lamp X,351.77,true\nPeak Blender,387.16,false\nSmart Pillow Mini,494.09,false\nFlex Stand Mini,103.22,false\nZen Bottle Air,651.66,true\nSmart Wallet X,799.59,true\nMini Blender Max,262.6,true\nClassic Webcam Plus,888.15,true\nPeak Headphones SE,941.94,true\nSlim Tracker Air,893.43,true\nNova Drone Plus,608.09,false\nSmart Keyboard X,332.42,true\nNova Filter SE,722.58,false\nAce Mouse 2.0,239.06,true\nRapid Pad SE,840.16,true\nUltra Desk,428.74,false\nPulse Lens Air,481.36,true\nPremium Charger Plus,638.9,true\nPure Bottle X,309.73,false\nPure Watch 2.0,92.94,false\nSmart Desk Mini,370.65,false\nUltra Speaker v2,466.12,true\nPulse Speaker Air,63.51,true\nClassic Lens Max,808.55,false\nSonic Pad Pro,554.48,false\nPulse Cable Mini,965.69,false\nBold Pillow Pro,477.3,true\nRapid Pillow,503.09,true\nPro Hub v2,174.52,true\nEco Adapter Pro,127.92,false\nClassic Lens Mini,203.51,true\nPulse Tracker 2.0,321.1,true\nClassic Chair SE,398.55,false\nEdge Speaker SE,459.23,true\nZen Filter Air,588.39,false\nPro Thermos Plus,149.89,true\nLuxe Monitor Air,779.98,false\nEdge Stand Max,878.13,false\nRapid Drone v2,572.87,false\nUltra Notebook 2.0,404.16,false\nUltra Chair Max,691.12,true\nPeak Watch 2.0,897.23,true\nSlim Brush 2.0,312.32,false\nEdge Filter X,972.54,true\nElite Mouse v2,774.47,false\nMega Case Mini,605.76,true\nEco Wallet Pro,913.6,false\nPeak Watch SE,867.44,true\nMax Adapter Plus,67.48,false\nElite Hub SE,879.56,true\nSmart Charger Pro,837.29,true\nUltra Wallet,918.19,true\nMega Desk v2,506.11,true\nAce Blender Pro,373.71,false\nSmart Bottle v2,587.7,false\nFlex Notebook 2.0,749.45,true\nMini Blender Mini,51.54,true\nEdge Lamp Pro,678.33,false\nCore Thermos SE,22.0,true\nPure Grip Plus,648.07,true\nTurbo Speaker Air,805.47,false\nVibe Filter 2.0,424.95,false\nEdge Desk v2,253.48,false\nMini Lens SE,824.65,false\nBold Monitor,512.48,false\nLite Drone Air,609.82,false\nAce Monitor v2,65.7,false\nCore Webcam 2.0,262.61,false\nEco Backpack SE,765.93,true\nZen Bottle Air,405.28,false\nAce Backpack,656.08,false\nMega Grip Mini,405.78,true\nBold Filter Air,816.37,false\nPeak Filter Pro,686.94,false\nLuxe Lens Max,508.29,true\nPulse Lens SE,182.76,true\nPure Backpack 2.0,725.73,true\nAce Pillow Max,655.12,true\nFlex Lamp 2.0,421.62,false\nFlex Speaker Air,295.45,true\nPure Keyboard Air,581.14,true\nPure Pillow Pro,501.47,false\nMax Mouse Mini,55.94,true\nElite Charger Max,410.36,false\nElite Webcam Plus,779.37,false\nSlim Drone Plus,314.78,true\nPremium Wallet 2.0,210.95,true\nBold Hub Plus,490.59,true\nElite Tracker Mini,634.21,false\nNova Watch Mini,6.65,true\nPeak Desk,892.21,true\nPremium Lens,627.42,true\nTurbo Filter Max,313.46,true\nRapid Cable Air,307.49,true\nPulse Keyboard 2.0,948.56,false\nPeak Cable Air,525.06,false\nArc Lens Plus,344.04,false\nFlex Hub Pro,166.54,false\nPremium Lamp Pro,727.7,true\nEco Case,590.5,true\nPro Desk,376.43,false\nSonic Stand Air,50.48,true\nAce Monitor,50.13,true\nNova Wallet Mini,125.34,false\nPure Filter Plus,207.07,true\nMini Thermos X,663.15,false\nSwift Tracker Plus,419.98,true\nMax Case Air,119.49,true\nZen Monitor v2,200.24,true\nSonic Speaker SE,973.16,false\nVibe Thermos 2.0,162.04,false\nLuxe Charger v2,331.93,true\nPremium Lens X,907.06,false\nElite Headphones SE,76.89,true\nArc Speaker Pro,457.83,false\nMega Wallet,101.6,true\nEdge Keyboard 2.0,361.48,false\nNova Case X,96.8,true\nPremium Bottle Plus,664.02,true\nSlim Desk v2,955.17,false\nArc Case X,373.87,false\nSmart Monitor Mini,401.44,false\nMega Brush Mini,690.51,false\nZen Thermos Plus,114.82,true\nEdge Notebook X,417.19,false\nZen Pad v2,182.89,false\nSonic Desk Air,30.75,true\nPure Grip v2,114.7,false\nHyper Keyboard X,263.08,false\nPremium Filter SE,767.98,true\nAce Bottle Max,520.05,true\nNova Lens Pro,482.96,false\nElite Brush SE,892.27,true\nPremium Drone Plus,506.55,false\nEdge Watch Plus,76.71,false\nSlim Lamp Max,970.19,true\nMax Lamp SE,644.02,false\nPulse Lamp X,460.17,false\nClassic Bottle v2,448.16,true\nPure Case,104.43,false\nUltra Stand SE,2.16,true\nZen Tracker Air,638.25,true\nCore Lens v2,950.44,false\nPulse Keyboard Pro,844.62,false\nLite Hub Air,600.74,false\nVibe Wallet X,99.23,true\nPremium Webcam Max,830.21,false\nLite Cable Max,702.68,true\nArc Notebook v2,142.16,false\nPro Speaker Air,197.52,true\nLuxe Bottle Mini,217.15,true\nVibe Webcam X,757.63,true\nLuxe Drone Air,124.96,false\nHyper Lens Air,956.27,true\nPure Blender SE,736.73,false\nPulse Pad v2,924.51,true\nVibe Pad Plus,731.02,true\nPro Chair Air,606.94,false\nMax Pillow Mini,419.82,true\nMega Chair Max,970.54,false\nZen Backpack Plus,413.91,false\nPulse Filter SE,860.98,true\nEco Charger Air,714.95,false\nLuxe Lens Plus,981.36,true\nMax Stand Max,710.92,false\nLite Watch Air,571.49,false\nAce Case SE,287.35,false\nZen Blender SE,108.25,false\nElite Keyboard,201.49,true\nMini Lens 2.0,148.13,true\nVibe Adapter 2.0,205.58,true\nFlex Brush v2,104.27,true\nPeak Drone SE,390.1,false\nVibe Lens,926.62,false\nNova Adapter Max,965.89,true\nPremium Case 2.0,204.67,false\nPulse Lamp Max,755.59,true\nSonic Case Pro,295.58,true\nAce Headphones Plus,962.54,true\nRapid Keyboard Mini,280.54,false\nElite Notebook Air,846.31,true\nSlim Wallet Plus,41.85,false\nSwift Keyboard Air,843.44,false\nPure Adapter Air,551.05,true\nZen Filter Max,526.33,true\nMax Headphones SE,161.04,false\nClassic Desk Pro,883.62,false\nSlim Desk 2.0,220.0,false\nLite Brush,116.48,false\nHyper Lamp Air,918.76,true\nUltra Lens Max,382.6,true\nRapid Speaker SE,724.52,true\nLuxe Cable Max,515.27,false\nPure Keyboard 2.0,898.48,true\nSlim Cable X,948.31,true\nSonic Stand SE,9.31,true\nEco Lens Pro,865.21,false\nPulse Monitor Pro,538.67,false\nCore Brush X,747.39,true\nPremium Wallet Max,39.8,true\nUltra Notebook 2.0,558.96,true\nLuxe Speaker Mini,389.25,false\nNova Webcam,390.71,true\nLite Blender Air,65.1,true\nVibe Bottle X,358.97,true\nMini Adapter 2.0,607.34,false\nSonic Grip v2,382.64,true\nPure Notebook SE,221.42,false\nZen Adapter SE,296.38,true\nMini Lens Max,957.47,true\nLite Bottle SE,143.08,true\nPremium Pad Air,395.28,true\nMini Charger Max,213.3,true\nSmart Notebook Pro,617.64,false\nEco Monitor Plus,671.63,true\nEdge Hub SE,462.33,true\nMini Lens X,252.18,true\nPeak Pad v2,951.63,false\nElite Lens Pro,101.83,true\nArc Charger Max,486.88,false\nSwift Lens 2.0,694.06,true\nBold Pad Max,808.07,false\nSmart Blender Max,247.67,true\nVibe Case Mini,278.12,false\nElite Lens Max,878.12,false\nHyper Desk 2.0,487.99,true\nSmart Drone Air,83.8,false\nEdge Brush Plus,891.5,true"
+    }
+  ],
+  "responses": [
+    {
+      "requestRef": "req-2",
+      "status": 200,
+      "statusText": "OK",
+      "headers": [
+        {
+          "key": "server",
+          "value": "boddah"
+        },
+        {
+          "key": "date",
+          "value": "Thu, 16 Apr 2026 12:52:47 GMT"
+        },
+        {
+          "key": "content-type",
+          "value": "application/json"
+        },
+        {
+          "key": "content-length",
+          "value": "349"
+        }
+      ],
+      "body": "{\"headers\":{\"Accept\":[\"*/*\"],\"Authorization\":[\"Bearer {{authToken}}\"],\"Host\":[\"localhost:8080\"],\"Origin\":[\"http://localhost:8080\"],\"User-Agent\":[\"Callstack/1.0\"]},\"hostname\":\"localhost:8080\",\"method\":\"GET\",\"params\":{\"*1\":\"api/products/search\"},\"path\":\"/api/products/search\",\"query\":{\"maxPrice\":\"500\",\"minPrice\":\"10\",\"q\":\"widget\",\"sort\":\"price:asc\"}}",
+      "timeMs": 1,
+      "size": 349,
+      "timestamp": 1776343968091
+    },
+    {
+      "requestRef": "req-6",
+      "status": 201,
+      "statusText": "Created",
+      "headers": [
+        {
+          "key": "content-type",
+          "value": "application/json"
+        },
+        {
+          "key": "location",
+          "value": "/api/products/43"
+        }
+      ],
+      "body": "{\n  \"id\": 43,\n  \"name\": \"Core Monitor\",\n  \"price\": 742.06,\n  \"active\": true,\n  \"category\": \"electronics\",\n  \"tags\": [\"new\", \"featured\"],\n  \"createdAt\": \"2026-04-16T10:00:30.000Z\"\n}",
+      "timeMs": 92,
+      "size": 185,
+      "timestamp": 1713264030000
+    },
+    {
+      "requestRef": "req-8",
+      "status": 200,
+      "statusText": "OK",
+      "headers": [
+        {
+          "key": "content-type",
+          "value": "application/json"
+        },
+        {
+          "key": "x-total-count",
+          "value": "42"
+        }
+      ],
+      "body": "{\n  \"data\": [\n    { \"id\": 1, \"name\": \"Core Monitor\", \"price\": 742.06, \"active\": true },\n    { \"id\": 2, \"name\": \"Turbo Backpack X\", \"price\": 677.34, \"active\": true },\n    { \"id\": 3, \"name\": \"Bold Thermos\", \"price\": 31.73, \"active\": true }\n  ],\n  \"total\": 42,\n  \"page\": 1,\n  \"limit\": 20\n}",
+      "timeMs": 38,
+      "size": 340,
+      "timestamp": 1713264020000
+    },
+    {
+      "requestRef": "req-10",
+      "status": 200,
+      "statusText": "OK",
+      "headers": [
+        {
+          "key": "server",
+          "value": "boddah"
+        },
+        {
+          "key": "date",
+          "value": "Thu, 16 Apr 2026 13:58:40 GMT"
+        },
+        {
+          "key": "content-type",
+          "value": "application/json"
+        },
+        {
+          "key": "content-length",
+          "value": "398"
+        }
+      ],
+      "body": "{\"body\":{\"email\":\"admin@example.com\",\"password\":\"admin123\",\"requestId\":\"8a2fb025-f019-43c2-bc67-1b5c3eba996c\"},\"headers\":{\"Accept\":[\"*/*\"],\"Content-Length\":[\"115\"],\"Content-Type\":[\"application/json\"],\"Host\":[\"localhost:8080\"],\"Origin\":[\"http://localhost:8080\"],\"User-Agent\":[\"Callstack/1.0\"]},\"hostname\":\"localhost:8080\",\"method\":\"POST\",\"params\":{\"*1\":\"auth/login\"},\"path\":\"/auth/login\",\"query\":{}}",
+      "timeMs": 1,
+      "size": 398,
+      "timestamp": 1776347920849
+    },
+    {
+      "requestRef": "req-11",
+      "status": 200,
+      "statusText": "OK",
+      "headers": [
+        {
+          "key": "content-type",
+          "value": "application/json"
+        },
+        {
+          "key": "x-request-id",
+          "value": "abc-123"
+        }
+      ],
+      "body": "{\n  \"status\": \"ok\",\n  \"uptime\": 86400,\n  \"version\": \"1.2.0\"\n}",
+      "timeMs": 12,
+      "size": 52,
+      "timestamp": 1713264000000
+    }
+  ]
+}

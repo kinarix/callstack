@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { UpdateChecker } from './UpdateChecker';
 import { ThemeToggle } from '../Header/ThemeToggle';
 import { useApp } from '../../context/AppContext';
 import { useDatabase } from '../../hooks/useDatabase';
@@ -53,6 +52,16 @@ function GearIcon() {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
+
+function getLogoGradient(): string {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 8)  return 'linear-gradient(135deg, #f97316, #ec4899)'; // dawn
+  if (h >= 8 && h < 11) return 'linear-gradient(135deg, #f59e0b, #10b981)'; // morning
+  if (h >= 11 && h < 17) return 'linear-gradient(135deg, #5db892, #3a9ab0)'; // day
+  if (h >= 17 && h < 20) return 'linear-gradient(135deg, #f97316, #a855f7)'; // evening
+  if (h >= 20 && h < 23) return 'linear-gradient(135deg, #a855f7, #6366f1)'; // dusk
+  return 'linear-gradient(135deg, #6366f1, #3b82f6)';                        // night
+}
 
 export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, onOpenSettings }: SidebarProps) {
   const { state, dispatch } = useApp();
@@ -336,6 +345,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
       }
     } catch (error) {
       console.error('Delete failed:', error);
+      dispatch({ type: 'SHOW_ERROR', payload: { message: `Delete failed: ${String(error)}`, showReset: true } });
       setPendingDelete(pd);
     }
   }, [pendingDelete, deleteProject, deleteFolder, deleteRequest, deleteEnvironment, deleteAutomation, deleteDataFile, removeShortcut, dispatch]);
@@ -455,6 +465,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
         }
       } catch (err) {
         console.error('Failed to import collection:', err);
+        dispatch({ type: 'SHOW_ERROR', payload: { message: `Failed to import collection: ${String(err)}`, showReset: true } });
       }
     } else {
       const { folderId, projectId } = filePickerState;
@@ -480,6 +491,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
       imported.forEach((req) => dispatch({ type: 'ADD_REQUEST', payload: req }));
     } catch (err) {
       console.error('Failed to import requests:', err);
+      dispatch({ type: 'SHOW_ERROR', payload: { message: `Failed to import requests: ${String(err)}`, showReset: true } });
     }
   }, [importModalState, importRequests, dispatch]);
 
@@ -590,20 +602,39 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
         dispatch({ type: 'UPDATE_REQUEST', payload: updated });
       }
 
-      // 7. Import automations if present
+      // 7. Import data files if present
+      const dataFileRefToId = new Map<string, number>();
+      if (manifest.dataFiles && manifest.dataFiles.length > 0) {
+        for (const df of manifest.dataFiles) {
+          const created = await createDataFile(project.id, df.name, df.content);
+          dispatch({ type: 'ADD_DATA_FILE', payload: created });
+          dataFileRefToId.set(df._ref, created.id);
+        }
+      }
+
+      // 8. Import automations if present
+      const envNameToId = new Map<string, number>(createdEnvs.map((e) => [e.name, e.id]));
       if (manifest.automations && manifest.automations.length > 0) {
         for (const auto of manifest.automations) {
-          const deserializedSteps = auto.steps.map((s) => deserializeAutomationStep(s, requestRefToId));
+          const deserializedSteps = auto.steps.map((s) => deserializeAutomationStep(s, requestRefToId, dataFileRefToId, envNameToId));
           const created = await createAutomation(project.id, auto.name, deserializedSteps);
-          dispatch({ type: 'ADD_AUTOMATION', payload: created });
+          // Restore automation's top-level env selection
+          const envId = auto.envName ? (envNameToId.get(auto.envName) ?? null) : null;
+          if (envId != null) {
+            const updated = await updateAutomation(created.id, created.name, created.steps, envId);
+            dispatch({ type: 'ADD_AUTOMATION', payload: updated });
+          } else {
+            dispatch({ type: 'ADD_AUTOMATION', payload: created });
+          }
         }
       }
 
       dispatch({ type: 'SET_CURRENT_PROJECT', payload: project.id });
     } catch (err) {
       console.error('Failed to import .callstack archive:', err);
+      dispatch({ type: 'SHOW_ERROR', payload: { message: `Failed to import archive: ${String(err)}`, showReset: true } });
     }
-  }, [filePickerState, state.projects, createProject, createFolder, importRequests, createEnvironment, updateEnvironment, saveResponse, updateRequest, createAutomation, dispatch]);
+  }, [filePickerState, state.projects, state.dataFiles, createProject, createFolder, importRequests, createEnvironment, updateEnvironment, saveResponse, updateRequest, createDataFile, createAutomation, dispatch]);
 
   // ─── Export handlers ────────────────────────────────────────────────────────
 
@@ -677,8 +708,9 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
           responses = resps.filter(Boolean) as import('../../lib/types').Response[];
         }
 
-        // Include automations for the project
+        // Include automations and data files for the project
         const projectAutomations = automations.filter((a) => a.projectId === project.id);
+        const projectDataFiles = state.dataFiles.filter((d) => d.project_id === project.id);
 
         const exportOpts = {
           project,
@@ -686,6 +718,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
           requests: selectedRequests,
           environments: envs,
           automations: projectAutomations,
+          dataFiles: projectDataFiles,
           responses,
           selectedEnvironmentName,
         };
@@ -720,6 +753,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
       }
     } catch (err) {
       console.error('Failed to export:', err);
+      dispatch({ type: 'SHOW_ERROR', payload: { message: `Failed to export: ${String(err)}`, showReset: true } });
     }
   }, [exportModalState, state, getLastResponse]);
 
@@ -777,6 +811,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
       });
     } catch (err) {
       console.error('Failed to move request:', err);
+      dispatch({ type: 'SHOW_ERROR', payload: { message: `Failed to move request: ${String(err)}`, showReset: true } });
     }
   };
 
@@ -793,6 +828,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
         dispatch({ type: 'MOVE_FOLDER', payload: { folderId: d.id, projectId } });
       } catch (err) {
         console.error('Failed to move folder:', err);
+        dispatch({ type: 'SHOW_ERROR', payload: { message: `Failed to move folder: ${String(err)}`, showReset: true } });
       }
     } else {
       await applyRequestMove(d.id, projectId, null, null, true);
@@ -812,6 +848,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
         dispatch({ type: 'MOVE_FOLDER', payload: { folderId: d.id, projectId: folder.project_id } });
       } catch (err) {
         console.error('Failed to move folder:', err);
+        dispatch({ type: 'SHOW_ERROR', payload: { message: `Failed to move folder: ${String(err)}`, showReset: true } });
       }
     } else {
       await applyRequestMove(d.id, folder.project_id, folder.id, null, true);
@@ -983,16 +1020,25 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
         <div className={styles.header}>
           <div className={styles.logo}>
             <img src="/icon-32.png" className={styles.logoIcon} alt="" />
-            <span className={styles.logoText}>CALLSTACK</span>
+            <span className={styles.logoText} style={{ backgroundImage: getLogoGradient() }}>CALLSTACK</span>
           </div>
-          <div className={styles.headerActions}>
-            <button className={styles.newProjectBtn} onClick={() => setShowNewProjectModal(true)} title="New Project">
-              +
-            </button>
-            <button className={styles.collapseBtn} onClick={onToggleCollapse} title="Collapse navigator">
-              ‹
-            </button>
-          </div>
+        </div>
+
+        <div className={styles.sidebarIcons}>
+          <button className={`${styles.iconAction} ${styles.settingsBtn}`} onClick={onOpenSettings} title="Settings">
+            <GearIcon />
+          </button>
+          <ThemeToggle />
+          <button className={styles.iconAction} onClick={() => setShowNewProjectModal(true)} title="New Project">
+            <svg width="18" height="18" viewBox="0 0 13 13" fill="none">
+              <rect x="1.5" y="3.5" width="10" height="7.5" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
+              <path d="M4.5 3.5V2.5C4.5 2.22 4.72 2 5 2H8C8.28 2 8.5 2.22 8.5 2.5V3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              <path d="M6.5 5.75V9.25M4.75 7.5H8.25" stroke="var(--accent-get)" strokeWidth="1.4" strokeLinecap="round" />
+            </svg>
+          </button>
+          <button className={`${styles.iconAction} ${styles.collapseBtn}`} onClick={onToggleCollapse} title="Collapse navigator">
+            ‹
+          </button>
         </div>
 
         <div className={styles.tree}>
@@ -1079,17 +1125,6 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
           )}
         </div>
 
-        <div className={styles.sidebarFooter}>
-          <UpdateChecker />
-          <button
-            className={styles.settingsBtn}
-            onClick={onOpenSettings}
-            title="Settings"
-          >
-            <GearIcon />
-          </button>
-          <ThemeToggle />
-        </div>
       </div>
     </>
   );

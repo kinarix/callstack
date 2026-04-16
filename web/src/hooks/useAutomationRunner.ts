@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import type { Request, KeyValue, AutomationRequestResult, TestStatus, AutomationStep, BranchCondition, LogEntry, DataFile } from '../lib/types';
+import type { Request, KeyValue, AutomationRequestResult, TestStatus, AutomationStep, BranchCondition, LogEntry, DataFile, Environment } from '../lib/types';
 import { parseCsv } from '../lib/parseCsv';
 import { resolveTemplate } from '../lib/template';
 import { runScript } from './useScriptRunner';
@@ -84,6 +84,9 @@ export function useAutomationRunner() {
 
   const cancelledRef = useRef(false);
   const dataFilesRef = useRef<DataFile[]>([]);
+  const environmentsRef = useRef<Environment[]>([]);
+  const secretsRef = useRef<KeyValue[]>([]);
+  const currentEnvNameRef = useRef<string | null>(null);
 
   // Returns true if execution should stop (stop step hit or cancelled)
   const executeSteps = useCallback(async (
@@ -91,7 +94,6 @@ export function useAutomationRunner() {
     requestMap: Map<number, Request>,
     envVarsRef: { current: KeyValue[] },
     emittedVarsRef: { current: Record<string, string> },
-    secrets: KeyValue[],
     collectedResults: AutomationRequestResult[],
     pushResult: (r: AutomationRequestResult) => void,
     onLog?: (entry: Omit<LogEntry, 'id'>) => void,
@@ -104,6 +106,14 @@ export function useAutomationRunner() {
         return 'stop';
       }
 
+      if (step.type === 'set_env') {
+        const env = step.envId != null ? environmentsRef.current.find((e) => e.id === step.envId) : null;
+        envVarsRef.current = env?.variables ?? [];
+        secretsRef.current = step.envId != null ? loadSecrets(step.envId) : [];
+        currentEnvNameRef.current = env?.name ?? null;
+        continue;
+      }
+
       if (step.type === 'delay') {
         await sleep(step.delayMs);
         continue;
@@ -112,7 +122,7 @@ export function useAutomationRunner() {
       if (step.type === 'repeat') {
         for (let i = 0; i < step.count; i++) {
           if (cancelledRef.current) return 'cancelled';
-          const outcome = await executeSteps(step.steps, requestMap, envVarsRef, emittedVarsRef, secrets, collectedResults, pushResult, onLog, 'Repeat');
+          const outcome = await executeSteps(step.steps, requestMap, envVarsRef, emittedVarsRef, collectedResults, pushResult, onLog, 'Repeat');
           if (outcome === 'stop' || outcome === 'cancelled') return outcome;
         }
         continue;
@@ -121,7 +131,7 @@ export function useAutomationRunner() {
       if (step.type === 'branch') {
         const lastResult = collectedResults.length > 0 ? collectedResults[collectedResults.length - 1] : null;
         const branch = evaluateCondition(step.condition, lastResult, emittedVarsRef.current) ? step.trueSteps : step.falseSteps;
-        const outcome = await executeSteps(branch, requestMap, envVarsRef, emittedVarsRef, secrets, collectedResults, pushResult, onLog, 'Branch');
+        const outcome = await executeSteps(branch, requestMap, envVarsRef, emittedVarsRef, collectedResults, pushResult, onLog, 'Branch');
         if (outcome === 'stop' || outcome === 'cancelled') return outcome;
         continue;
       }
@@ -134,7 +144,7 @@ export function useAutomationRunner() {
           if (cancelledRef.current) return 'cancelled';
           const laneEmitted = { current: { ...snapshotEmitted } };
           const laneEnv = { current: [...snapshotEnvVars] };
-          const outcome = await executeSteps(lane, requestMap, laneEnv, laneEmitted, secrets, collectedResults, pushResult, onLog, 'Fanout');
+          const outcome = await executeSteps(lane, requestMap, laneEnv, laneEmitted, collectedResults, pushResult, onLog, 'Fanout');
           if (outcome === 'stop' || outcome === 'cancelled') return outcome;
           // Merge lane mutations back (last lane wins on conflict)
           Object.assign(emittedVarsRef.current, laneEmitted.current);
@@ -168,10 +178,13 @@ export function useAutomationRunner() {
               break;
           }
           const label = step.object === 'all' ? step.scope : `${step.scope}.${step.object}`;
+          const summaryLine = step.scope === 'env'
+            ? `[env] ${currentEnvNameRef.current ?? 'No Env'}`
+            : `[${label}]`;
           onLog({
             timestamp: Date.now(),
             kind: 'automation',
-            message: `[${label}] ${JSON.stringify(data, null, 2)}`,
+            message: `${summaryLine}\n${JSON.stringify(data, null, 2)}`,
           });
         }
         continue;
@@ -190,7 +203,7 @@ export function useAutomationRunner() {
           const rowEnvRef = { current: [...envVarsRef.current, ...rowKeyValues] };
           const rowData: Record<string, string> = Object.fromEntries(headers.map((h, i) => [h, row[i] ?? '']));
           const rowPushResult = (r: AutomationRequestResult) => pushResult({ ...r, rowIndex: rowIdx + 1, rowData, containerLabel: 'Iterator' });
-          const outcome = await executeSteps(step.steps, requestMap, rowEnvRef, emittedVarsRef, secrets, collectedResults, rowPushResult, onLog, 'Iterator');
+          const outcome = await executeSteps(step.steps, requestMap, rowEnvRef, emittedVarsRef, collectedResults, rowPushResult, onLog, 'Iterator');
           if (outcome === 'stop' || outcome === 'cancelled') return outcome;
         }
         continue;
@@ -226,7 +239,7 @@ export function useAutomationRunner() {
             request: { method: req.method, url: effectiveUrl, headers: effectiveHeaders, params: effectiveParams, body: effectiveBody },
             response: undefined,
             envVars: currentEnvVars,
-            secrets,
+            secrets: secretsRef.current,
           });
           if (preResult.mutatedRequest) {
             effectiveUrl = preResult.mutatedRequest.url;
@@ -282,7 +295,7 @@ export function useAutomationRunner() {
                 time: resp.timeMs,
               },
               envVars: currentEnvVars,
-              secrets,
+              secrets: secretsRef.current,
             });
             testResults = postResult.testResults;
             if (testResults.length > 0) {
@@ -320,6 +333,17 @@ export function useAutomationRunner() {
             requestBody: effectiveBody.trim() || undefined,
             containerLabel,
           };
+          onLog?.({
+            timestamp: Date.now(),
+            kind: 'http',
+            method: req.method,
+            url: normalizedUrl,
+            status: resp.status,
+            statusText: resp.statusText,
+            time: resp.timeMs,
+            size: resp.size,
+            curl,
+          });
         } catch (e) {
           result = {
             requestId: req.id,
@@ -338,6 +362,14 @@ export function useAutomationRunner() {
             requestBody: effectiveBody.trim() || undefined,
             containerLabel,
           };
+          onLog?.({
+            timestamp: Date.now(),
+            kind: 'http',
+            method: req.method,
+            url: normalizedUrl,
+            error: result.error,
+            curl,
+          });
         }
 
         pushResult(result);
@@ -355,9 +387,14 @@ export function useAutomationRunner() {
       activeEnvId: number | null,
       onLog?: (entry: Omit<LogEntry, 'id'>) => void,
       dataFiles?: DataFile[],
+      environments?: Environment[],
     ): Promise<{ results: AutomationRequestResult[]; durationMs: number; overallStatus: TestStatus | 'ERROR' }> => {
       cancelledRef.current = false;
       dataFilesRef.current = dataFiles ?? [];
+      environmentsRef.current = environments ?? [];
+      currentEnvNameRef.current = activeEnvId != null
+        ? (environments?.find((e) => e.id === activeEnvId)?.name ?? null)
+        : null;
       const startedAt = Date.now();
 
       // Count request steps for progress tracking
@@ -393,7 +430,7 @@ export function useAutomationRunner() {
       const collectedResults: AutomationRequestResult[] = [];
       const envVarsRef = { current: [...envVars] };
       const emittedVarsRef = { current: {} as Record<string, string> };
-      const secrets = activeEnvId != null ? loadSecrets(activeEnvId) : [];
+      secretsRef.current = activeEnvId != null ? loadSecrets(activeEnvId) : [];
 
       const pushResult = (r: AutomationRequestResult) => {
         collectedResults.push(r);
@@ -404,7 +441,7 @@ export function useAutomationRunner() {
         }));
       };
 
-      const outcome = await executeSteps(steps, requestMap, envVarsRef, emittedVarsRef, secrets, collectedResults, pushResult, onLog);
+      const outcome = await executeSteps(steps, requestMap, envVarsRef, emittedVarsRef, collectedResults, pushResult, onLog);
 
       const durationMs = Date.now() - startedAt;
       const stopped = outcome === 'cancelled';

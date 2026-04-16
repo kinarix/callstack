@@ -28,7 +28,7 @@ interface UrlBarProps {
   onFollowRedirectsChange: (value: boolean) => void;
   environments: Environment[];
   activeEnvId: number | null;
-  onEnvSelect: (env: Environment) => void;
+  onEnvSelect: (env: Environment | null) => void;
   envVars?: KeyValue[];
   secrets?: KeyValue[];
 }

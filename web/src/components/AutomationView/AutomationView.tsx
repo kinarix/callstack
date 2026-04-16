@@ -2,11 +2,12 @@ import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useApp } from '../../context/AppContext';
 import { useDatabase } from '../../hooks/useDatabase';
 import { useAutomationRunner } from '../../hooks/useAutomationRunner';
-import type { AutomationRequestResult, AutomationRun, AutomationStep, BranchCondition, DataFile, LogScope } from '../../lib/types';
+import type { AutomationRequestResult, AutomationRun, AutomationStep, BranchCondition, DataFile, Environment, LogScope } from '../../lib/types';
 import { parseCsv } from '../../lib/parseCsv';
 import { invoke } from '@tauri-apps/api/core';
 import { formatBody } from '../../lib/formatBody';
 import styles from './AutomationView.module.css';
+import { EnvSelector } from '../RequestBuilder/EnvSelector';
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -133,12 +134,14 @@ function newStep(type: AutomationStep['type'], requestId?: number): AutomationSt
     case 'stop': return { id, type: 'stop' };
     case 'log': return { id, type: 'log', scope: 'request', object: 'all' };
     case 'csv_iterator': return { id, type: 'csv_iterator', dataFileId: null, steps: [] };
+    case 'set_env': return { id, type: 'set_env', envId: null };
   }
 }
 
 // ── Palette ──────────────────────────────────────────────────
 
 const PALETTE_ITEMS: { type: AutomationStep['type']; label: string; color: string; icon: string; hint: string }[] = [
+  { type: 'set_env', label: 'Set Env', color: '#10b981', icon: '⊙', hint: 'Switch active environment' },
   { type: 'delay', label: 'Delay', color: '#f59e0b', icon: '⏱', hint: 'Wait before next step' },
   { type: 'repeat', label: 'Repeat', color: '#a855f7', icon: '↻', hint: 'Loop elements N times' },
   { type: 'csv_iterator', label: 'Iterator', color: 'var(--accent-patch)', icon: '⊞', hint: 'Run steps once per CSV row' },
@@ -155,6 +158,7 @@ interface StepListProps {
   onChange: (steps: AutomationStep[]) => void;
   requests: { id: number; name: string; method: string; folder_id: number | null }[];
   automationProjectId: number;
+  projectEnvs: Environment[];
   depth?: number;
   dragSourceRef: React.MutableRefObject<DragSource | null>;
   dragPath: number[] | null;
@@ -169,7 +173,7 @@ type DragSource =
   | { kind: 'palette'; type: AutomationStep['type'] }
   | { kind: 'step'; fromPath: number[] };
 
-function StepList({ steps, onChange, requests, automationProjectId, depth = 0, dragSourceRef, dragPath, setDragPath, path = [], deleteStepPath, setDeleteStepPath, onConfirmDelete }: StepListProps) {
+function StepList({ steps, onChange, requests, automationProjectId, projectEnvs, depth = 0, dragSourceRef, dragPath, setDragPath, path = [], deleteStepPath, setDeleteStepPath, onConfirmDelete }: StepListProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const [insertIdx, setInsertIdx] = useState<number | null>(null);
 
@@ -316,6 +320,7 @@ function StepList({ steps, onChange, requests, automationProjectId, depth = 0, d
                 step={step}
                 requests={requests}
                 automationProjectId={automationProjectId}
+                projectEnvs={projectEnvs}
                 onChange={(s) => updateAt(idx, s)}
                 onRemove={() => removeAt(idx)}
                 dragSourceRef={dragSourceRef}
@@ -407,11 +412,12 @@ const LANE_COLORS = ['#06b6d4', '#a855f7', '#f97316', '#10b981', '#f59e0b', '#ef
 
 // ── Fanout step (needs own useState for activeLane) ──────────
 
-function FanoutStep({ step, onChange, requests, automationProjectId, depth, dragSourceRef, dragPath, setDragPath, path, deleteStepPath, setDeleteStepPath, onConfirmDelete }: {
+function FanoutStep({ step, onChange, requests, automationProjectId, projectEnvs, depth, dragSourceRef, dragPath, setDragPath, path, deleteStepPath, setDeleteStepPath, onConfirmDelete }: {
   step: Extract<AutomationStep, { type: 'fanout' }>;
   onChange: (step: AutomationStep) => void;
   requests: { id: number; name: string; method: string; folder_id: number | null }[];
   automationProjectId: number;
+  projectEnvs: Environment[];
   depth: number;
   dragSourceRef: React.MutableRefObject<DragSource | null>;
   dragPath: number[] | null;
@@ -500,6 +506,7 @@ function FanoutStep({ step, onChange, requests, automationProjectId, depth, drag
         }}
         requests={requests}
         automationProjectId={automationProjectId}
+        projectEnvs={projectEnvs}
         depth={depth + 1}
         dragSourceRef={dragSourceRef}
         dragPath={dragPath}
@@ -516,11 +523,12 @@ function FanoutStep({ step, onChange, requests, automationProjectId, depth, drag
 
 // ── CSV Iterator step (needs own useState for dropdown) ──────
 
-function CsvIteratorStep({ step, onChange, requests, automationProjectId, depth, dragSourceRef, dragPath, setDragPath, path, deleteStepPath, setDeleteStepPath, onConfirmDelete }: {
+function CsvIteratorStep({ step, onChange, requests, automationProjectId, projectEnvs, depth, dragSourceRef, dragPath, setDragPath, path, deleteStepPath, setDeleteStepPath, onConfirmDelete }: {
   step: Extract<AutomationStep, { type: 'csv_iterator' }>;
   onChange: (step: AutomationStep) => void;
   requests: { id: number; name: string; method: string; folder_id: number | null }[];
   automationProjectId: number;
+  projectEnvs: Environment[];
   depth: number;
   dragSourceRef: React.MutableRefObject<DragSource | null>;
   dragPath: number[] | null;
@@ -591,6 +599,7 @@ function CsvIteratorStep({ step, onChange, requests, automationProjectId, depth,
           onChange={(s) => onChange({ ...step, steps: s })}
           requests={requests}
           automationProjectId={automationProjectId}
+          projectEnvs={projectEnvs}
           depth={depth + 1}
           dragSourceRef={dragSourceRef}
           dragPath={dragPath}
@@ -614,6 +623,7 @@ interface StepCardProps {
   step: AutomationStep;
   requests: { id: number; name: string; method: string; folder_id: number | null }[];
   automationProjectId: number;
+  projectEnvs: Environment[];
   onChange: (step: AutomationStep) => void;
   onRemove: () => void;
   dragSourceRef: React.MutableRefObject<DragSource | null>;
@@ -626,7 +636,7 @@ interface StepCardProps {
   onConfirmDelete: (path: number[]) => void;
 }
 
-function StepCard({ step, requests, automationProjectId, onChange, onRemove, dragSourceRef, dragPath, setDragPath, path, depth, deleteStepPath, setDeleteStepPath, onConfirmDelete }: StepCardProps) {
+function StepCard({ step, requests, automationProjectId, projectEnvs, onChange, onRemove, dragSourceRef, dragPath, setDragPath, path, depth, deleteStepPath, setDeleteStepPath, onConfirmDelete }: StepCardProps) {
   const isConfirmingDelete = deleteStepPath !== null && deleteStepPath.length === path.length && deleteStepPath.every((p, i) => p === path[i]);
   switch (step.type) {
     case 'request': {
@@ -708,6 +718,7 @@ function StepCard({ step, requests, automationProjectId, onChange, onRemove, dra
               onChange={(s) => onChange({ ...step, steps: s })}
               requests={requests}
               automationProjectId={automationProjectId}
+              projectEnvs={projectEnvs}
               depth={depth + 1}
               dragSourceRef={dragSourceRef}
               dragPath={dragPath}
@@ -814,6 +825,7 @@ function StepCard({ step, requests, automationProjectId, onChange, onRemove, dra
                 onChange={(s) => onChange({ ...step, trueSteps: s })}
                 requests={requests}
                 automationProjectId={automationProjectId}
+                projectEnvs={projectEnvs}
                 depth={depth + 1}
                 dragSourceRef={dragSourceRef}
                 dragPath={dragPath}
@@ -832,6 +844,7 @@ function StepCard({ step, requests, automationProjectId, onChange, onRemove, dra
                 onChange={(s) => onChange({ ...step, falseSteps: s })}
                 requests={requests}
                 automationProjectId={automationProjectId}
+                projectEnvs={projectEnvs}
                 depth={depth + 1}
                 dragSourceRef={dragSourceRef}
                 dragPath={dragPath}
@@ -855,6 +868,7 @@ function StepCard({ step, requests, automationProjectId, onChange, onRemove, dra
           onChange={onChange}
           requests={requests}
           automationProjectId={automationProjectId}
+          projectEnvs={projectEnvs}
           depth={depth}
           dragSourceRef={dragSourceRef}
           dragPath={dragPath}
@@ -873,6 +887,7 @@ function StepCard({ step, requests, automationProjectId, onChange, onRemove, dra
           onChange={onChange}
           requests={requests}
           automationProjectId={automationProjectId}
+          projectEnvs={projectEnvs}
           depth={depth}
           dragSourceRef={dragSourceRef}
           dragPath={dragPath}
@@ -882,6 +897,28 @@ function StepCard({ step, requests, automationProjectId, onChange, onRemove, dra
           setDeleteStepPath={setDeleteStepPath}
           onConfirmDelete={onConfirmDelete}
         />
+      );
+
+    case 'set_env':
+      return (
+        <div className={styles.stepInner}>
+          <span className={styles.stepDragHandle}>⠿</span>
+          <span className={`${styles.stepTypeChip} ${styles.chipSetEnv}`}><span className={styles.chipIcon}>⊙</span>Set Env</span>
+          <EnvSelector
+            environments={projectEnvs}
+            activeEnvId={step.envId}
+            emptyLabel="No Env"
+            onSelect={(env) => onChange({ ...step, envId: env?.id ?? null })}
+          />
+          {isConfirmingDelete ? (
+            <span className={styles.stepConfirm}>
+              <button className={styles.stepConfirmYes} onClick={(e) => { e.stopPropagation(); onConfirmDelete(path); }} title="Confirm delete">Yes</button>
+              <button className={styles.stepConfirmNo} onClick={(e) => { e.stopPropagation(); setDeleteStepPath(null); }} title="Cancel">No</button>
+            </span>
+          ) : (
+            <button className={styles.stepRemove} onClick={(e) => { e.stopPropagation(); setDeleteStepPath(path); }} title="Remove step">×</button>
+          )}
+        </div>
       );
 
     case 'stop':
@@ -994,16 +1031,16 @@ export default function AutomationView({ automationId, showExpandBtn, onExpand }
     return Number.isFinite(n) ? n : null;
   });
   const [viewingRun, setViewingRun] = useState<AutomationRun | null>(null);
-  const [activeEnvId, setActiveEnvId] = useState<number | null>(() => {
-    const key = `callstack.activeEnv.${automation?.projectId ?? ''}`;
-    const saved = localStorage.getItem(key);
-    return saved ? parseInt(saved, 10) : null;
-  });
+  const activeEnvId = automation?.envId ?? null;
 
   const [resultFilter, setResultFilter] = useState<'all' | 'pass' | 'partial' | 'error'>('all');
   const [currentPage, setCurrentPage] = useState(0);
   const [listHeight, setListHeight] = useState(0);
   const [leftPaneWidth, setLeftPaneWidth] = useState(300);
+  const [editorZoom, setEditorZoom] = useState(() => {
+    const v = localStorage.getItem(`callstack.automationZoom.${automationId}`);
+    return v ? parseFloat(v) : 1;
+  });
   const isDraggingRef = useRef(false);
   const dragStartXRef = useRef(0);
   const dragStartWidthRef = useRef(0);
@@ -1139,12 +1176,12 @@ export default function AutomationView({ automationId, showExpandBtn, onExpand }
 
     const { results, durationMs, overallStatus } = await run(localSteps, requestMap, envVars, activeEnvId, (entry) => {
       dispatch({ type: 'ADD_LOG', payload: { ...entry, id: Date.now() ^ (Math.random() * 0xffffffff | 0) } });
-    }, state.dataFiles);
+    }, state.dataFiles, projectEnvs);
     const saved = await saveAutomationRun(automationId, overallStatus, results, durationMs);
     setPastRuns((prev) => [saved, ...prev.slice(0, 9)]);
     setMode('results');
     setSelectedResultIdx(null);
-  }, [automation, localSteps, state.requests, state.environments, state.dataFiles, activeEnvId, run, saveAutomationRun, automationId]);
+  }, [automation, localSteps, state.requests, state.environments, state.dataFiles, activeEnvId, projectEnvs, run, saveAutomationRun, automationId]);
 
   const handleViewRun = useCallback((runEntry: AutomationRun) => {
     setViewingRun(runEntry);
@@ -1264,31 +1301,23 @@ export default function AutomationView({ automationId, showExpandBtn, onExpand }
         />
       </div>
       <div className={styles.headerRight}>
-        {!isRunning && !isResults && projectEnvs.length > 0 && (
-          <select
-            value={activeEnvId ?? ''}
-            onChange={(e) => {
-              const val = e.target.value ? parseInt(e.target.value, 10) : null;
-              setActiveEnvId(val);
-              if (val) localStorage.setItem(`callstack.activeEnv.${automation.projectId}`, String(val));
-              else localStorage.removeItem(`callstack.activeEnv.${automation.projectId}`);
-            }}
-            style={{
-              fontSize: 12,
-              padding: '3px 6px',
-              background: 'var(--bg-input)',
-              border: '1px solid var(--border-primary)',
-              borderRadius: 'var(--radius-sm)',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              maxWidth: 120,
-            }}
-          >
-            <option value="">No env</option>
-            {projectEnvs.map((e) => (
-              <option key={e.id} value={e.id}>{e.name}</option>
-            ))}
-          </select>
+        {!isRunning && !isResults && (
+          <div className={styles.headerControl}>
+            <span className={styles.headerControlLabel}>ZOOM</span>
+            <div className={styles.zoomControls}>
+              <button
+                className={styles.zoomBtn}
+                onClick={() => setEditorZoom((z) => { const n = Math.max(0.4, parseFloat((z - 0.1).toFixed(1))); localStorage.setItem(`callstack.automationZoom.${automationId}`, String(n)); return n; })}
+                title="Zoom out"
+              >−</button>
+              <span className={styles.zoomLabel} onClick={() => { setEditorZoom(1); localStorage.removeItem(`callstack.automationZoom.${automationId}`); }} title="Reset zoom">{Math.round(editorZoom * 100)}%</span>
+              <button
+                className={styles.zoomBtn}
+                onClick={() => setEditorZoom((z) => { const n = Math.min(2, parseFloat((z + 0.1).toFixed(1))); localStorage.setItem(`callstack.automationZoom.${automationId}`, String(n)); return n; })}
+                title="Zoom in"
+              >+</button>
+            </div>
+          </div>
         )}
         <button
           className={styles.jsonBadgeBtn}
@@ -1565,7 +1594,7 @@ export default function AutomationView({ automationId, showExpandBtn, onExpand }
                         const text = formatResultAsText(result, idx);
                         const subject = encodeURIComponent(`Result #${idx + 1}: ${result.method} ${result.requestName}`);
                         const body = encodeURIComponent(text);
-                        window.open(`mailto:?subject=${subject}&body=${body}`);
+                        invoke('open_system_url', { url: `mailto:?subject=${subject}&body=${body}` });
                       }}
                     >
                       ✉
@@ -1792,7 +1821,7 @@ export default function AutomationView({ automationId, showExpandBtn, onExpand }
               ‹
             </button>
           )}
-          <div className={styles.flowContent}>
+          <div className={styles.flowContent} style={{ zoom: editorZoom }}>
             {/* Start node */}
             <div className={styles.flowStartNode}>
               <span className={styles.flowNodeLabel}>START</span>
@@ -1804,6 +1833,7 @@ export default function AutomationView({ automationId, showExpandBtn, onExpand }
               onChange={handleStepsChange}
               requests={projectRequests}
               automationProjectId={automation?.projectId ?? -1}
+              projectEnvs={projectEnvs}
               dragSourceRef={dragSourceRef}
               dragPath={dragPath}
               setDragPath={setDragPath}

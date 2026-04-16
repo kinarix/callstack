@@ -188,6 +188,7 @@ export function ExportModal({ title, items, environments, onExport, onCancel }: 
                 <span className={styles.includedLabel}>Always included:</span>
                 <span className={styles.includedPill}>Folders</span>
                 <span className={styles.includedPill}>Scripts</span>
+                <span className={styles.includedPill}>Data Files</span>
               </div>
               <label className={styles.optionRow}>
                 <input

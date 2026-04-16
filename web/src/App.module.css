@@ -31,6 +31,10 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  margin: 8px 0 8px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-md);
 }
 
 .resizeHandle {
@@ -198,5 +202,21 @@
 }
 
 .confirmDelete:hover {
+  opacity: 0.85;
+}
+
+.confirmReset {
+  background: var(--accent-put);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  padding: 5px var(--space-2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.confirmReset:hover {
   opacity: 0.85;
 }

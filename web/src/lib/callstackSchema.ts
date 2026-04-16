@@ -15,6 +15,7 @@ export interface CallstackManifest {
   requests: ExportRequest[];
   environments: ExportEnvironment[];
   automations?: ExportAutomation[];
+  dataFiles?: ExportDataFile[];
   responses?: ExportResponse[];
 }
 
@@ -72,6 +73,13 @@ export interface ExportResponse {
   timestamp: number;
 }
 
+// ── Data File ──────────────────────────────────────────
+export interface ExportDataFile {
+  _ref: string;
+  name: string;
+  content: string;
+}
+
 // ── Automation ──────────────────────────────────────────
 export type ExportBranchCondition =
   | { type: 'lastRequestPass' }
@@ -87,13 +95,16 @@ export type ExportAutomationStep =
   | { id: string; type: 'delay'; delayMs: number }
   | { id: string; type: 'repeat'; count: number; steps: ExportAutomationStep[] }
   | { id: string; type: 'branch'; condition: ExportBranchCondition; trueSteps: ExportAutomationStep[]; falseSteps: ExportAutomationStep[] }
+  | { id: string; type: 'csv_iterator'; dataFileRef: string | null; limit?: number | null; steps: ExportAutomationStep[] }
   | { id: string; type: 'fanout'; lanes: ExportAutomationStep[][] }
   | { id: string; type: 'stop' }
-  | { id: string; type: 'log'; scope: string; object: string };
+  | { id: string; type: 'log'; scope: string; object: string }
+  | { id: string; type: 'set_env'; envRef: string | null };
 
 export interface ExportAutomation {
   _ref: string;
   name: string;
+  envName?: string | null;
   steps: ExportAutomationStep[];
 }
 
@@ -109,5 +120,6 @@ export interface ArchivePreview {
   requestCount: number;
   environmentCount: number;
   automationCount: number;
+  dataFileCount: number;
   hasResponses: boolean;
 }

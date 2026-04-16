@@ -30,8 +30,8 @@
 }
 
 .pill.active {
-  border-color: var(--accent-patch);
-  color: var(--accent-patch);
+  border-color: currentColor;
+  color: inherit;
 }
 
 .chevron {
@@ -86,4 +86,16 @@
 .option svg {
   flex-shrink: 0;
   color: var(--accent-patch);
+}
+
+.noEnvLabel {
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.envDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }

@@ -188,8 +188,17 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, activeAutomationId: action.payload };
     case 'SET_ACTIVE_ENVIRONMENT':
       return { ...state, activeEnvironmentId: action.payload };
-    case 'SET_DATA_FILES':
-      return { ...state, dataFiles: action.payload };
+    case 'SET_DATA_FILES': {
+      const dfIds = new Set(action.payload.map((d) => d.id));
+      const dfStillValid = state.activeDataFileId != null && dfIds.has(state.activeDataFileId);
+      return {
+        ...state,
+        dataFiles: action.payload,
+        activeDataFileId: dfStillValid ? state.activeDataFileId : null,
+        activeView:
+          !dfStillValid && state.activeView === 'dataFile' ? 'request' : state.activeView,
+      };
+    }
     case 'ADD_DATA_FILE':
       return { ...state, dataFiles: [...state.dataFiles, action.payload] };
     case 'UPDATE_DATA_FILE':
@@ -205,13 +214,25 @@ function appReducer(state: AppState, action: AppAction): AppState {
     }
     case 'SET_ACTIVE_DATA_FILE':
       return { ...state, activeDataFileId: action.payload };
+    case 'SHOW_ERROR':
+      return { ...state, error: action.payload };
+    case 'CLEAR_ERROR':
+      return { ...state, error: null };
     default:
       return state;
   }
 }
 
+function safeReducer(state: AppState, action: AppAction): AppState {
+  try {
+    return appReducer(state, action);
+  } catch (e) {
+    return { ...state, error: { message: String(e), showReset: true } };
+  }
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(appReducer, undefined, () => {
+  const [state, dispatch] = useReducer(safeReducer, undefined, () => {
     const parseIds = (key: string) => {
       try { return new Set<number>(JSON.parse(localStorage.getItem(key) || '[]')); }
       catch { return new Set<number>(); }
@@ -256,6 +277,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const n = parseInt(v, 10);
         return Number.isFinite(n) ? n : null;
       })(),
+      error: null,
     };
   });
 
