@@ -135,6 +135,13 @@ async fn pick_file(filters: Vec<String>) -> Result<Option<Vec<u8>>, String> {
 }
 
 #[tauri::command]
+#[allow(deprecated)]
+fn open_system_url(app: tauri::AppHandle, url: String) -> Result<(), String> {
+    use tauri_plugin_shell::ShellExt;
+    app.shell().open(&url, None).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn write_clipboard(text: String) -> Result<(), String> {
     let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
     clipboard.set_text(text).map_err(|e| e.to_string())
@@ -300,6 +307,7 @@ pub fn run() {
             get_db_stats,
             get_full_snapshot,
             write_clipboard,
+            open_system_url,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

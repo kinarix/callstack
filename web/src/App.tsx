@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { AppProvider, useApp } from './context/AppContext';
+import { ErrorBoundary } from './components/ErrorBoundary/ErrorBoundary';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { RequestBuilder } from './components/RequestBuilder/RequestBuilder';
 import AutomationView from './components/AutomationView/AutomationView';
@@ -13,6 +14,13 @@ import { useDatabase } from './hooks/useDatabase';
 import { useSettings, matchesShortcut } from './hooks/useSettings';
 import { formatBody } from './lib/formatBody';
 
+function clearUIState() {
+  Object.keys(localStorage)
+    .filter((k) => k.startsWith('callstack.'))
+    .forEach((k) => localStorage.removeItem(k));
+  window.location.reload();
+}
+
 function AppContent() {
   const { state, dispatch } = useApp();
   const { loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations, listDataFiles, createRequest, duplicateRequest, getLastResponse } = useDatabase();
@@ -21,7 +29,6 @@ function AppContent() {
 
   const executeRef = useRef<(() => void) | null>(null);
   const [externalRenameId, setExternalRenameId] = useState<number | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copyFlashPane, setCopyFlashPane] = useState<'request' | 'response' | null>(null);
   const [activePane, setActivePane] = useState<'request' | 'response'>('response');
   const [ready, setReady] = useState(false);
@@ -163,6 +170,15 @@ function AppContent() {
     localStorage.setItem('callstack.expandedFolders', JSON.stringify([...state.expandedFolders]));
   }, [state.expandedFolders]);
 
+  // Catch unhandled promise rejections globally
+  useEffect(() => {
+    const handler = (e: PromiseRejectionEvent) => {
+      dispatch({ type: 'SHOW_ERROR', payload: { message: String(e.reason), showReset: true } });
+    };
+    window.addEventListener('unhandledrejection', handler);
+    return () => window.removeEventListener('unhandledrejection', handler);
+  }, [dispatch]);
+
   // F-key shortcuts (navigate to request)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -198,7 +214,7 @@ function AppContent() {
             setCopyFlashPane('request');
             setTimeout(() => setCopyFlashPane(null), 1200);
           } else {
-            setErrorMessage('No request body to copy.');
+            dispatch({ type: 'SHOW_ERROR', payload: { message: 'No request body to copy.', showReset: false } });
           }
         } else {
           const body = state.currentResponse?.body?.trim();
@@ -208,7 +224,7 @@ function AppContent() {
             setCopyFlashPane('response');
             setTimeout(() => setCopyFlashPane(null), 1200);
           } else {
-            setErrorMessage('No response to copy.');
+            dispatch({ type: 'SHOW_ERROR', payload: { message: 'No response to copy.', showReset: false } });
           }
         }
         return;
@@ -271,16 +287,16 @@ function AppContent() {
   }, [settings.shortcuts, state.currentRequestId, state.currentProjectId, state.currentResponse, state.requests, activePane, createRequest, duplicateRequest, dispatch]);
 
   useEffect(() => {
-    if (errorMessage == null) return;
+    if (state.error == null) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Enter' || e.key === 'Escape') {
         e.preventDefault();
-        setErrorMessage(null);
+        dispatch({ type: 'CLEAR_ERROR' });
       }
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [errorMessage]);
+  }, [state.error, dispatch]);
 
   const currentRequest = state.requests.find((r) => r.id === state.currentRequestId) || null;
 
@@ -366,12 +382,19 @@ function AppContent() {
           onClose={() => setSettingsOpen(false)}
         />
       )}
-      {errorMessage && (
-        <div className={styles.confirmOverlay} onClick={() => setErrorMessage(null)}>
+      {state.error && (
+        <div className={styles.confirmOverlay} onClick={() => dispatch({ type: 'CLEAR_ERROR' })}>
           <div className={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
-            <p>{errorMessage}</p>
+            <p>{state.error.message}</p>
             <div className={styles.confirmActions}>
-              <button className={styles.confirmDelete} onClick={() => setErrorMessage(null)}>OK</button>
+              {state.error.showReset && (
+                <button className={styles.confirmReset} onClick={clearUIState}>
+                  Clear UI State &amp; Reload
+                </button>
+              )}
+              <button className={styles.confirmCancel} onClick={() => dispatch({ type: 'CLEAR_ERROR' })}>
+                Dismiss
+              </button>
             </div>
           </div>
         </div>
@@ -383,7 +406,9 @@ function AppContent() {
 export default function App() {
   return (
     <AppProvider>
-      <AppContent />
+      <ErrorBoundary>
+        <AppContent />
+      </ErrorBoundary>
     </AppProvider>
   );
 }

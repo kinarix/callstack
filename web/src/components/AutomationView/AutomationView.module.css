@@ -162,6 +162,77 @@
   border-color: var(--border-focus);
 }
 
+/* ─── Header labelled controls ───────────────────────── */
+
+.headerControl {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.headerControlLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  color: var(--text-tertiary);
+  font-family: var(--font-ui, 'Outfit', sans-serif);
+  user-select: none;
+}
+
+.envWarning {
+  font-size: 12px;
+  color: var(--accent-put);
+  line-height: 1;
+  user-select: none;
+}
+
+/* ─── Zoom controls ───────────────────────────────────── */
+
+.zoomControls {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.zoomBtn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  width: 24px;
+  height: 28px;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-base), background var(--transition-base);
+  padding: 0;
+  line-height: 1;
+}
+
+.zoomBtn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.zoomLabel {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  min-width: 34px;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  line-height: 28px;
+}
+
+.zoomLabel:hover {
+  color: var(--text-primary);
+}
+
 /* ─── JSON modal ──────────────────────────────────────── */
 
 .jsonModalOverlay {
@@ -803,12 +874,12 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
+  padding: 7px 10px;
   border: 1px dashed var(--border-primary);
   border-radius: var(--radius-sm);
   background: none;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   width: 100%;
   justify-content: center;
@@ -838,9 +909,9 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 8px var(--space-1);
+  padding: 9px var(--space-1);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-primary);
 }
 
@@ -1170,7 +1241,7 @@
 }
 
 .paletteTitle {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.07em;
   color: var(--text-tertiary);
@@ -1182,13 +1253,13 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 8px;
+  padding: 8px 10px;
   border-radius: var(--radius-sm);
   background: var(--bg-primary);
   border: 1px solid var(--border-secondary);
   cursor: grab;
   user-select: none;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-secondary);
   transition: background 0.1s, border-color 0.1s;
 }
@@ -1204,12 +1275,12 @@
 }
 
 .paletteItemIcon {
-  font-size: 14px;
+  font-size: 17px;
   flex-shrink: 0;
 }
 
 .paletteItemLabel {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -1265,9 +1336,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 72px;
-  height: 28px;
-  border-radius: 14px;
+  width: 80px;
+  height: 32px;
+  border-radius: 16px;
   background: var(--bg-secondary);
   border: 2px solid var(--border-primary);
   flex-shrink: 0;
@@ -1282,7 +1353,7 @@
 }
 
 .flowNodeLabel {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--text-secondary);
@@ -1432,15 +1503,15 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 7px 10px;
-  min-height: 38px;
+  padding: 9px 12px;
+  min-height: 44px;
 }
 
 .stepDragHandle {
   color: var(--text-tertiary);
   cursor: grab;
   flex-shrink: 0;
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1;
 }
 
@@ -1449,21 +1520,21 @@
 }
 
 .stepTypeChip {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.05em;
-  padding: 2px 7px;
+  padding: 3px 9px;
   border-radius: 4px;
   color: #fff;
   flex-shrink: 0;
   text-transform: uppercase;
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
 }
 
 .chipIcon {
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1;
 }
 
@@ -1474,9 +1545,10 @@
 .chipStop        { background: #ef4444; }
 .chipLog         { background: #0ea5e9; }
 .chipCsvIterator { background: #a855f7; }
+.chipSetEnv      { background: #10b981; }
 
 .iteratorDatasetLabel {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-tertiary);
   white-space: nowrap;
@@ -1485,7 +1557,7 @@
 
 .iteratorLimitInput {
   width: 56px;
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-family: 'JetBrains Mono', monospace;
   background: var(--bg-secondary);
   border: 1px solid var(--border-secondary);
@@ -1521,7 +1593,7 @@
 
 .csvIteratorVar {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 12px;
   padding: 2px 6px;
   background: color-mix(in srgb, #a855f7 15%, transparent);
   border: 1px solid color-mix(in srgb, #a855f7 30%, transparent);
@@ -1540,8 +1612,8 @@
 .stepSelect {
   flex: 1;
   min-width: 0;
-  font-size: 12px;
-  padding: 4px 8px;
+  font-size: 13px;
+  padding: 5px 9px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-primary);
   border-radius: 4px;
@@ -1564,8 +1636,8 @@
 
 .stepNumberInput {
   width: 72px;
-  font-size: 12px;
-  padding: 4px 8px;
+  font-size: 13px;
+  padding: 5px 8px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-primary);
   border-radius: 4px;
@@ -1587,8 +1659,8 @@
 
 .stepTextInput {
   width: 120px;
-  font-size: 12px;
-  padding: 4px 8px;
+  font-size: 13px;
+  padding: 5px 8px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-primary);
   border-radius: 4px;
@@ -1608,14 +1680,14 @@
 }
 
 .stepUnit {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
   flex-shrink: 0;
 }
 
 .stepHint {
   flex: 1;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-tertiary);
   font-style: italic;
 }
@@ -1693,13 +1765,13 @@
   align-items: center;
   gap: 6px;
   width: 100%;
-  padding: 4px 8px;
+  padding: 5px 9px;
   border-radius: 4px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-primary);
   box-shadow: var(--shadow-sm);
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-primary);
   cursor: pointer;
   text-align: left;
@@ -1746,7 +1818,7 @@
 
 .reqDropGroupLabel {
   padding: 4px 10px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -1762,8 +1834,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
-  font-size: 12px;
+  padding: 7px 10px;
+  font-size: 13px;
   cursor: pointer;
   color: var(--text-primary);
 }
@@ -1777,7 +1849,7 @@
 }
 
 .reqDropOptionMethod {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   min-width: 44px;
 }

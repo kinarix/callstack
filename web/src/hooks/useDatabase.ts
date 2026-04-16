@@ -32,6 +32,7 @@ interface RawRequest {
   createdAt: string;
   updatedAt: string;
   imported: boolean;
+  envId: number | null;
 }
 
 function parseRequest(raw: RawRequest): Request {
@@ -53,6 +54,7 @@ function parseRequest(raw: RawRequest): Request {
     created_at: raw.createdAt,
     updated_at: raw.updatedAt,
     imported: raw.imported ?? false,
+    env_id: raw.envId ?? null,
   };
 }
 
@@ -157,14 +159,16 @@ export function useDatabase() {
         attachments?: string;
         pre_script?: string;
         post_script?: string;
+        env_id?: number | null;
       }
     ): Promise<Request> => {
-      const { pre_script, post_script, ...rest } = fields;
+      const { pre_script, post_script, env_id, ...rest } = fields;
       const raw = await invoke<RawRequest>('update_request', {
         id,
         ...rest,
         ...(pre_script !== undefined ? { preScript: pre_script } : {}),
         ...(post_script !== undefined ? { postScript: post_script } : {}),
+        ...(env_id !== undefined ? { envId: env_id } : {}),
       });
       return parseRequest(raw);
     },
@@ -403,18 +407,23 @@ export function useDatabase() {
   // --- Automation methods ---
 
   const listAutomations = useCallback(async (projectId: number): Promise<Automation[]> => {
-    const rows = await invoke<{ id: number; projectId: number; name: string; steps: string; createdAt: string; updatedAt: string }[]>('list_automations', { projectId });
-    return rows.map((r) => ({ ...r, steps: normalizeSteps(JSON.parse(r.steps || '[]')) }));
+    const rows = await invoke<{ id: number; projectId: number; name: string; steps: string; createdAt: string; updatedAt: string; envId: number | null }[]>('list_automations', { projectId });
+    return rows.map((r) => ({ ...r, steps: normalizeSteps(JSON.parse(r.steps || '[]')), envId: r.envId ?? null }));
   }, []);
 
   const createAutomation = useCallback(async (projectId: number, name: string, steps: AutomationStep[]): Promise<Automation> => {
-    const r = await invoke<{ id: number; projectId: number; name: string; steps: string; createdAt: string; updatedAt: string }>('create_automation', { projectId, name, steps: JSON.stringify(steps) });
-    return { ...r, steps: normalizeSteps(JSON.parse(r.steps || '[]')) };
+    const r = await invoke<{ id: number; projectId: number; name: string; steps: string; createdAt: string; updatedAt: string; envId: number | null }>('create_automation', { projectId, name, steps: JSON.stringify(steps) });
+    return { ...r, steps: normalizeSteps(JSON.parse(r.steps || '[]')), envId: r.envId ?? null };
   }, []);
 
-  const updateAutomation = useCallback(async (id: number, name: string, steps: AutomationStep[]): Promise<Automation> => {
-    const r = await invoke<{ id: number; projectId: number; name: string; steps: string; createdAt: string; updatedAt: string }>('update_automation', { id, name, steps: JSON.stringify(steps) });
-    return { ...r, steps: normalizeSteps(JSON.parse(r.steps || '[]')) };
+  const updateAutomation = useCallback(async (id: number, name: string, steps: AutomationStep[], envId?: number | null): Promise<Automation> => {
+    const r = await invoke<{ id: number; projectId: number; name: string; steps: string; createdAt: string; updatedAt: string; envId: number | null }>('update_automation', {
+      id,
+      name,
+      steps: JSON.stringify(steps),
+      ...(envId !== undefined ? { envId } : {}),
+    });
+    return { ...r, steps: normalizeSteps(JSON.parse(r.steps || '[]')), envId: r.envId ?? null };
   }, []);
 
   const deleteAutomation = useCallback(async (id: number): Promise<void> => {

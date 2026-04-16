@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { useApp } from '../../context/AppContext';
 import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
 import { xml } from '@codemirror/lang-xml';
@@ -128,6 +129,7 @@ function isPreviewable(contentType: string): boolean {
 }
 
 export function ResponseViewer({ response, requestName, copyFlash, onClear, onCopy }: ResponseViewerProps) {
+  const { dispatch } = useApp();
   const [tab, setTab] = useState<'body' | 'headers' | 'preview' | 'tests'>('body');
   const [headersPinned, setHeadersPinned] = useState(false);
   const [testsPinned, setTestsPinned] = useState(false);
@@ -180,6 +182,7 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
       await invoke('save_file', { filename, content: response.body });
     } catch (err) {
       console.error('Failed to save response:', err);
+      dispatch({ type: 'SHOW_ERROR', payload: { message: `Failed to save response: ${String(err)}`, showReset: true } });
     }
   };
 

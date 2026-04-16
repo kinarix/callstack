@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CALLSTACK — Native REST API Testing</title>
+  <meta name="description" content="CALLSTACK is a native desktop REST API client built with Tauri. Local-first, offline-capable, no CORS restrictions, with scripting and automations.">
+  <meta name="theme-color" content="#0d1117">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="CALLSTACK — Native REST API Testing">
+  <meta property="og:description" content="A native desktop REST API client for developers. Local SQLite, no cloud, no CORS.">
+  <meta property="og:image" content="assets/images/icon-512.png">
+  <meta property="og:type" content="website">
+
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/images/icon-512.png">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+
+<!-- ── Header ───────────────────────────────────────────────── -->
+<header class="site-header">
+  <div class="container">
+    <div class="header-inner">
+      <a href="." class="header-logo">
+        <img src="assets/images/icon-512.png" alt="CALLSTACK">
+        CALLSTACK
+      </a>
+      <ul class="header-nav">
+        <li><a href="docs/">Documentation</a></li>
+        <li>
+          <a href="https://github.com/kinarix/callstack" target="_blank" rel="noopener">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.155-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.741 0 .267.18.578.688.48C19.137 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
+            GitHub
+          </a>
+        </li>
+        <li>
+          <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">☀️</button>
+        </li>
+      </ul>
+    </div>
+  </div>
+</header>
+
+<!-- ── Hero ─────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-icon">
+      <img src="assets/images/icon-512.png" alt="CALLSTACK logo">
+    </div>
+    <h1 class="hero-title">CALLSTACK</h1>
+    <p class="hero-tagline">
+      The native REST API client for developers who care about privacy and workflow.
+    </p>
+    <p class="hero-sub">
+      Local SQLite · No account required · No CORS · Offline-first · Scripting &amp; Automations
+    </p>
+    <div class="hero-ctas">
+      <a href="https://github.com/kinarix/callstack/releases/latest" class="btn btn-primary" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download
+      </a>
+      <a href="docs/" class="btn btn-secondary">
+        Read the Docs
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </a>
+    </div>
+    <div class="platform-badges">
+      <span class="badge">🍎 macOS</span>
+      <span class="badge">🐧 Linux</span>
+      <span class="badge">🪟 Windows</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── Value props ───────────────────────────────────────────── -->
+<section class="section">
+  <div class="container">
+    <p class="section-label">Why CALLSTACK</p>
+    <h2 class="section-title">Built different, by design</h2>
+    <p class="section-desc">
+      No subscriptions. No telemetry. No cloud. Your API workspace lives entirely on your machine.
+    </p>
+    <div class="props-grid">
+      <div class="prop-card">
+        <div class="prop-icon">🦀</div>
+        <div class="prop-title">Native, not a browser</div>
+        <p class="prop-desc">
+          Built with Tauri 2 and Rust. Full OS integration, real filesystem access, and a proper native window — not a web app wrapped in Electron.
+        </p>
+      </div>
+      <div class="prop-card">
+        <div class="prop-icon">🔒</div>
+        <div class="prop-title">Your data stays local</div>
+        <p class="prop-desc">
+          Everything is stored in a SQLite database on your machine. No account, no sync, no cloud. Your requests, environments, and history never leave your laptop.
+        </p>
+      </div>
+      <div class="prop-card">
+        <div class="prop-icon">🚫</div>
+        <div class="prop-title">Zero CORS headaches</div>
+        <p class="prop-desc">
+          HTTP requests run from Rust — not a browser. No Origin headers, no preflight, no CORS errors. Test any API exactly as your server sees it.
+        </p>
+      </div>
+      <div class="prop-card">
+        <div class="prop-icon">⚡</div>
+        <div class="prop-title">Scripting &amp; Automations</div>
+        <p class="prop-desc">
+          Chain requests with pre/post scripts. Build multi-step workflows. Iterate over CSV datasets. Branch on response conditions. Run tests. All without leaving the app.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Feature highlights ────────────────────────────────────── -->
+<section class="section">
+  <div class="container">
+    <p class="section-label">Features</p>
+    <h2 class="section-title">Everything you need to test APIs</h2>
+    <div class="features-grid">
+
+      <article class="feature-card">
+        <div class="feature-header">
+          <div class="feature-icon">🔨</div>
+          <h3 class="feature-title">Request Builder</h3>
+        </div>
+        <p class="feature-desc">Build requests for every HTTP method with a full-featured editor. URL params, headers, JSON/XML body, and file attachments — all in one place.</p>
+        <ul class="feature-list">
+          <li>GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS</li>
+          <li>Query params editor with enable/disable toggles</li>
+          <li>Headers editor with auto Content-Type</li>
+          <li>JSON &amp; XML body validation</li>
+          <li>Multipart file attachments</li>
+          <li>Cancel requests mid-flight</li>
+        </ul>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-header">
+          <div class="feature-icon">🌍</div>
+          <h3 class="feature-title">Environments &amp; Variables</h3>
+        </div>
+        <p class="feature-desc">Define variables per project and substitute them everywhere with <code>{{variable}}</code> syntax. Keep base URLs, tokens, and secrets organized by environment.</p>
+        <ul class="feature-list">
+          <li>Multiple environments per project</li>
+          <li>Template syntax in URL, headers, body, params</li>
+          <li>Secrets (masked values with hold-to-reveal)</li>
+          <li>Runtime variable manipulation in scripts</li>
+          <li>Environment switching without editing requests</li>
+        </ul>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-header">
+          <div class="feature-icon">📝</div>
+          <h3 class="feature-title">Pre/Post Scripts</h3>
+        </div>
+        <p class="feature-desc">Run JavaScript before or after every request. Extract tokens, set variables, assert response values, and generate test data with the built-in Faker library.</p>
+        <ul class="feature-list">
+          <li>Full <code>request</code> &amp; <code>response</code> objects</li>
+          <li>Read/write <code>env</code> and <code>secrets</code> at runtime</li>
+          <li><code>emitter</code> for inter-step communication</li>
+          <li><code>test()</code> assertions with PASS/FAIL reporting</li>
+          <li>Faker data: names, emails, addresses, UUIDs</li>
+          <li>CodeMirror editor with JS autocomplete</li>
+        </ul>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-header">
+          <div class="feature-icon">🤖</div>
+          <h3 class="feature-title">Automations</h3>
+        </div>
+        <p class="feature-desc">Build multi-step request workflows visually. Loop over datasets, branch on responses, run steps in parallel, and collect test results across every run.</p>
+        <ul class="feature-list">
+          <li>Sequential request chains</li>
+          <li>CSV Iterator — loop over data files row by row</li>
+          <li>Branch on status code, emitted values, or test results</li>
+          <li>Fanout — parallel execution lanes</li>
+          <li>Repeat loops with iteration context</li>
+          <li>Full run history with PASS/FAIL/PARTIAL status</li>
+        </ul>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-header">
+          <div class="feature-icon">👁️</div>
+          <h3 class="feature-title">Response Viewer</h3>
+        </div>
+        <p class="feature-desc">Inspect responses with syntax highlighting, a header browser, and a live HTML/image preview tab. See timing, size, and test results at a glance.</p>
+        <ul class="feature-list">
+          <li>JSON syntax highlighting with line numbers</li>
+          <li>XML and HTML pretty-printing</li>
+          <li>Preview tab: renders HTML, images, video, audio</li>
+          <li>Status code, response time (ms), size (bytes)</li>
+          <li>Copy body or save to file</li>
+          <li>Collapsible test results panel</li>
+        </ul>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-header">
+          <div class="feature-icon">📁</div>
+          <h3 class="feature-title">Organisation</h3>
+        </div>
+        <p class="feature-desc">Group requests into projects and folders. Drag to reorder. Collapse the sidebar for more space. Everything persists to SQLite automatically.</p>
+        <ul class="feature-list">
+          <li>Projects → Folders → Requests hierarchy</li>
+          <li>Drag-and-drop reordering at every level</li>
+          <li>Collapsible sidebar for full-screen editing</li>
+          <li>Persistent expansion state across sessions</li>
+          <li>Import from Postman collections</li>
+          <li>Export with full response history</li>
+        </ul>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Secondary features ────────────────────────────────────── -->
+<section class="section">
+  <div class="container">
+    <p class="section-label">Also included</p>
+    <h2 class="section-title">The small things that add up</h2>
+    <div class="secondary-grid">
+
+      <div class="secondary-item">
+        <span class="secondary-item-icon">📋</span>
+        <div class="secondary-item-text">
+          <strong>Request Log</strong>
+          <span>Full session history with one-click curl export</span>
+        </div>
+      </div>
+
+      <div class="secondary-item">
+        <span class="secondary-item-icon">⌨️</span>
+        <div class="secondary-item-text">
+          <strong>Keyboard Shortcuts</strong>
+          <span>F1–F12 quick launch, fully customisable bindings</span>
+        </div>
+      </div>
+
+      <div class="secondary-item">
+        <span class="secondary-item-icon">🔑</span>
+        <div class="secondary-item-text">
+          <strong>JWT Decoder</strong>
+          <span>Paste any token to inspect its claims instantly</span>
+        </div>
+      </div>
+
+      <div class="secondary-item">
+        <span class="secondary-item-icon">📊</span>
+        <div class="secondary-item-text">
+          <strong>CSV Data Files</strong>
+          <span>Built-in grid editor, used by CSV Iterator automation step</span>
+        </div>
+      </div>
+
+      <div class="secondary-item">
+        <span class="secondary-item-icon">📤</span>
+        <div class="secondary-item-text">
+          <strong>Import/Export</strong>
+          <span>Postman v2.1 import, native Callstack export with history</span>
+        </div>
+      </div>
+
+      <div class="secondary-item">
+        <span class="secondary-item-icon">🎨</span>
+        <div class="secondary-item-text">
+          <strong>Themes</strong>
+          <span>Dark, Light, Dim — or follow your system preference</span>
+        </div>
+      </div>
+
+      <div class="secondary-item">
+        <span class="secondary-item-icon">🎲</span>
+        <div class="secondary-item-text">
+          <strong>Faker Data</strong>
+          <span>Generate realistic test data inside pre-request scripts</span>
+        </div>
+      </div>
+
+      <div class="secondary-item">
+        <span class="secondary-item-icon">🔍</span>
+        <div class="secondary-item-text">
+          <strong>Variable Inspector</strong>
+          <span>See all available <code>{{variables}}</code> in the current scope</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Install ───────────────────────────────────────────────── -->
+<section class="section install-section">
+  <div class="container">
+    <p class="section-label">Install</p>
+    <h2 class="section-title">Get started in seconds</h2>
+    <p class="section-desc">Available for macOS, Linux, and Windows. No account required.</p>
+
+    <div class="install-tabs">
+      <button class="install-tab active" data-tab="mac">macOS</button>
+      <button class="install-tab" data-tab="linux">Linux</button>
+      <button class="install-tab" data-tab="windows">Windows</button>
+    </div>
+
+    <div id="panel-mac" class="install-panel active">
+      <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:var(--sp-3);text-align:left;">
+        Install via Homebrew for automatic updates and easy management:
+      </p>
+      <div class="code-block">
+        <div class="code-block-header">
+          <span>Terminal</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <pre><code>brew tap kinarix/callstack
+brew install --cask callstack</code></pre>
+      </div>
+      <p style="color:var(--text-muted);font-size:0.875rem;margin-top:var(--sp-3);text-align:left;">
+        Or download the <code>.dmg</code> directly from
+        <a href="https://github.com/kinarix/callstack/releases/latest" target="_blank" rel="noopener">GitHub Releases</a>.
+      </p>
+    </div>
+
+    <div id="panel-linux" class="install-panel">
+      <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:var(--sp-3);text-align:left;">
+        Download the <code>.AppImage</code> or <code>.deb</code> from GitHub Releases:
+      </p>
+      <div class="code-block">
+        <div class="code-block-header">
+          <span>Terminal</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <pre><code># AppImage (any distro)
+chmod +x Callstack_*.AppImage
+./Callstack_*.AppImage</code></pre>
+      </div>
+    </div>
+
+    <div id="panel-windows" class="install-panel">
+      <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:var(--sp-3);text-align:left;">
+        Download the <code>.msi</code> installer from GitHub Releases and run it:
+      </p>
+      <div class="code-block">
+        <div class="code-block-header">
+          <span>PowerShell</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <pre><code># Or use winget
+winget install kinarix.callstack</code></pre>
+      </div>
+    </div>
+
+    <div style="margin-top:var(--sp-4);text-align:center;">
+      <a href="https://github.com/kinarix/callstack/releases/latest" class="btn btn-secondary" target="_blank" rel="noopener">
+        View all releases on GitHub →
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ───────────────────────────────────────────────── -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="assets/images/icon-512.png" alt="CALLSTACK">
+        <span class="footer-brand-name">CALLSTACK</span>
+      </div>
+      <ul class="footer-links">
+        <li><a href="docs/">Documentation</a></li>
+        <li><a href="https://github.com/kinarix/callstack" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://github.com/kinarix/callstack/releases/latest" target="_blank" rel="noopener">Download</a></li>
+        <li><a href="https://github.com/kinarix/callstack/issues" target="_blank" rel="noopener">Issues</a></li>
+      </ul>
+    </div>
+    <p class="footer-copy">
+      Built with <a href="https://tauri.app" target="_blank" rel="noopener">Tauri 2</a> + React ·
+      Open source on <a href="https://github.com/kinarix/callstack" target="_blank" rel="noopener">GitHub</a>
+    </p>
+  </div>
+</footer>
+
+<script src="assets/js/main.js"></script>
+</body>
+</html>

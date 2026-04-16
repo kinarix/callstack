@@ -162,9 +162,6 @@ function validateBody(body: string, contentType: string): string | null {
   return null;
 }
 
-function getActiveEnvKey(projectId: number | null) {
-  return projectId ? `callstack.activeEnv.${projectId}` : null;
-}
 
 export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, copyFlashPane, onCopyResponse, onRequestFocus, onResponseFocus }: RequestBuilderProps) {
   const { state, dispatch } = useApp();
@@ -176,19 +173,11 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
   const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
   const [followRedirects, setFollowRedirects] = useState(true);
   const [files, setFiles] = useState<FileAttachment[]>(() => request?.files ?? []);
-  const [activeEnvId, setActiveEnvId] = useState<number | null>(() => {
-    const key = getActiveEnvKey(request?.project_id ?? null);
-    if (!key) return null;
-    const v = localStorage.getItem(key);
-    return v ? parseInt(v, 10) : null;
-  });
-  // Reload active env from localStorage when project changes
+  const [activeEnvId, setActiveEnvId] = useState<number | null>(request?.env_id ?? null);
+
   useEffect(() => {
-    const key = getActiveEnvKey(request?.project_id ?? null);
-    if (!key) { setActiveEnvId(null); return; }
-    const v = localStorage.getItem(key);
-    setActiveEnvId(v ? parseInt(v, 10) : null);
-  }, [request?.project_id]);
+    setActiveEnvId(request?.env_id ?? null);
+  }, [request?.id]);
 
   useEffect(() => {
     setFiles(request?.files ?? []);
@@ -373,10 +362,13 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
     }
   };
 
-  const handleEnvSelect = (env: Environment) => {
-    const key = getActiveEnvKey(request?.project_id ?? null);
-    if (key) localStorage.setItem(key, String(env.id));
-    setActiveEnvId(env.id);
+  const handleEnvSelect = (env: Environment | null) => {
+    if (!request) return;
+    const envId = env?.id ?? null;
+    setActiveEnvId(envId);
+    updateRequest(request.id, { env_id: envId }).then((updated) => {
+      dispatch({ type: 'UPDATE_REQUEST', payload: updated });
+    });
   };
 
   const projectEnvironments = state.environments.filter(

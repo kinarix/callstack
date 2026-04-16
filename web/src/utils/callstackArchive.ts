@@ -26,7 +26,7 @@ interface ExportOptions {
 }
 
 // Helper: serialize AutomationStep recursively, mapping requestIds to requestRefs
-function serializeAutomationStep(step: AutomationStep, requestRefMap: Map<number, string>, dataFileRefMap: Map<number, string>): ExportAutomationStep {
+function serializeAutomationStep(step: AutomationStep, requestRefMap: Map<number, string>, dataFileRefMap: Map<number, string>, envRefMap: Map<number, string>): ExportAutomationStep {
   const base = { id: step.id, type: step.type } as ExportAutomationStep;
 
   if (step.type === 'request') {
@@ -48,7 +48,7 @@ function serializeAutomationStep(step: AutomationStep, requestRefMap: Map<number
       id: step.id,
       type: 'repeat',
       count: step.count,
-      steps: step.steps.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap)),
+      steps: step.steps.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap, envRefMap)),
     };
   }
   if (step.type === 'csv_iterator') {
@@ -57,7 +57,7 @@ function serializeAutomationStep(step: AutomationStep, requestRefMap: Map<number
       type: 'csv_iterator',
       dataFileRef: step.dataFileId != null ? (dataFileRefMap.get(step.dataFileId) ?? null) : null,
       limit: step.limit ?? null,
-      steps: step.steps.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap)),
+      steps: step.steps.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap, envRefMap)),
     };
   }
   if (step.type === 'branch') {
@@ -65,15 +65,22 @@ function serializeAutomationStep(step: AutomationStep, requestRefMap: Map<number
       id: step.id,
       type: 'branch',
       condition: step.condition as any, // BranchCondition type is identical in export
-      trueSteps: step.trueSteps.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap)),
-      falseSteps: step.falseSteps.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap)),
+      trueSteps: step.trueSteps.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap, envRefMap)),
+      falseSteps: step.falseSteps.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap, envRefMap)),
     };
   }
   if (step.type === 'fanout') {
     return {
       id: step.id,
       type: 'fanout',
-      lanes: step.lanes.map((lane) => lane.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap))),
+      lanes: step.lanes.map((lane) => lane.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap, envRefMap))),
+    };
+  }
+  if (step.type === 'set_env') {
+    return {
+      id: step.id,
+      type: 'set_env',
+      envRef: step.envId != null ? (envRefMap.get(step.envId) ?? null) : null,
     };
   }
   if (step.type === 'stop') {
@@ -160,6 +167,10 @@ export async function exportProject(opts: ExportOptions): Promise<Blob> {
     });
   }
 
+  // Build env ref map: env ID → env name (used by set_env steps)
+  const envRefMap = new Map<number, string>();
+  environments.forEach((e) => envRefMap.set(e.id, e.name));
+
   // Build automations with serialized steps
   let exportAutomations: ExportAutomation[] | undefined;
   if (automations && automations.length > 0) {
@@ -170,7 +181,8 @@ export async function exportProject(opts: ExportOptions): Promise<Blob> {
       return {
         _ref: ref,
         name: a.name,
-        steps: a.steps.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap)),
+        envName: a.envId != null ? (envRefMap.get(a.envId) ?? null) : null,
+        steps: a.steps.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap, envRefMap)),
       };
     });
   }
@@ -261,6 +273,10 @@ export async function exportProjectPlain(opts: ExportOptions): Promise<string> {
     });
   }
 
+  // Build env ref map: env ID → env name (used by set_env steps)
+  const envRefMapPlain = new Map<number, string>();
+  environments.forEach((e) => envRefMapPlain.set(e.id, e.name));
+
   // Build automations with serialized steps
   let exportAutomations: ExportAutomation[] | undefined;
   if (automations && automations.length > 0) {
@@ -271,7 +287,8 @@ export async function exportProjectPlain(opts: ExportOptions): Promise<string> {
       return {
         _ref: ref,
         name: a.name,
-        steps: a.steps.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap)),
+        envName: a.envId != null ? (envRefMapPlain.get(a.envId) ?? null) : null,
+        steps: a.steps.map((s) => serializeAutomationStep(s, requestRefMap, dataFileRefMap, envRefMapPlain)),
       };
     });
   }
@@ -306,6 +323,7 @@ export function deserializeAutomationStep(
   step: ExportAutomationStep,
   requestRefToId: Map<string, number>,
   dataFileRefToId?: Map<string, number>,
+  envNameToId?: Map<string, number>,
 ): AutomationStep {
   const base = { id: step.id, type: step.type } as AutomationStep;
 
@@ -328,7 +346,7 @@ export function deserializeAutomationStep(
       id: step.id,
       type: 'repeat',
       count: step.count,
-      steps: step.steps.map((s) => deserializeAutomationStep(s, requestRefToId, dataFileRefToId)),
+      steps: step.steps.map((s) => deserializeAutomationStep(s, requestRefToId, dataFileRefToId, envNameToId)),
     };
   }
   if (step.type === 'csv_iterator') {
@@ -337,7 +355,7 @@ export function deserializeAutomationStep(
       type: 'csv_iterator',
       dataFileId: step.dataFileRef != null && dataFileRefToId ? (dataFileRefToId.get(step.dataFileRef) ?? null) : null,
       limit: step.limit ?? null,
-      steps: step.steps.map((s) => deserializeAutomationStep(s, requestRefToId, dataFileRefToId)),
+      steps: step.steps.map((s) => deserializeAutomationStep(s, requestRefToId, dataFileRefToId, envNameToId)),
     };
   }
   if (step.type === 'branch') {
@@ -345,15 +363,22 @@ export function deserializeAutomationStep(
       id: step.id,
       type: 'branch',
       condition: step.condition as any,
-      trueSteps: step.trueSteps.map((s) => deserializeAutomationStep(s, requestRefToId, dataFileRefToId)),
-      falseSteps: step.falseSteps.map((s) => deserializeAutomationStep(s, requestRefToId, dataFileRefToId)),
+      trueSteps: step.trueSteps.map((s) => deserializeAutomationStep(s, requestRefToId, dataFileRefToId, envNameToId)),
+      falseSteps: step.falseSteps.map((s) => deserializeAutomationStep(s, requestRefToId, dataFileRefToId, envNameToId)),
     };
   }
   if (step.type === 'fanout') {
     return {
       id: step.id,
       type: 'fanout',
-      lanes: step.lanes.map((lane) => lane.map((s) => deserializeAutomationStep(s, requestRefToId, dataFileRefToId))),
+      lanes: step.lanes.map((lane) => lane.map((s) => deserializeAutomationStep(s, requestRefToId, dataFileRefToId, envNameToId))),
+    };
+  }
+  if (step.type === 'set_env') {
+    return {
+      id: step.id,
+      type: 'set_env',
+      envId: step.envRef != null && envNameToId ? (envNameToId.get(step.envRef) ?? null) : null,
     };
   }
   if (step.type === 'stop') {

@@ -98,11 +98,13 @@ export type ExportAutomationStep =
   | { id: string; type: 'csv_iterator'; dataFileRef: string | null; limit?: number | null; steps: ExportAutomationStep[] }
   | { id: string; type: 'fanout'; lanes: ExportAutomationStep[][] }
   | { id: string; type: 'stop' }
-  | { id: string; type: 'log'; scope: string; object: string };
+  | { id: string; type: 'log'; scope: string; object: string }
+  | { id: string; type: 'set_env'; envRef: string | null };
 
 export interface ExportAutomation {
   _ref: string;
   name: string;
+  envName?: string | null;
   steps: ExportAutomationStep[];
 }
 

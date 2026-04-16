@@ -43,6 +43,7 @@ export interface Request {
   created_at: string;
   updated_at: string;
   imported: boolean;
+  env_id: number | null;
 }
 
 export interface TestResult {
@@ -131,6 +132,7 @@ export interface AppState {
   activeAutomationId: number | null;
   activeEnvironmentId: number | null;
   activeDataFileId: number | null;
+  error: { message: string; showReset: boolean } | null;
 }
 
 export interface AppContextType {
@@ -177,7 +179,9 @@ export type AppAction =
   | { type: 'DELETE_DATA_FILE'; payload: number }
   | { type: 'SET_ACTIVE_DATA_FILE'; payload: number | null }
   | { type: 'SET_ACTIVE_AUTOMATION'; payload: number | null }
-  | { type: 'SET_ACTIVE_ENVIRONMENT'; payload: number | null };
+  | { type: 'SET_ACTIVE_ENVIRONMENT'; payload: number | null }
+  | { type: 'SHOW_ERROR'; payload: { message: string; showReset: boolean } }
+  | { type: 'CLEAR_ERROR' };
 
 export type BranchCondition =
   | { type: 'lastRequestPass' }
@@ -198,7 +202,8 @@ export type AutomationStep =
   | { id: string; type: 'branch'; condition: BranchCondition; trueSteps: AutomationStep[]; falseSteps: AutomationStep[] }
   | { id: string; type: 'fanout'; lanes: AutomationStep[][] }
   | { id: string; type: 'stop' }
-  | { id: string; type: 'log'; scope: LogScope; object: string };
+  | { id: string; type: 'log'; scope: LogScope; object: string }
+  | { id: string; type: 'set_env'; envId: number | null };
 
 export interface Automation {
   id: number;
@@ -207,6 +212,7 @@ export interface Automation {
   steps: AutomationStep[];
   createdAt: string;
   updatedAt: string;
+  envId: number | null;
 }
 
 export interface AutomationRequestResult {
