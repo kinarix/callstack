@@ -228,6 +228,8 @@ fn get_db_stats(db: tauri::State<'_, Database>) -> Result<serde_json::Value, Str
         conn.query_row(&format!("SELECT COUNT(*) FROM {}", table), [], |row| row.get::<_, i64>(0))
             .map_err(|e| e.to_string())
     };
+    // Checkpoint the WAL into the main DB file so the file size is accurate
+    let _ = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");
     let db_path = crate::database::db_path()
         .map(|p| p.to_string_lossy().to_string())
         .unwrap_or_default();
