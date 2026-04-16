@@ -71,6 +71,58 @@ export function EnvIcon() {
   );
 }
 
+/** Local env — monitor/desktop */
+export function EnvLocalIcon() {
+  return (
+    <svg className={`${styles.treeIcon} ${styles.treeIconEnv}`} width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <rect x="1.5" y="2" width="10" height="7" rx="1" stroke="currentColor" strokeWidth="1.2" fill="currentColor" fillOpacity="0.12" />
+      <path d="M4.5 11h4M6.5 9v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Dev env — wrench/spanner */
+export function EnvDevIcon() {
+  return (
+    <svg className={`${styles.treeIcon} ${styles.treeIconEnv}`} width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M9.5 2.5a2.5 2.5 0 0 0-2.4 3.1L2.8 9.9a.9.9 0 1 0 1.3 1.3l4.3-4.3A2.5 2.5 0 0 0 9.5 2.5z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" fill="currentColor" fillOpacity="0.12" />
+      <circle cx="9.5" cy="3.5" r="0.6" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** Testing/QA/UAT/Canary — flask/beaker */
+export function EnvTestIcon() {
+  return (
+    <svg className={`${styles.treeIcon} ${styles.treeIconEnv}`} width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M4.5 2h4M5 2v4L2.5 10a.8.8 0 0 0 .7 1.2h6.6a.8.8 0 0 0 .7-1.2L8 6V2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3 8.5h7" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+      <circle cx="5.5" cy="9.5" r="0.6" fill="currentColor" />
+      <circle cx="7.5" cy="10" r="0.5" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** Prod env — rocket */
+export function EnvProdIcon() {
+  return (
+    <svg className={`${styles.treeIcon} ${styles.treeIconEnv}`} width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M6.5 1.5C6.5 1.5 9.5 3 9.5 6.5L8 8H5L3.5 6.5C3.5 3 6.5 1.5 6.5 1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" fill="currentColor" fillOpacity="0.15" />
+      <path d="M5 8l-.8 2.5M8 8l.8 2.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+      <circle cx="6.5" cy="5.5" r="1" stroke="currentColor" strokeWidth="1" />
+    </svg>
+  );
+}
+
+export function EnvIconFor({ name }: { name: string }) {
+  const n = name.toLowerCase();
+  if (n.includes('local')) return <EnvLocalIcon />;
+  if (n.includes('prod')) return <EnvProdIcon />;
+  if (n.includes('dev')) return <EnvDevIcon />;
+  if (n.includes('test') || n.includes('qa') || n.includes('uat') || n.includes('canary') || n.includes('staging')) return <EnvTestIcon />;
+  return <EnvIcon />;
+}
+
 export function ImportIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
@@ -133,6 +185,36 @@ export function NewAutomationIcon() {
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" style={{ color: 'var(--accent-get)' }}>
       <polygon points="3,2 11,7 3,12" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
       <path d="M10.5 3.5V7.5M8.5 5.5H12.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function DataFileIcon() {
+  return (
+    <svg className={`${styles.treeIcon} ${styles.treeIconDataset}`} width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden style={{ flexShrink: 0 }}>
+      <ellipse cx="6.5" cy="3.5" rx="4.5" ry="1.5" stroke="currentColor" strokeWidth="1.2" fill="currentColor" fillOpacity="0.15"/>
+      <path d="M2 3.5v3c0 .83 2.01 1.5 4.5 1.5S11 7.33 11 6.5v-3" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M2 6.5v3c0 .83 2.01 1.5 4.5 1.5S11 10.33 11 9.5v-3" stroke="currentColor" strokeWidth="1.2"/>
+    </svg>
+  );
+}
+
+export function DatasetItemIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden style={{ flexShrink: 0, color: 'var(--accent-delete)', opacity: 0.85 }}>
+      <path d="M2.5 1.5h5L9.5 4v6.5a.5.5 0 0 1-.5.5h-6a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5Z" stroke="currentColor" strokeWidth="1.1" fill="currentColor" fillOpacity="0.1"/>
+      <path d="M7.5 1.5V4H9.5" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"/>
+      <path d="M4 6h4M4 8h3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+export function NewDataFileIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden style={{ flexShrink: 0, color: 'var(--accent-delete)' }}>
+      <ellipse cx="6" cy="4" rx="4" ry="1.4" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M2 4v3c0 .77 1.79 1.4 4 1.4" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M10.5 8v4M8.5 10h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
     </svg>
   );
 }

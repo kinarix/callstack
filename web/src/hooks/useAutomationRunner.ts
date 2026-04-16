@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import type { Request, KeyValue, AutomationRequestResult, TestStatus, AutomationStep, BranchCondition, LogEntry } from '../lib/types';
+import type { Request, KeyValue, AutomationRequestResult, TestStatus, AutomationStep, BranchCondition, LogEntry, DataFile } from '../lib/types';
+import { parseCsv } from '../lib/parseCsv';
 import { resolveTemplate } from '../lib/template';
 import { runScript } from './useScriptRunner';
 import { loadSecrets } from '../lib/secrets';
@@ -82,6 +83,7 @@ export function useAutomationRunner() {
   });
 
   const cancelledRef = useRef(false);
+  const dataFilesRef = useRef<DataFile[]>([]);
 
   // Returns true if execution should stop (stop step hit or cancelled)
   const executeSteps = useCallback(async (
@@ -93,6 +95,7 @@ export function useAutomationRunner() {
     collectedResults: AutomationRequestResult[],
     pushResult: (r: AutomationRequestResult) => void,
     onLog?: (entry: Omit<LogEntry, 'id'>) => void,
+    containerLabel?: string,
   ): Promise<'stop' | 'cancelled' | 'done'> => {
     for (const step of steps) {
       if (cancelledRef.current) return 'cancelled';
@@ -109,7 +112,7 @@ export function useAutomationRunner() {
       if (step.type === 'repeat') {
         for (let i = 0; i < step.count; i++) {
           if (cancelledRef.current) return 'cancelled';
-          const outcome = await executeSteps(step.steps, requestMap, envVarsRef, emittedVarsRef, secrets, collectedResults, pushResult, onLog);
+          const outcome = await executeSteps(step.steps, requestMap, envVarsRef, emittedVarsRef, secrets, collectedResults, pushResult, onLog, 'Repeat');
           if (outcome === 'stop' || outcome === 'cancelled') return outcome;
         }
         continue;
@@ -118,7 +121,7 @@ export function useAutomationRunner() {
       if (step.type === 'branch') {
         const lastResult = collectedResults.length > 0 ? collectedResults[collectedResults.length - 1] : null;
         const branch = evaluateCondition(step.condition, lastResult, emittedVarsRef.current) ? step.trueSteps : step.falseSteps;
-        const outcome = await executeSteps(branch, requestMap, envVarsRef, emittedVarsRef, secrets, collectedResults, pushResult, onLog);
+        const outcome = await executeSteps(branch, requestMap, envVarsRef, emittedVarsRef, secrets, collectedResults, pushResult, onLog, 'Branch');
         if (outcome === 'stop' || outcome === 'cancelled') return outcome;
         continue;
       }
@@ -131,7 +134,7 @@ export function useAutomationRunner() {
           if (cancelledRef.current) return 'cancelled';
           const laneEmitted = { current: { ...snapshotEmitted } };
           const laneEnv = { current: [...snapshotEnvVars] };
-          const outcome = await executeSteps(lane, requestMap, laneEnv, laneEmitted, secrets, collectedResults, pushResult, onLog);
+          const outcome = await executeSteps(lane, requestMap, laneEnv, laneEmitted, secrets, collectedResults, pushResult, onLog, 'Fanout');
           if (outcome === 'stop' || outcome === 'cancelled') return outcome;
           // Merge lane mutations back (last lane wins on conflict)
           Object.assign(emittedVarsRef.current, laneEmitted.current);
@@ -170,6 +173,25 @@ export function useAutomationRunner() {
             kind: 'automation',
             message: `[${label}] ${JSON.stringify(data, null, 2)}`,
           });
+        }
+        continue;
+      }
+
+      if (step.type === 'csv_iterator') {
+        if (step.dataFileId == null) continue;
+        const dataFile = dataFilesRef.current.find((d) => d.id === step.dataFileId);
+        if (!dataFile || !dataFile.content.trim()) continue;
+        const { headers, rows } = parseCsv(dataFile.content);
+        const limitedRows = step.limit != null ? rows.slice(0, step.limit) : rows;
+        for (let rowIdx = 0; rowIdx < limitedRows.length; rowIdx++) {
+          if (cancelledRef.current) return 'cancelled';
+          const row = limitedRows[rowIdx];
+          const rowKeyValues: KeyValue[] = headers.map((h, i) => ({ key: `#${h}`, value: row[i] ?? '', enabled: true }));
+          const rowEnvRef = { current: [...envVarsRef.current, ...rowKeyValues] };
+          const rowData: Record<string, string> = Object.fromEntries(headers.map((h, i) => [h, row[i] ?? '']));
+          const rowPushResult = (r: AutomationRequestResult) => pushResult({ ...r, rowIndex: rowIdx + 1, rowData, containerLabel: 'Iterator' });
+          const outcome = await executeSteps(step.steps, requestMap, rowEnvRef, emittedVarsRef, secrets, collectedResults, rowPushResult, onLog, 'Iterator');
+          if (outcome === 'stop' || outcome === 'cancelled') return outcome;
         }
         continue;
       }
@@ -296,6 +318,7 @@ export function useAutomationRunner() {
             requestParams: effectiveParams.filter((p) => p.enabled !== false && p.key.trim()),
             requestHeaders: effectiveHeaders.filter((h) => h.enabled !== false && h.key.trim()),
             requestBody: effectiveBody.trim() || undefined,
+            containerLabel,
           };
         } catch (e) {
           result = {
@@ -313,10 +336,10 @@ export function useAutomationRunner() {
             requestParams: effectiveParams.filter((p) => p.enabled !== false && p.key.trim()),
             requestHeaders: effectiveHeaders.filter((h) => h.enabled !== false && h.key.trim()),
             requestBody: effectiveBody.trim() || undefined,
+            containerLabel,
           };
         }
 
-        collectedResults.push(result);
         pushResult(result);
       }
     }
@@ -331,8 +354,10 @@ export function useAutomationRunner() {
       envVars: KeyValue[],
       activeEnvId: number | null,
       onLog?: (entry: Omit<LogEntry, 'id'>) => void,
+      dataFiles?: DataFile[],
     ): Promise<{ results: AutomationRequestResult[]; durationMs: number; overallStatus: TestStatus | 'ERROR' }> => {
       cancelledRef.current = false;
+      dataFilesRef.current = dataFiles ?? [];
       const startedAt = Date.now();
 
       // Count request steps for progress tracking
@@ -342,7 +367,15 @@ export function useAutomationRunner() {
           if (s.type === 'request') n++;
           else if (s.type === 'repeat') n += s.count * countRequestSteps(s.steps);
           else if (s.type === 'branch') n += Math.max(countRequestSteps(s.trueSteps), countRequestSteps(s.falseSteps));
-    else if (s.type === 'fanout') n += s.lanes.reduce((sum, lane) => sum + countRequestSteps(lane), 0);
+          else if (s.type === 'fanout') n += s.lanes.reduce((sum, lane) => sum + countRequestSteps(lane), 0);
+          else if (s.type === 'csv_iterator') {
+            const dataFile = dataFilesRef.current.find((d) => d.id === s.dataFileId);
+            if (dataFile && dataFile.content.trim()) {
+              const { rows } = parseCsv(dataFile.content);
+              const rowCount = s.limit != null ? Math.min(rows.length, s.limit) : rows.length;
+              n += rowCount * countRequestSteps(s.steps);
+            }
+          }
         }
         return n;
       }
@@ -363,6 +396,7 @@ export function useAutomationRunner() {
       const secrets = activeEnvId != null ? loadSecrets(activeEnvId) : [];
 
       const pushResult = (r: AutomationRequestResult) => {
+        collectedResults.push(r);
         setRunState((prev) => ({
           ...prev,
           results: [...collectedResults],

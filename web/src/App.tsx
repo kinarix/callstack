@@ -5,6 +5,7 @@ import { Sidebar } from './components/Sidebar/Sidebar';
 import { RequestBuilder } from './components/RequestBuilder/RequestBuilder';
 import AutomationView from './components/AutomationView/AutomationView';
 import EnvironmentView from './components/EnvironmentView/EnvironmentView';
+import DataFileView from './components/DataFileView/DataFileView';
 import { Footer } from './components/Footer/Footer';
 import { SettingsModal } from './components/SettingsModal/SettingsModal';
 import styles from './App.module.css';
@@ -14,7 +15,7 @@ import { formatBody } from './lib/formatBody';
 
 function AppContent() {
   const { state, dispatch } = useApp();
-  const { loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations, createRequest, duplicateRequest, getLastResponse } = useDatabase();
+  const { loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations, listDataFiles, createRequest, duplicateRequest, getLastResponse } = useDatabase();
   const { settings, setZoom, setShortcut, resetSettings } = useSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -65,11 +66,12 @@ function AppContent() {
 
       // Load all child data BEFORE dispatching anything, so the first render with projects
       // also has requests/automations — eliminates the "blank intermediate state" flash.
-      const [allRequests, allFolders, allEnvs, allAutomations] = await Promise.all([
+      const [allRequests, allFolders, allEnvs, allAutomations, allDataFiles] = await Promise.all([
         Promise.all(projects.map((p) => loadUserRequests(p.id))).then((r) => r.flat()),
         Promise.all(projects.map((p) => loadFolders(p.id))).then((r) => r.flat()),
         Promise.all(projects.map((p) => listEnvironments(p.id))).then((r) => r.flat()),
         Promise.all(projects.map((p) => listAutomations(p.id))).then((r) => r.flat()),
+        Promise.all(projects.map((p) => listDataFiles(p.id))).then((r) => r.flat()),
       ]);
 
       // Pick initial project (LS pref → first project)
@@ -107,12 +109,13 @@ function AppContent() {
       dispatch({ type: 'SET_FOLDERS', payload: allFolders });
       dispatch({ type: 'SET_ENVIRONMENTS', payload: allEnvs });
       dispatch({ type: 'SET_AUTOMATIONS', payload: allAutomations });
+      dispatch({ type: 'SET_DATA_FILES', payload: allDataFiles });
       dispatch({ type: 'SET_CURRENT_PROJECT', payload: initialProjectId });
       if (restoredReqId != null) {
         dispatch({ type: 'SET_CURRENT_REQUEST', payload: restoredReqId });
       }
     });
-  }, [dispatch, loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations]);
+  }, [dispatch, loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations, listDataFiles]);
 
   // Persist current project across sessions
   useEffect(() => {
@@ -310,6 +313,12 @@ function AppContent() {
             ) : state.activeView === 'environment' && state.activeEnvironmentId !== null ? (
               <EnvironmentView
                 environmentId={state.activeEnvironmentId}
+                showExpandBtn={sidebarCollapsed}
+                onExpand={() => setSidebarCollapsed(false)}
+              />
+            ) : state.activeView === 'dataFile' && state.activeDataFileId !== null ? (
+              <DataFileView
+                dataFileId={state.activeDataFileId}
                 showExpandBtn={sidebarCollapsed}
                 onExpand={() => setSidebarCollapsed(false)}
               />

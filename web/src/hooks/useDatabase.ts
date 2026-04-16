@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import type { Project, Request, Folder, Response, Environment, KeyValue, Automation, AutomationRun, AutomationRequestResult, AutomationStep } from '../lib/types';
+import type { Project, Request, Folder, Response, Environment, DataFile, KeyValue, Automation, AutomationRun, AutomationRequestResult, AutomationStep } from '../lib/types';
 
 interface RawRequest {
   id: number;
@@ -432,6 +432,45 @@ export function useDatabase() {
     await invoke('delete_automation_run', { id });
   }, []);
 
+  // --- Data file methods ---
+
+  interface RawDataFile {
+    id: number;
+    projectId: number;
+    name: string;
+    content: string;
+    createdAt: string;
+    updatedAt: string;
+  }
+
+  const toDataFile = (r: RawDataFile): DataFile => ({
+    id: r.id,
+    project_id: r.projectId,
+    name: r.name,
+    content: r.content,
+    created_at: r.createdAt,
+    updated_at: r.updatedAt,
+  });
+
+  const listDataFiles = useCallback(async (projectId: number): Promise<DataFile[]> => {
+    const rows = await invoke<RawDataFile[]>('list_data_files', { projectId });
+    return rows.map(toDataFile);
+  }, []);
+
+  const createDataFile = useCallback(async (projectId: number, name: string, content: string): Promise<DataFile> => {
+    const r = await invoke<RawDataFile>('create_data_file', { projectId, name, content });
+    return toDataFile(r);
+  }, []);
+
+  const updateDataFile = useCallback(async (id: number, name: string, content: string): Promise<DataFile> => {
+    const r = await invoke<RawDataFile>('update_data_file', { id, name, content });
+    return toDataFile(r);
+  }, []);
+
+  const deleteDataFile = useCallback(async (id: number): Promise<void> => {
+    await invoke('delete_data_file', { id });
+  }, []);
+
   return {
     isReady: true, // Always ready — Rust manages the DB
     loadUserProjects,
@@ -458,6 +497,10 @@ export function useDatabase() {
     createEnvironment,
     updateEnvironment,
     deleteEnvironment,
+    listDataFiles,
+    createDataFile,
+    updateDataFile,
+    deleteDataFile,
     listAutomations,
     createAutomation,
     updateAutomation,

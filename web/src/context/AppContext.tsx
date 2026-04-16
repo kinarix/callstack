@@ -29,9 +29,13 @@ function appReducer(state: AppState, action: AppAction): AppState {
       const deletedRequestIds = new Set(
         state.requests.filter((r) => r.project_id === deletedProjectId).map((r) => r.id)
       );
+      const deletedDataFileIds = new Set(
+        state.dataFiles.filter((d) => d.project_id === deletedProjectId).map((d) => d.id)
+      );
       const activeEnvGone = state.activeEnvironmentId != null && deletedEnvIds.has(state.activeEnvironmentId);
       const activeAutomationGone = state.activeAutomationId != null && deletedAutomationIds.has(state.activeAutomationId);
       const activeRequestGone = state.currentRequestId != null && deletedRequestIds.has(state.currentRequestId);
+      const activeDataFileGone = state.activeDataFileId != null && deletedDataFileIds.has(state.activeDataFileId);
       return {
         ...state,
         projects: state.projects.filter((p) => p.id !== deletedProjectId),
@@ -39,11 +43,13 @@ function appReducer(state: AppState, action: AppAction): AppState {
         requests: state.requests.filter((r) => r.project_id !== deletedProjectId),
         environments: state.environments.filter((e) => e.project_id !== deletedProjectId),
         automations: state.automations.filter((a) => a.projectId !== deletedProjectId),
+        dataFiles: state.dataFiles.filter((d) => d.project_id !== deletedProjectId),
         currentProjectId: state.currentProjectId === deletedProjectId ? null : state.currentProjectId,
         currentRequestId: activeRequestGone ? null : state.currentRequestId,
         activeEnvironmentId: activeEnvGone ? null : state.activeEnvironmentId,
         activeAutomationId: activeAutomationGone ? null : state.activeAutomationId,
-        activeView: activeEnvGone || activeAutomationGone ? 'request' : state.activeView,
+        activeDataFileId: activeDataFileGone ? null : state.activeDataFileId,
+        activeView: activeEnvGone || activeAutomationGone || activeDataFileGone ? 'request' : state.activeView,
       };
     }
     case 'SET_REQUESTS':
@@ -182,6 +188,23 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, activeAutomationId: action.payload };
     case 'SET_ACTIVE_ENVIRONMENT':
       return { ...state, activeEnvironmentId: action.payload };
+    case 'SET_DATA_FILES':
+      return { ...state, dataFiles: action.payload };
+    case 'ADD_DATA_FILE':
+      return { ...state, dataFiles: [...state.dataFiles, action.payload] };
+    case 'UPDATE_DATA_FILE':
+      return { ...state, dataFiles: state.dataFiles.map((d) => d.id === action.payload.id ? action.payload : d) };
+    case 'DELETE_DATA_FILE': {
+      const gone = state.activeDataFileId === action.payload;
+      return {
+        ...state,
+        dataFiles: state.dataFiles.filter((d) => d.id !== action.payload),
+        activeDataFileId: gone ? null : state.activeDataFileId,
+        activeView: gone ? 'request' : state.activeView,
+      };
+    }
+    case 'SET_ACTIVE_DATA_FILE':
+      return { ...state, activeDataFileId: action.payload };
     default:
       return state;
   }
@@ -200,6 +223,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       requests: [],
       folders: [],
       environments: [],
+      dataFiles: [],
       currentResponse: null,
       isLoading: false,
       executingRequestId: null,
@@ -207,10 +231,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       expandedFolders: parseIds('callstack.expandedFolders'),
       logs: [],
       automations: [],
-      activeView: ((): 'request' | 'automation' | 'environment' => {
+      activeView: ((): 'request' | 'automation' | 'environment' | 'dataFile' => {
         const v = localStorage.getItem('callstack.activeView');
         if (v === 'automation') return 'automation';
         if (v === 'environment') return 'environment';
+        if (v === 'dataFile') return 'dataFile';
         return 'request';
       })(),
       activeAutomationId: ((): number | null => {
@@ -221,6 +246,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       })(),
       activeEnvironmentId: ((): number | null => {
         const v = localStorage.getItem('callstack.activeEnvironmentId');
+        if (!v) return null;
+        const n = parseInt(v, 10);
+        return Number.isFinite(n) ? n : null;
+      })(),
+      activeDataFileId: ((): number | null => {
+        const v = localStorage.getItem('callstack.activeDataFileId');
         if (!v) return null;
         const n = parseInt(v, 10);
         return Number.isFinite(n) ? n : null;
@@ -247,6 +278,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('callstack.activeEnvironmentId', String(state.activeEnvironmentId));
     }
   }, [state.activeEnvironmentId]);
+
+  useEffect(() => {
+    if (state.activeDataFileId == null) {
+      localStorage.removeItem('callstack.activeDataFileId');
+    } else {
+      localStorage.setItem('callstack.activeDataFileId', String(state.activeDataFileId));
+    }
+  }, [state.activeDataFileId]);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>

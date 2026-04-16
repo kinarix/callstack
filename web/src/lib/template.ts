@@ -46,7 +46,7 @@ export function resolveTemplate(text: string, variables: KeyValue[]): string {
 
   const activeVars = variables.filter((v) => v.enabled !== false && v.key.trim());
 
-  return text.replace(/\{\{\s*([\w.$-]+)\s*\}\}/g, (match, key) => {
+  return text.replace(/\{\{\s*([\w.$#-]+)\s*\}\}/g, (match, key) => {
     // Check env vars first (user override)
     const found = activeVars.find((v) => v.key === key);
     if (found !== undefined) return found.value;
@@ -60,6 +60,18 @@ export function resolveTemplate(text: string, variables: KeyValue[]): string {
     // Unknown token, leave intact
     return match;
   });
+}
+
+export function replaceTokensForValidation(text: string, contentType: string): string {
+  if (contentType.includes('json')) {
+    return text.replace(/"?\{\{\s*[\w.$#-]+\s*\}\}"?/g, (match) => {
+      if (match.startsWith('"') && match.endsWith('"')) return '"sample"';
+      if (match.startsWith('"')) return '"sample';
+      if (match.endsWith('"')) return 'sample"';
+      return '0';
+    });
+  }
+  return text.replace(/\{\{\s*[\w.$#-]+\s*\}\}/g, 'sample');
 }
 
 /** CodeMirror completion source for template tokens */

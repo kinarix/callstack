@@ -351,15 +351,142 @@
 }
 
 .resultsList {
-  width: 300px;
-  min-width: 220px;
+  min-width: 180px;
+  max-width: 600px;
   flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.resizeHandle {
+  width: 4px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: var(--border-primary);
+  transition: background 0.15s;
+}
+
+.resizeHandle:hover {
+  background: var(--accent-get);
+}
+
+.filterBar {
+  display: flex;
+  gap: 4px;
+  padding: 6px var(--space-1);
+  border-bottom: 1px solid var(--border-primary);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.filterBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.filterBtn:hover {
+  border-color: var(--border-primary);
+  color: var(--text-primary);
+}
+
+.filterBtnActive {
+  background: var(--bg-active);
+  border-color: var(--border-focus);
+  color: var(--text-primary);
+}
+
+.filterBtnPass.filterBtnActive {
+  border-color: rgba(16, 185, 129, 0.5);
+  color: var(--accent-get);
+}
+
+.filterBtnPartial.filterBtnActive {
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #f59e0b;
+}
+
+.filterBtnError.filterBtnActive {
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #ef4444;
+}
+
+.filterCount {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-tertiary);
+  background: var(--bg-hover);
+  border-radius: 8px;
+  padding: 0 4px;
+}
+
+.resultsListScroll {
+  flex: 1;
   overflow-y: auto;
-  border-right: 1px solid var(--border-primary);
   padding: var(--space-1);
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.filterEmpty {
+  padding: 24px 8px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.paginationBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: 6px;
+  border-top: 1px solid var(--border-primary);
+  flex-shrink: 0;
+}
+
+.pageBtn {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.pageBtn:hover:not(:disabled) {
+  border-color: var(--border-primary);
+  color: var(--text-primary);
+}
+
+.pageBtn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.pageInfo {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-secondary);
+  min-width: 48px;
+  text-align: center;
 }
 
 .detailPane {
@@ -390,6 +517,40 @@
   padding: 6px 10px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-secondary);
+}
+
+.resultActionBtn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 18px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+  transform-origin: center;
+}
+.resultActionBtnCopy {
+  color: var(--accent-get);
+}
+.resultActionBtnCopy:hover {
+  background: var(--bg-tertiary);
+  color: var(--accent-get);
+  transform: scale(1.4);
+}
+.resultActionBtnEmail {
+  color: var(--accent-post);
+}
+.resultActionBtnEmail:hover {
+  background: var(--bg-tertiary);
+  color: var(--accent-post);
+  transform: scale(1.4);
 }
 
 .logBlockName {
@@ -569,6 +730,18 @@
   flex-shrink: 0;
   font-family: var(--font-mono);
   letter-spacing: 0.02em;
+}
+
+.reqRowNum {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  color: var(--accent-patch);
+  background: color-mix(in srgb, var(--accent-patch) 12%, transparent);
+  border-radius: 3px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .reqName {
@@ -916,6 +1089,35 @@
   white-space: nowrap;
 }
 
+/* ─── Row data table ─────────────────────────────────────── */
+
+.rowDataTableWrap {
+  overflow-x: auto;
+  padding: 0 10px 10px;
+}
+
+.rowDataTable {
+  border-collapse: collapse;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.rowDataTh {
+  padding: 4px 10px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-secondary);
+}
+
+.rowDataTd {
+  padding: 4px 10px;
+  color: var(--text-primary);
+  border: 1px solid var(--border-secondary);
+}
+
 /* ─── Curl block ─────────────────────────────────────────── */
 
 .curlBlock {
@@ -1259,12 +1461,75 @@
   line-height: 1;
 }
 
-.chipRequest  { background: #3b82f6; }
-.chipDelay    { background: #f59e0b; }
-.chipRepeat   { background: #a855f7; }
-.chipBranch   { background: #f97316; }
-.chipStop     { background: #ef4444; }
-.chipLog      { background: #0ea5e9; }
+.chipRequest     { background: #3b82f6; }
+.chipDelay       { background: #f59e0b; }
+.chipRepeat      { background: #a855f7; }
+.chipBranch      { background: #f97316; }
+.chipStop        { background: #ef4444; }
+.chipLog         { background: #0ea5e9; }
+.chipCsvIterator { background: #a855f7; }
+
+.iteratorDatasetLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.iteratorLimitInput {
+  width: 56px;
+  font-size: 11.5px;
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 2px 6px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.iteratorLimitInput::placeholder {
+  color: var(--text-tertiary);
+}
+
+.iteratorLimitInput:focus {
+  outline: none;
+  border-color: var(--accent-patch);
+}
+
+.iteratorLimitInput::-webkit-inner-spin-button,
+.iteratorLimitInput::-webkit-outer-spin-button {
+  opacity: 0.5;
+}
+
+.csvIteratorVars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 12px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-primary);
+}
+
+.csvIteratorVar {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 2px 6px;
+  background: color-mix(in srgb, #a855f7 15%, transparent);
+  border: 1px solid color-mix(in srgb, #a855f7 30%, transparent);
+  border-radius: 4px;
+  color: #a855f7;
+}
+
+.csvIteratorNoFile {
+  padding: 4px 12px;
+  font-size: 11px;
+  color: var(--text-tertiary, var(--text-secondary));
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-primary);
+}
 
 .stepSelect {
   flex: 1;
