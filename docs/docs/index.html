@@ -263,6 +263,35 @@ brew install --cask callstack</code></pre>
       <h3 class="docs-h3">Runtime Variable Changes</h3>
       <p class="docs-p">Pre/post scripts can read and write environment variables at runtime using <code>env.get()</code> and <code>env.set()</code>. Runtime changes are not persisted back to the saved environment — they apply only for the current request execution.</p>
 
+      <h3 class="docs-h3">Recursive Variables</h3>
+      <p class="docs-p">Environment variables can reference other variables in the same environment using <code>{{variableName}}</code> syntax. CALLSTACK resolves them recursively at send time:</p>
+      <div class="code-block">
+        <div class="code-block-header"><span>Environment variables</span><button class="copy-btn">Copy</button></div>
+        <pre><code>BASE_URL   = https://api.example.com
+API_V2     = {{BASE_URL}}/v2
+USERS_URL  = {{API_V2}}/users   → resolves to https://api.example.com/v2/users</code></pre>
+      </div>
+      <p class="docs-p">Circular references are detected and left unresolved. Resolved values are cached per send, so each unique key is resolved only once.</p>
+
+      <h3 class="docs-h3">Dynamic Tokens</h3>
+      <p class="docs-p">Use built-in <code>$</code>-prefixed tokens anywhere you use <code>{{…}}</code> — URL, headers, body, params — to inject randomly-generated or time-based values without writing scripts:</p>
+      <div class="docs-table-wrap">
+        <table class="docs-table">
+          <thead><tr><th>Token</th><th>Output</th><th>Example</th></tr></thead>
+          <tbody>
+            <tr><td><code>{{$randomUUID}}</code></td><td>UUID v4</td><td><code>550e8400-e29b-41d4-a716-446655440000</code></td></tr>
+            <tr><td><code>{{$guid}}</code></td><td>Alias for $randomUUID</td><td></td></tr>
+            <tr><td><code>{{$timestamp}}</code></td><td>Unix timestamp (seconds)</td><td><code>1713177600</code></td></tr>
+            <tr><td><code>{{$isoTimestamp}}</code></td><td>ISO 8601 timestamp</td><td><code>2024-04-15T12:00:00Z</code></td></tr>
+            <tr><td><code>{{$randomEmail}}</code></td><td>Email address</td><td><code>john@example.com</code></td></tr>
+            <tr><td><code>{{$randomFullName}}</code></td><td>Full name</td><td><code>John Doe</code></td></tr>
+            <tr><td><code>{{$randomInt}}</code></td><td>Integer (0–1000)</td><td><code>543</code></td></tr>
+            <tr><td><code>{{$randomIP}}</code></td><td>IPv4 address</td><td><code>192.168.1.1</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="docs-p">25+ tokens are available covering names, addresses, network values, colours, and lorem text. All tokens are listed in the autocomplete dropdown when you type <code>{{$</code> in any field.</p>
+
       <div class="callout callout-tip">
         <span class="callout-icon">💡</span>
         <div class="callout-body">
@@ -387,6 +416,10 @@ emitter.emit('createdUserId', userId);
           <div class="step-type-body"><strong>CSV Iterator</strong><span>Loop over data file rows</span></div>
         </div>
         <div class="step-type">
+          <span class="step-type-icon">⊙</span>
+          <div class="step-type-body"><strong>Set Env</strong><span>Switch active environment mid-run</span></div>
+        </div>
+        <div class="step-type">
           <span class="step-type-icon">🔀</span>
           <div class="step-type-body"><strong>Branch</strong><span>Conditional if/else</span></div>
         </div>
@@ -408,8 +441,9 @@ emitter.emit('createdUserId', userId);
       <ol class="steps">
         <li><div>Open a project and click the <strong>Automations</strong> tab. Click <strong>+ Automation</strong>.</div></li>
         <li><div>Add steps by clicking <strong>+</strong> in the visual builder. Choose a step type and configure it.</div></li>
-        <li><div>For <strong>Request</strong> steps, select a saved request from the dropdown and choose an environment.</div></li>
+        <li><div>For <strong>Request</strong> steps, select a saved request from the dropdown. You can pin an environment to each individual Request step — it overrides the automation's global environment for that step only.</div></li>
         <li><div>For <strong>CSV Iterator</strong> steps, select a data file from the project. Each row's columns become variables in nested steps.</div></li>
+        <li><div>For <strong>Set Env</strong> steps, choose the environment to activate from that point forward in the run. Useful for workflows that cross environment boundaries (e.g. create in dev, verify in staging).</div></li>
         <li><div>Click <strong>Run</strong> to execute. Watch the progress indicator and collect test results.</div></li>
       </ol>
 
