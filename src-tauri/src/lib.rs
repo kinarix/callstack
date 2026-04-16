@@ -233,7 +233,23 @@ fn get_db_stats(db: tauri::State<'_, Database>) -> Result<serde_json::Value, Str
     let db_path = crate::database::db_path()
         .map(|p| p.to_string_lossy().to_string())
         .unwrap_or_default();
-    let db_size_bytes: i64 = std::fs::metadata(&db_path).map(|m| m.len() as i64).unwrap_or(0);
+    let table_sizes: Vec<serde_json::Value> = {
+        let mut stmt = conn
+            .prepare("SELECT name, SUM(pgsize) FROM dbstat WHERE name NOT LIKE 'sqlite_%' GROUP BY name ORDER BY 2 DESC")
+            .map_err(|e| e.to_string())?;
+        let sizes = match stmt.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))) {
+            Err(_) => vec![],
+            Ok(rows) => rows
+                .filter_map(|r| r.ok())
+                .map(|(name, size)| serde_json::json!({ "name": name, "sizeBytes": size }))
+                .collect(),
+        };
+        sizes
+    };
+    let db_size_bytes: i64 = table_sizes
+        .iter()
+        .filter_map(|t| t.get("sizeBytes").and_then(|v| v.as_i64()))
+        .sum();
     Ok(serde_json::json!({
         "projects":        count("projects")?,
         "requests":        count("requests")?,
@@ -245,6 +261,7 @@ fn get_db_stats(db: tauri::State<'_, Database>) -> Result<serde_json::Value, Str
         "data_files":      count("data_files")?,
         "dbPath":          db_path,
         "dbSizeBytes":     db_size_bytes,
+        "tableSizes":      table_sizes,
     }))
 }
 

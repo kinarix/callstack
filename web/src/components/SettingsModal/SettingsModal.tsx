@@ -56,6 +56,7 @@ interface DbStats {
   data_files: number;
   dbPath: string;
   dbSizeBytes: number;
+  tableSizes: { name: string; sizeBytes: number }[];
 }
 
 interface LsEntry {
@@ -344,6 +345,17 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onReset, onR
                       <div className={styles.statCell}><span className={styles.statLabel}>Automation runs</span><span className={styles.statValue}>{dbStats.automation_runs}</span></div>
                       <div className={styles.statCell}><span className={styles.statLabel}>DB size</span><span className={styles.statValue}>{formatBytes(dbStats.dbSizeBytes)}</span></div>
                     </div>
+                    {dbStats.tableSizes.length > 0 && (
+                      <div className={styles.tableSizes}>
+                        <div className={styles.tableSizesTitle}>Table sizes</div>
+                        {dbStats.tableSizes.map((t) => (
+                          <div key={t.name} className={styles.tableSizeRow}>
+                            <span className={styles.tableSizeName}>{t.name}</span>
+                            <span className={styles.tableSizeVal}>{formatBytes(t.sizeBytes)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     <div className={styles.dbPathRow} title={dbStats.dbPath}>{dbStats.dbPath}</div>
                   </>
                 )}

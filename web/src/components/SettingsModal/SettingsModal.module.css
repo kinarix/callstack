@@ -79,6 +79,44 @@
   font-weight: 600;
 }
 
+.tableSizes {
+  margin-top: var(--space-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.tableSizesTitle {
+  padding: 4px 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tableSizeRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 8px;
+  font-size: 11.5px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.tableSizeRow:nth-child(even) {
+  background: var(--bg-secondary);
+}
+
+.tableSizeName {
+  color: var(--text-primary);
+}
+
+.tableSizeVal {
+  color: var(--text-tertiary);
+}
+
 .dbPathRow {
   margin-top: var(--space-1);
   font-size: 10.5px;
