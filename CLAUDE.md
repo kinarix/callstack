@@ -41,9 +41,14 @@ There are no automated tests.
 projects (id, user_email, name, description, created_at, updated_at)
 requests (id, project_id, user_email, name, method, url, params, headers, body, created_at, updated_at)
 responses (id, request_id, status, status_text, headers, body, time_ms, created_at)
+folders (id, project_id, name, created_at, updated_at)
+environments (id, project_id, name, variables, created_at, updated_at)
+automations (id, project_id, name, steps, created_at, updated_at)
+automation_runs (id, automation_id, status, results, created_at)
+data_files (id, project_id, name, content, created_at, updated_at)
 ```
 
-**Key structure**: Projects contain Requests via `project_id` foreign key. Cascading delete on project removal.
+**Key structure**: Projects contain Requests, Folders, Environments, Automations, and Data Files via `project_id` foreign key. Cascading delete on project removal.
 
 ### Key Files
 
