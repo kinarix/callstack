@@ -127,6 +127,7 @@
   height: 100%;
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
+  padding: 8px 0;
 }
 
 /* ── Resize handle ─────────────────────────────────────────── */

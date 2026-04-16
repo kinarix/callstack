@@ -474,7 +474,7 @@ function StepCard({ step, requests, automationProjectId, onChange, onRemove, dra
       return (
         <div className={styles.stepInner}>
           <span className={styles.stepDragHandle}>⠿</span>
-          <span className={`${styles.stepTypeChip} ${styles.chipRequest}`}>Request</span>
+          <span className={`${styles.stepTypeChip} ${styles.chipRequest}`}><span className={styles.chipIcon}>▷</span>Request</span>
           {req ? (
             <span className={styles.reqPill}>
               <span className={styles.reqPillMethod} style={{ color: methodColor(req.method) }}>{req.method}</span>
@@ -499,7 +499,7 @@ function StepCard({ step, requests, automationProjectId, onChange, onRemove, dra
       return (
         <div className={styles.stepInner}>
           <span className={styles.stepDragHandle}>⠿</span>
-          <span className={`${styles.stepTypeChip} ${styles.chipDelay}`}>Delay</span>
+          <span className={`${styles.stepTypeChip} ${styles.chipDelay}`}><span className={styles.chipIcon}>⏱</span>Delay</span>
           <input
             type="number"
             className={styles.stepNumberInput}
@@ -524,7 +524,7 @@ function StepCard({ step, requests, automationProjectId, onChange, onRemove, dra
         <div className={styles.stepContainer}>
           <div className={styles.stepInner}>
             <span className={styles.stepDragHandle}>⠿</span>
-            <span className={`${styles.stepTypeChip} ${styles.chipRepeat}`}>Repeat</span>
+            <span className={`${styles.stepTypeChip} ${styles.chipRepeat}`}><span className={styles.chipIcon}>↻</span>Repeat</span>
             <input
               type="number"
               className={styles.stepNumberInput}
@@ -581,7 +581,7 @@ function StepCard({ step, requests, automationProjectId, onChange, onRemove, dra
         <div className={styles.stepContainer}>
           <div className={styles.stepInner}>
             <span className={styles.stepDragHandle}>⠿</span>
-            <span className={`${styles.stepTypeChip} ${styles.chipBranch}`}>Branch</span>
+            <span className={`${styles.stepTypeChip} ${styles.chipBranch}`}><span className={styles.chipIcon}>⑂</span>Branch</span>
             <ConditionSelector
               value={step.condition.type}
               onChange={(t) => {
@@ -710,7 +710,7 @@ function StepCard({ step, requests, automationProjectId, onChange, onRemove, dra
       return (
         <div className={styles.stepInner}>
           <span className={styles.stepDragHandle}>⠿</span>
-          <span className={`${styles.stepTypeChip} ${styles.chipStop}`}>Stop</span>
+          <span className={`${styles.stepTypeChip} ${styles.chipStop}`}><span className={styles.chipIcon}>◼</span>Stop</span>
           <span className={styles.stepHint}>End execution here</span>
           {isConfirmingDelete ? (
             <span className={styles.stepConfirm}>

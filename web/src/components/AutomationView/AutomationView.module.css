@@ -1076,7 +1076,7 @@
 }
 
 .flowEndNode {
-  border-color: var(--text-tertiary);
+  border-color: #ef4444;
 }
 
 .flowNodeLabel {
@@ -1089,6 +1089,10 @@
 
 .flowStartNode .flowNodeLabel {
   color: var(--accent-get);
+}
+
+.flowEndNode .flowNodeLabel {
+  color: #ef4444;
 }
 
 .flowConnector {
@@ -1245,6 +1249,14 @@
   color: #fff;
   flex-shrink: 0;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.chipIcon {
+  font-size: 12px;
+  line-height: 1;
 }
 
 .chipRequest  { background: #3b82f6; }

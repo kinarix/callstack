@@ -42,7 +42,6 @@ const editorTheme = EditorView.theme({
   },
   '.cm-content': {
     lineHeight: '1.6',
-    padding: '8px 0',
   },
   '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--accent-get)' },
   '.cm-selectionBackground': { backgroundColor: 'rgba(59, 130, 246, 0.3) !important' },
