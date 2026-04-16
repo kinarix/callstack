@@ -1,85 +1,101 @@
 import { useState, useEffect, useMemo } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
-import { json } from '@codemirror/lang-json';
 import { xml } from '@codemirror/lang-xml';
-import { EditorView, ViewPlugin, Decoration, DecorationSet } from '@codemirror/view';
-import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
+import { EditorView } from '@codemirror/view';
+import { StreamLanguage, syntaxHighlighting, HighlightStyle, StringStream } from '@codemirror/language';
 import { autocompletion } from '@codemirror/autocomplete';
 import { tags } from '@lezer/highlight';
-import { RangeSet } from '@codemirror/state';
 import type { KeyValue } from '../../lib/types';
-import { templateCompletion, resolveTemplate } from '../../lib/template';
-import { FAKER_TOKENS } from '../../lib/templateTokens';
+import { templateCompletion, replaceTokensForValidation } from '../../lib/template';
 import styles from './BodyEditor.module.css';
 
-// Custom decorations
-const templateDecoration = Decoration.mark({ class: 'cm-template-token' });
-const propertyNameDecoration = Decoration.mark({ class: 'cm-property-name-override' });
+interface JsonTemplateState {
+  inTemplateString: boolean;
+}
 
-// Plugin to highlight template tokens and property names
-const highlightPlugin = ViewPlugin.define(
-  (view) => {
-    let decorations = buildDecorations(view);
+const jsonTemplateMode: StreamLanguage<JsonTemplateState> = StreamLanguage.define({
+  startState: () => ({ inTemplateString: false }),
+  token(stream: StringStream, state: JsonTemplateState): string | null {
+    if (stream.eatSpace()) return null;
 
-    return {
-      decorations,
-      update(update: any) {
-        if (update.docChanged) {
-          decorations = buildDecorations(update.view);
-        }
-      },
-    };
+    // Inside a "{{...}}" string — waiting for closing " after }}
+    if (state.inTemplateString) {
+      if (stream.peek() === '"') {
+        stream.next();
+        state.inTemplateString = false;
+        return 'string';
+      }
+      // Template token inside the string
+      if (stream.match(/\{\{\s*\$[\w.-]+\s*\}\}/)) return 'meta';
+      if (stream.match(/\{\{\s*#[\w.-]+\s*\}\}/)) return 'keyword';
+      if (stream.match(/\{\{\s*[\w.-]+\s*\}\}/)) return 'variableName.definition';
+      // Consume any other chars in the string before/after template
+      stream.next();
+      return 'string';
+    }
+
+    // Unquoted template tokens
+    if (stream.match(/\{\{\s*\$[\w.-]+\s*\}\}/)) return 'meta';
+    if (stream.match(/\{\{\s*#[\w.-]+\s*\}\}/)) return 'keyword';
+    if (stream.match(/\{\{\s*[\w.-]+\s*\}\}/)) return 'variableName.definition';
+
+    // Strings
+    if (stream.peek() === '"') {
+      // Check if this string contains a template token: "...{{...}}..."
+      if (stream.match(/"[^"]*\{\{/, false)) {
+        stream.next(); // consume opening "
+        state.inTemplateString = true;
+        return 'string';
+      }
+      // Normal string — consume until closing "
+      stream.next();
+      while (!stream.eol()) {
+        const ch = stream.next();
+        if (ch === '\\') { stream.next(); continue; }
+        if (ch === '"') break;
+      }
+      if (stream.match(/\s*:/, false)) return 'propertyName';
+      return 'string';
+    }
+
+    // Numbers
+    if (stream.match(/-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/)) return 'number';
+
+    // Keywords
+    if (stream.match('true') || stream.match('false')) return 'atom';
+    if (stream.match('null')) return 'atom';
+
+    // Punctuation
+    const ch = stream.next();
+    if (ch === ':') return 'punctuation';
+    if (ch === ',' || ch === '{' || ch === '}' || ch === '[' || ch === ']') return 'punctuation';
+
+    return null;
   },
-  {
-    decorations: (v) => v.decorations,
-  }
-);
+  indent(state: JsonTemplateState, textAfter: string, context) {
+    const unit = context.unit;
+    const closing = /^\s*[}\]]/.test(textAfter);
+    // Count open vs close braces/brackets before current line
+    const doc = context.state.doc;
+    const line = context.state.doc.lineAt(context.pos);
+    let depth = 0;
+    for (let i = 1; i < line.number; i++) {
+      const l = doc.line(i).text;
+      for (const c of l) {
+        if (c === '{' || c === '[') depth++;
+        if (c === '}' || c === ']') depth--;
+      }
+    }
+    if (closing) depth--;
+    return Math.max(0, depth) * unit;
+  },
+});
 
-function buildDecorations(view: any): DecorationSet {
-  const decorations: any[] = [];
-  const text = view.state.doc.toString();
-
-  // Highlight template tokens: {{...}}
-  const templateRegex = /\{\{[\w.$-]+\}\}/g;
-  let match;
-  while ((match = templateRegex.exec(text)) !== null) {
-    decorations.push(templateDecoration.range(match.index, match.index + match[0].length));
-  }
-
-  // Highlight property names: "..." followed by :
-  // This ensures property names are highlighted even when JSON syntax is broken by unquoted templates
-  const propertyRegex = /"([^"\\]|\\.)*"\s*:/g;
-  while ((match = propertyRegex.exec(text)) !== null) {
-    // Only highlight the quoted string part, not the colon
-    const colonIndex = text.indexOf(':', match.index);
-    decorations.push(propertyNameDecoration.range(match.index, colonIndex));
-  }
-
-  return decorations.length ? RangeSet.of(decorations, true) : Decoration.none;
-}
-
-function resolveTemplatesForValidation(body: string, envVars: KeyValue[]): string {
-  // Create sample variables with actual env vars or placeholder values
-  const sampleVars: KeyValue[] = [
-    // Include actual env vars
-    ...envVars.filter(v => v.enabled !== false),
-    // Add sample values for faker tokens if not already defined as env vars
-    ...FAKER_TOKENS.map(token => ({
-      key: token.name,
-      value: token.example || `sample-${token.name}`,
-      enabled: true,
-    })).filter(t => !envVars.some(v => v.key === t.key)),
-  ];
-
-  return resolveTemplate(body, sampleVars);
-}
-
-function validateBodyContent(body: string, contentType: string, envVars: KeyValue[] = []): { valid: boolean; error?: string } {
+function validateBodyContent(body: string, contentType: string): { valid: boolean; error?: string } {
   const trimmed = body.trim();
   if (!trimmed) return { valid: true };
 
-  // Resolve templates for validation
-  const resolvedBody = resolveTemplatesForValidation(trimmed, envVars);
+  const resolvedBody = replaceTokensForValidation(trimmed, contentType);
 
   if (contentType.includes('json')) {
     try {
@@ -94,12 +110,11 @@ function validateBodyContent(body: string, contentType: string, envVars: KeyValu
   if (contentType.includes('xml') || contentType.includes('html')) {
     try {
       const result = new DOMParser().parseFromString(resolvedBody, contentType.includes('xml') ? 'application/xml' : 'text/html');
-      const hasError = result.getElementsByTagName('parsererror').length > 0;
-      if (hasError) {
+      if (result.getElementsByTagName('parsererror').length > 0) {
         return { valid: false, error: 'Invalid XML/HTML' };
       }
       return { valid: true };
-    } catch (e) {
+    } catch {
       return { valid: false, error: 'Invalid XML/HTML' };
     }
   }
@@ -116,7 +131,7 @@ function formatBodySize(body: string): string {
 }
 
 function getLanguage(contentType: string) {
-  if (contentType.includes('json')) return json();
+  if (contentType.includes('json')) return jsonTemplateMode;
   if (contentType.includes('xml') || contentType.includes('html')) return xml();
   return null;
 }
@@ -146,16 +161,6 @@ const appEditorTheme = EditorView.theme({
     border: 'none',
     color: 'var(--text-tertiary)',
   },
-  // Template token highlighting
-  '.cm-template-token': {
-    color: 'var(--syntax-function)',
-    fontWeight: '500',
-  },
-  // Property name override (ensures consistent color even when JSON parser fails on unquoted templates)
-  '.cm-property-name-override': {
-    color: 'var(--syntax-property)',
-  },
-  // Autocomplete dropdown
   '.cm-tooltip': {
     backgroundColor: 'var(--bg-secondary)',
     border: '1px solid var(--border-primary)',
@@ -187,9 +192,12 @@ const appHighlight = HighlightStyle.define([
   { tag: tags.keyword, color: 'var(--syntax-keyword)' },
   { tag: tags.string, color: 'var(--syntax-string)' },
   { tag: [tags.number, tags.integer, tags.float], color: 'var(--syntax-number)' },
-  { tag: [tags.bool, tags.null], color: 'var(--syntax-bool)' },
+  { tag: [tags.bool, tags.null, tags.atom], color: 'var(--syntax-bool)' },
   { tag: tags.propertyName, color: 'var(--syntax-property)' },
   { tag: tags.comment, color: 'var(--syntax-comment)', fontStyle: 'italic' },
+  { tag: tags.meta, color: '#a855f7' },
+  { tag: tags.keyword, color: '#f59e0b' },
+  { tag: tags.definition(tags.variableName), color: '#10b981' },
 ]);
 
 const appThemeExtension = [appEditorTheme, syntaxHighlighting(appHighlight)];
@@ -214,6 +222,7 @@ export function BodyEditor({
   secrets = [],
 }: BodyEditorProps) {
   const [validation, setValidation] = useState<{ valid: boolean; error?: string }>({ valid: true });
+  const hasCsvTokens = /\{\{\s*#[\w.-]+\s*\}\}/.test(body);
   const extensions = useMemo(() => {
     const lang = getLanguage(contentType);
     const envVarKeys = envVars.filter((v) => v.enabled !== false && v.key).map((v) => v.key);
@@ -221,14 +230,13 @@ export function BodyEditor({
     const baseExtensions = lang ? [...appThemeExtension, lang] : appThemeExtension;
     return [
       ...baseExtensions,
-      highlightPlugin,
       autocompletion({ override: [templateCompletion(envVarKeys, secretKeys)], activateOnTyping: true }),
     ];
   }, [contentType, envVars, secrets]);
 
   useEffect(() => {
-    setValidation(validateBodyContent(body, contentType, envVars));
-  }, [body, contentType, envVars]);
+    setValidation(validateBodyContent(body, contentType));
+  }, [body, contentType]);
 
   return (
     <div className={styles.editor}>
@@ -250,6 +258,11 @@ export function BodyEditor({
         />
         {copyFlash && <div className={styles.copyToast}>Copied to clipboard</div>}
       </div>
+      {hasCsvTokens && (
+        <div className={styles.csvInfo}>
+          # variables will be resolved during CSV iteration
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Automation, Environment, Folder, Project, Request } from '../../lib/types';
+import type { Automation, DataFile, Environment, Folder, Project, Request } from '../../lib/types';
 import { RequestItem } from './RequestItem';
 import {
   AutomationIcon,
@@ -7,12 +7,16 @@ import {
   BinIcon,
   Chevron,
   CopyIcon,
+  DataFileIcon,
+  DatasetItemIcon,
   EnvIcon,
+  EnvIconFor,
   ExportIcon,
   FolderIcon,
   ImportedFolderIcon,
   ImportIcon,
   NewAutomationIcon,
+  NewDataFileIcon,
   NewEnvIcon,
   NewFolderIcon,
   PenIcon,
@@ -76,9 +80,10 @@ export interface ProjectRowProps {
   editingRequestId: number | null;
   onEditRequest: (id: number | null) => void;
   currentRequestId: number | null;
-  activeView: 'request' | 'automation' | 'environment';
+  activeView: 'request' | 'automation' | 'environment' | 'dataFile';
   activeAutomationId: number | null;
   activeEnvironmentId: number | null;
+  activeDataFileId: number | null;
   executingRequestId: number | null;
   dragOver: DragOver;
   dragging: React.MutableRefObject<{ kind: 'request' | 'folder'; id: number } | null>;
@@ -109,6 +114,15 @@ export interface ProjectRowProps {
   editingAutomationId: number | null;
   onStartEditAutomation: (id: number) => void;
   onAutomationRenameCommit: (id: number, name: string) => void;
+  projectDataFiles: DataFile[];
+  expandedDataFileSections: Set<number>;
+  setExpandedDataFileSections: React.Dispatch<React.SetStateAction<Set<number>>>;
+  onCreateDataFile: (projectId: number, e: React.MouseEvent) => void;
+  onDataFileClick: (dataFile: DataFile) => void;
+  onDeleteDataFile: (id: number, name: string, e: React.MouseEvent) => void;
+  editingDataFileId: number | null;
+  onStartEditDataFile: (id: number) => void;
+  onDataFileRenameCommit: (id: number, name: string) => void;
   onProjectImport: (e: React.MouseEvent, projectId: number) => void;
   onFolderImport: (e: React.MouseEvent, folderId: number, projectId: number) => void;
   onProjectExport: (e: React.MouseEvent, projectId: number) => void;
@@ -146,6 +160,7 @@ export function ProjectRow({
   activeView,
   activeAutomationId,
   activeEnvironmentId,
+  activeDataFileId,
   executingRequestId,
   dragOver,
   dragging,
@@ -176,6 +191,15 @@ export function ProjectRow({
   editingAutomationId,
   onStartEditAutomation,
   onAutomationRenameCommit,
+  projectDataFiles,
+  expandedDataFileSections,
+  setExpandedDataFileSections,
+  onCreateDataFile,
+  onDataFileClick,
+  onDeleteDataFile,
+  editingDataFileId,
+  onStartEditDataFile,
+  onDataFileRenameCommit,
   onProjectImport,
   onFolderImport,
   onProjectExport,
@@ -198,6 +222,7 @@ export function ProjectRow({
   const isProjectDragOver = dragOver?.type === 'project' && dragOver.id === project.id;
   const envsExpanded = expandedEnvSections.has(project.id);
   const automationsExpanded = expandedAutomationSections.has(project.id);
+  const dataFilesExpanded = expandedDataFileSections.has(project.id);
 
   function renderRequestRow(request: Request) {
     return (
@@ -484,7 +509,7 @@ export function ProjectRow({
                       className={`${styles.treeRow} ${styles.envRow} ${activeView === 'environment' && activeEnvironmentId === env.id ? styles.selected : ''}`}
                       onClick={() => editingEnvId !== env.id && onEnvClick(env)}
                     >
-                      <EnvIcon />
+                      <EnvIconFor name={env.name} />
                       {editingEnvId === env.id ? (
                         <InlineNameInput
                           initialValue={env.name}
@@ -574,6 +599,74 @@ export function ProjectRow({
                         className={`${styles.iconBtn} ${styles.deleteBtn}`}
                         onClick={(e) => onDeleteAutomation(automation.id, automation.name, e)}
                         title="Delete automation"
+                      >
+                        <BinIcon />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Data Files group */}
+          <div className={styles.folder}>
+            <div
+              className={styles.folderRow}
+              onClick={() => setExpandedDataFileSections((prev) => {
+                const next = new Set(prev);
+                if (next.has(project.id)) next.delete(project.id);
+                else next.add(project.id);
+                return next;
+              })}
+            >
+              <Chevron expanded={dataFilesExpanded} />
+              <DataFileIcon />
+              <span className={styles.folderName}>Datasets</span>
+              {projectDataFiles.length > 0 && (
+                <span className={styles.countBadge}>{projectDataFiles.length}</span>
+              )}
+              <button
+                className={`${styles.iconBtn} ${styles.folderAddBtn} ${styles.addBtn}`}
+                onClick={(e) => onCreateDataFile(project.id, e)}
+                title="Add data file"
+              >
+                <NewDataFileIcon />
+              </button>
+            </div>
+            {dataFilesExpanded && (
+              <div className={styles.folderChildren}>
+                {projectDataFiles.length === 0 ? (
+                  <div className={`${styles.treeRow} ${styles.emptyRow}`}>No data files</div>
+                ) : (
+                  projectDataFiles.map((dataFile) => (
+                    <div
+                      key={dataFile.id}
+                      className={`${styles.treeRow} ${styles.envRow} ${activeView === 'dataFile' && activeDataFileId === dataFile.id ? styles.selected : ''}`}
+                      onClick={() => editingDataFileId !== dataFile.id && onDataFileClick(dataFile)}
+                    >
+                      <DatasetItemIcon />
+                      {editingDataFileId === dataFile.id ? (
+                        <InlineNameInput
+                          initialValue={dataFile.name}
+                          className={styles.folderNameInput}
+                          onCommit={(name) => onDataFileRenameCommit(dataFile.id, name)}
+                          onCancel={() => onDataFileRenameCommit(dataFile.id, dataFile.name)}
+                        />
+                      ) : (
+                        <span className={styles.envName}>{dataFile.name}</span>
+                      )}
+                      <button
+                        className={`${styles.iconBtn} ${styles.renameBtn}`}
+                        onClick={(e) => { e.stopPropagation(); onStartEditDataFile(dataFile.id); }}
+                        title="Rename data file"
+                      >
+                        <PenIcon />
+                      </button>
+                      <button
+                        className={`${styles.iconBtn} ${styles.deleteBtn}`}
+                        onClick={(e) => onDeleteDataFile(dataFile.id, dataFile.name, e)}
+                        title="Delete data file"
                       >
                         <BinIcon />
                       </button>

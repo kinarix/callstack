@@ -7,7 +7,7 @@ import styles from './RequestBuilder.module.css';
 import { useApp } from '../../context/AppContext';
 import { useHttpClient } from '../../hooks/useHttpClient';
 import { useDatabase } from '../../hooks/useDatabase';
-import { resolveTemplate } from '../../lib/template';
+import { resolveTemplate, replaceTokensForValidation } from '../../lib/template';
 import { runScript } from '../../hooks/useScriptRunner';
 import type { EnvMutations } from '../../hooks/useScriptRunner';
 import { loadSecrets, saveSecrets } from '../../lib/secrets';
@@ -530,7 +530,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
 
     // Validate body before sending
     const contentType = getContentType(request.headers);
-    const error = validateBody(resolvedBody, contentType);
+    const error = validateBody(replaceTokensForValidation(resolvedBody, contentType), contentType);
     if (error) {
       setBodyError(error);
       return;
