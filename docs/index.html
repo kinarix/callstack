@@ -146,6 +146,8 @@
         <ul class="feature-list">
           <li>Multiple environments per project</li>
           <li>Template syntax in URL, headers, body, params</li>
+          <li>Recursive variable resolution (vars that reference other vars)</li>
+          <li>25+ dynamic tokens: <code>{{$randomUUID}}</code>, <code>{{$isoTimestamp}}</code>, and more</li>
           <li>Secrets (masked values with hold-to-reveal)</li>
           <li>Runtime variable manipulation in scripts</li>
           <li>Environment switching without editing requests</li>
@@ -177,6 +179,7 @@
         <ul class="feature-list">
           <li>Sequential request chains</li>
           <li>CSV Iterator — loop over data files row by row</li>
+          <li>Set Env — switch environments mid-run</li>
           <li>Branch on status code, emitted values, or test results</li>
           <li>Fanout — parallel execution lanes</li>
           <li>Repeat loops with iteration context</li>
