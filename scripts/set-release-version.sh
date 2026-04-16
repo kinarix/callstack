@@ -48,6 +48,13 @@ echo ""
 echo -e "${GREEN}Version updated: ${YELLOW}$CURRENT_VERSION${NC} → ${YELLOW}$NEW_VERSION${NC}"
 echo ""
 
+# Update Cargo.lock
+echo -e "${BLUE}Updating Cargo.lock...${NC}"
+cd "$REPO_ROOT/src-tauri"
+cargo update
+echo -e "${GREEN}✓${NC} Updated Cargo.lock"
+echo ""
+
 # Collect unpushed commit messages
 cd "$REPO_ROOT"
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)

@@ -1,6 +1,6 @@
 [package]
 name = "callstack"
-version = "0.5.3"
+version = "0.5.6"
 description = "A modern REST API testing tool"
 authors = ["Kinarix"]
 edition = "2021"
