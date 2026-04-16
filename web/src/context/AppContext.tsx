@@ -188,8 +188,17 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, activeAutomationId: action.payload };
     case 'SET_ACTIVE_ENVIRONMENT':
       return { ...state, activeEnvironmentId: action.payload };
-    case 'SET_DATA_FILES':
-      return { ...state, dataFiles: action.payload };
+    case 'SET_DATA_FILES': {
+      const dfIds = new Set(action.payload.map((d) => d.id));
+      const dfStillValid = state.activeDataFileId != null && dfIds.has(state.activeDataFileId);
+      return {
+        ...state,
+        dataFiles: action.payload,
+        activeDataFileId: dfStillValid ? state.activeDataFileId : null,
+        activeView:
+          !dfStillValid && state.activeView === 'dataFile' ? 'request' : state.activeView,
+      };
+    }
     case 'ADD_DATA_FILE':
       return { ...state, dataFiles: [...state.dataFiles, action.payload] };
     case 'UPDATE_DATA_FILE':

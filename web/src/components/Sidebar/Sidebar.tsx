@@ -590,10 +590,20 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
         dispatch({ type: 'UPDATE_REQUEST', payload: updated });
       }
 
-      // 7. Import automations if present
+      // 7. Import data files if present
+      const dataFileRefToId = new Map<string, number>();
+      if (manifest.dataFiles && manifest.dataFiles.length > 0) {
+        for (const df of manifest.dataFiles) {
+          const created = await createDataFile(project.id, df.name, df.content);
+          dispatch({ type: 'ADD_DATA_FILE', payload: created });
+          dataFileRefToId.set(df._ref, created.id);
+        }
+      }
+
+      // 8. Import automations if present
       if (manifest.automations && manifest.automations.length > 0) {
         for (const auto of manifest.automations) {
-          const deserializedSteps = auto.steps.map((s) => deserializeAutomationStep(s, requestRefToId));
+          const deserializedSteps = auto.steps.map((s) => deserializeAutomationStep(s, requestRefToId, dataFileRefToId));
           const created = await createAutomation(project.id, auto.name, deserializedSteps);
           dispatch({ type: 'ADD_AUTOMATION', payload: created });
         }
@@ -603,7 +613,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     } catch (err) {
       console.error('Failed to import .callstack archive:', err);
     }
-  }, [filePickerState, state.projects, createProject, createFolder, importRequests, createEnvironment, updateEnvironment, saveResponse, updateRequest, createAutomation, dispatch]);
+  }, [filePickerState, state.projects, state.dataFiles, createProject, createFolder, importRequests, createEnvironment, updateEnvironment, saveResponse, updateRequest, createDataFile, createAutomation, dispatch]);
 
   // ─── Export handlers ────────────────────────────────────────────────────────
 
@@ -677,8 +687,9 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
           responses = resps.filter(Boolean) as import('../../lib/types').Response[];
         }
 
-        // Include automations for the project
+        // Include automations and data files for the project
         const projectAutomations = automations.filter((a) => a.projectId === project.id);
+        const projectDataFiles = state.dataFiles.filter((d) => d.project_id === project.id);
 
         const exportOpts = {
           project,
@@ -686,6 +697,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
           requests: selectedRequests,
           environments: envs,
           automations: projectAutomations,
+          dataFiles: projectDataFiles,
           responses,
           selectedEnvironmentName,
         };

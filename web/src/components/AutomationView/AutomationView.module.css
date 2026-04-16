@@ -1392,7 +1392,10 @@
   transition: border-color 0.1s;
 }
 
-.stepCard_branch {
+.stepCard_branch,
+.stepCard_repeat,
+.stepCard_fanout,
+.stepCard_csv_iterator {
   width: max-content;
   min-width: 460px;
 }
@@ -1401,7 +1404,10 @@
   width: 100%;
 }
 
-.stepCardNested.stepCard_branch {
+.stepCardNested.stepCard_branch,
+.stepCardNested.stepCard_repeat,
+.stepCardNested.stepCard_fanout,
+.stepCardNested.stepCard_csv_iterator {
   width: max-content;
   min-width: 100%;
 }

@@ -45,19 +45,43 @@ export function resolveTemplate(text: string, variables: KeyValue[]): string {
   if (!text) return text;
 
   const activeVars = variables.filter((v) => v.enabled !== false && v.key.trim());
+  const resolvedCache = new Map<string, string>();
+
+  // Returns null if key is not a known env var (or is a circular ref)
+  function resolveValue(key: string, visited: Set<string>): string | null {
+    if (resolvedCache.has(key)) return resolvedCache.get(key)!;
+    if (visited.has(key)) return null; // circular reference — leave intact
+
+    const found = activeVars.find((v) => v.key === key);
+    if (!found) return null;
+
+    visited.add(key);
+    const resolved = found.value.replace(/\{\{\s*([\w.$#-]+)\s*\}\}/g, (match, k) => {
+      const envValue = resolveValue(k, visited);
+      if (envValue !== null) return envValue;
+
+      if (k.startsWith('$')) {
+        const fakerValue = resolveFakerToken(k);
+        if (fakerValue !== undefined) return fakerValue;
+      }
+
+      return match;
+    });
+    visited.delete(key);
+
+    resolvedCache.set(key, resolved);
+    return resolved;
+  }
 
   return text.replace(/\{\{\s*([\w.$#-]+)\s*\}\}/g, (match, key) => {
-    // Check env vars first (user override)
-    const found = activeVars.find((v) => v.key === key);
-    if (found !== undefined) return found.value;
+    const envValue = resolveValue(key, new Set());
+    if (envValue !== null) return envValue;
 
-    // Check faker tokens
     if (key.startsWith('$')) {
       const fakerValue = resolveFakerToken(key);
       if (fakerValue !== undefined) return fakerValue;
     }
 
-    // Unknown token, leave intact
     return match;
   });
 }

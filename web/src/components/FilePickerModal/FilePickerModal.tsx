@@ -257,6 +257,9 @@ export function FilePickerModal({ title, confirmLabel, onParsed, onCallstackPars
                 {callstackPreview.environmentCount > 0 && (
                   <span>{callstackPreview.environmentCount} environment{callstackPreview.environmentCount !== 1 ? 's' : ''}</span>
                 )}
+                {callstackPreview.dataFileCount > 0 && (
+                  <span>{callstackPreview.dataFileCount} data file{callstackPreview.dataFileCount !== 1 ? 's' : ''}</span>
+                )}
                 {callstackPreview.hasResponses && <span>responses included</span>}
               </div>
               <p className={styles.formatBadge}>

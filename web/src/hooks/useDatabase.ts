@@ -2,6 +2,18 @@ import { useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import type { Project, Request, Folder, Response, Environment, DataFile, KeyValue, Automation, AutomationRun, AutomationRequestResult, AutomationStep } from '../lib/types';
 
+/** Ensure every nested step type has its required arrays, guarding against old DB data. */
+function normalizeSteps(steps: AutomationStep[]): AutomationStep[] {
+  if (!Array.isArray(steps)) return [];
+  return steps.map((s) => {
+    if (s.type === 'repeat') return { ...s, steps: normalizeSteps(s.steps ?? []) };
+    if (s.type === 'csv_iterator') return { ...s, steps: normalizeSteps((s as any).steps ?? []) };
+    if (s.type === 'branch') return { ...s, trueSteps: normalizeSteps((s as any).trueSteps ?? []), falseSteps: normalizeSteps((s as any).falseSteps ?? []) };
+    if (s.type === 'fanout') return { ...s, lanes: ((s as any).lanes ?? []).map((l: AutomationStep[]) => normalizeSteps(l ?? [])) };
+    return s;
+  });
+}
+
 interface RawRequest {
   id: number;
   projectId: number;
@@ -392,17 +404,17 @@ export function useDatabase() {
 
   const listAutomations = useCallback(async (projectId: number): Promise<Automation[]> => {
     const rows = await invoke<{ id: number; projectId: number; name: string; steps: string; createdAt: string; updatedAt: string }[]>('list_automations', { projectId });
-    return rows.map((r) => ({ ...r, steps: JSON.parse(r.steps || '[]') as AutomationStep[] }));
+    return rows.map((r) => ({ ...r, steps: normalizeSteps(JSON.parse(r.steps || '[]')) }));
   }, []);
 
   const createAutomation = useCallback(async (projectId: number, name: string, steps: AutomationStep[]): Promise<Automation> => {
     const r = await invoke<{ id: number; projectId: number; name: string; steps: string; createdAt: string; updatedAt: string }>('create_automation', { projectId, name, steps: JSON.stringify(steps) });
-    return { ...r, steps: JSON.parse(r.steps || '[]') as AutomationStep[] };
+    return { ...r, steps: normalizeSteps(JSON.parse(r.steps || '[]')) };
   }, []);
 
   const updateAutomation = useCallback(async (id: number, name: string, steps: AutomationStep[]): Promise<Automation> => {
     const r = await invoke<{ id: number; projectId: number; name: string; steps: string; createdAt: string; updatedAt: string }>('update_automation', { id, name, steps: JSON.stringify(steps) });
-    return { ...r, steps: JSON.parse(r.steps || '[]') as AutomationStep[] };
+    return { ...r, steps: normalizeSteps(JSON.parse(r.steps || '[]')) };
   }, []);
 
   const deleteAutomation = useCallback(async (id: number): Promise<void> => {

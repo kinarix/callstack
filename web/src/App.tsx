@@ -61,6 +61,7 @@ function AppContent() {
     loadUserProjects(null).then(async (projects) => {
       if (projects.length === 0) {
         dispatch({ type: 'SET_PROJECTS', payload: projects });
+        setReady(true);
         return;
       }
 
@@ -114,7 +115,8 @@ function AppContent() {
       if (restoredReqId != null) {
         dispatch({ type: 'SET_CURRENT_REQUEST', payload: restoredReqId });
       }
-    });
+      setReady(true);
+    }).catch(() => setReady(true));
   }, [dispatch, loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations, listDataFiles]);
 
   // Persist current project across sessions
@@ -124,21 +126,19 @@ function AppContent() {
     }
   }, [state.currentProjectId]);
 
-  // Show window and fade splash when app is ready
+  // Show window when app is ready (whether or not there are projects)
   useEffect(() => {
-    if (state.projects.length > 0 && !ready) {
-      (async () => {
-        try {
-          const { getCurrentWebviewWindow } = await import('@tauri-apps/api/webviewWindow');
-          const window = getCurrentWebviewWindow();
-          await window.show();
-        } catch {
-          // Not in Tauri (dev mode), safe to ignore
-        }
-        setReady(true);
-      })();
-    }
-  }, [state.projects.length, ready]);
+    if (!ready) return;
+    (async () => {
+      try {
+        const { getCurrentWebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+        const window = getCurrentWebviewWindow();
+        await window.show();
+      } catch {
+        // Not in Tauri (dev mode), safe to ignore
+      }
+    })();
+  }, [ready]);
 
   // Load last response whenever selected request changes
   useEffect(() => {
