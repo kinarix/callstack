@@ -104,6 +104,8 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onReset, onR
   const [copiedSnapshot, setCopiedSnapshot] = useState(false);
   const [copiedFullSnapshot, setCopiedFullSnapshot] = useState(false);
   const [copyingFull, setCopyingFull] = useState(false);
+  const [compacting, setCompacting] = useState(false);
+  const [compactDone, setCompactDone] = useState(false);
   const [appVersion, setAppVersion] = useState<string>(() => {
     try { return (window as any).__APP_VERSION__ ?? __APP_VERSION__; } catch { return __APP_VERSION__; }
   });
@@ -187,6 +189,22 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onReset, onR
       setCopyingFull(false);
     }
   }, [appVersion, dbStats, lsInfo]);
+
+  const handleCompact = useCallback(async () => {
+    setCompacting(true);
+    setCompactDone(false);
+    try {
+      await invoke('compact_database');
+      setCompactDone(true);
+      setTimeout(() => setCompactDone(false), 2000);
+      // Refresh stats to show updated sizes
+      invoke<DbStats>('get_db_stats').then(setDbStats).catch(() => {});
+    } catch {
+      // swallow — button stays available for retry
+    } finally {
+      setCompacting(false);
+    }
+  }, []);
 
   const handleClearUiState = useCallback(() => {
     // Remove every localStorage key under the callstack namespace.
@@ -356,6 +374,12 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onReset, onR
                         ))}
                       </div>
                     )}
+                    <div className={styles.compactRow}>
+                      <button className={styles.compactBtn} onClick={handleCompact} disabled={compacting}>
+                        {compacting ? 'Compacting…' : compactDone ? 'Done' : 'Compact database'}
+                      </button>
+                      <span className={styles.compactDesc}>Runs VACUUM to reclaim space from deleted records</span>
+                    </div>
                     <div className={styles.dbPathRow} title={dbStats.dbPath}>{dbStats.dbPath}</div>
                   </>
                 )}

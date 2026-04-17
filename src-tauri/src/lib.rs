@@ -265,12 +265,27 @@ fn get_db_stats(db: tauri::State<'_, Database>) -> Result<serde_json::Value, Str
     }))
 }
 
+#[tauri::command]
+fn compact_database(db: tauri::State<'_, Database>) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute_batch("VACUUM;").map_err(|e| e.to_string())?;
+    conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);").map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let db = Database::new().expect("Failed to initialize database");
     let cancel_handle = CancelHandle(tokio::sync::Mutex::new(None));
 
     tauri::Builder::default()
+        .setup(|app| {
+            let db = app.state::<Database>();
+            if let Ok(conn) = db.conn.lock() {
+                let _ = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");
+            }
+            Ok(())
+        })
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
@@ -325,6 +340,7 @@ pub fn run() {
             pick_attachment_files,
             reset_all_data,
             get_db_stats,
+            compact_database,
             get_full_snapshot,
             write_clipboard,
             open_system_url,
