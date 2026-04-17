@@ -174,7 +174,7 @@
 .urlErrorSpan {
   text-decoration-line: underline;
   text-decoration-style: wavy;
-  text-decoration-color: #ef4444;
+  text-decoration-color: var(--accent-delete);
   text-decoration-skip-ink: none;
 }
 

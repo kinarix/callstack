@@ -475,10 +475,13 @@
   background: var(--bg-hover);
 }
 
-.collapseBtn {
-  border: 1px solid var(--border-primary);
-}
 
 .settingsBtn {
   color: var(--accent-post);
+}
+
+.treeDivider {
+  flex-shrink: 0;
+  height: 1px;
+  background: var(--border-primary);
 }

@@ -321,23 +321,23 @@
 }
 
 .summaryStatusPass {
-  background: rgba(16, 185, 129, 0.15);
+  background: color-mix(in srgb, var(--accent-get) 15%, transparent);
   color: var(--accent-get);
 }
 
 .summaryStatusFail {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+  background: color-mix(in srgb, var(--accent-delete) 15%, transparent);
+  color: var(--accent-delete);
 }
 
 .summaryStatusPartial {
-  background: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
+  background: color-mix(in srgb, var(--accent-put) 15%, transparent);
+  color: var(--accent-put);
 }
 
 .summaryStatusError {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+  background: color-mix(in srgb, var(--accent-delete) 15%, transparent);
+  color: var(--accent-delete);
 }
 
 .summaryMeta {
@@ -359,8 +359,8 @@
   flex-shrink: 0;
 }
 .deleteFromDetailBtn:hover {
-  border-color: #ef4444;
-  color: #ef4444;
+  border-color: var(--accent-delete);
+  color: var(--accent-delete);
 }
 
 .rerunBtn {
@@ -477,18 +477,18 @@
 }
 
 .filterBtnPass.filterBtnActive {
-  border-color: rgba(16, 185, 129, 0.5);
+  border-color: color-mix(in srgb, var(--accent-get) 50%, transparent);
   color: var(--accent-get);
 }
 
 .filterBtnPartial.filterBtnActive {
-  border-color: rgba(245, 158, 11, 0.5);
-  color: #f59e0b;
+  border-color: color-mix(in srgb, var(--accent-put) 50%, transparent);
+  color: var(--accent-put);
 }
 
 .filterBtnError.filterBtnActive {
-  border-color: rgba(239, 68, 68, 0.5);
-  color: #ef4444;
+  border-color: color-mix(in srgb, var(--accent-delete) 50%, transparent);
+  color: var(--accent-delete);
 }
 
 .filterCount {
@@ -741,13 +741,13 @@
 }
 
 .reqRowPass {
-  border-color: rgba(16, 185, 129, 0.4);
-  background: rgba(16, 185, 129, 0.04);
+  border-color: color-mix(in srgb, var(--accent-get) 40%, transparent);
+  background: color-mix(in srgb, var(--accent-get) 4%, transparent);
 }
 
 .reqRowFail {
-  border-color: rgba(239, 68, 68, 0.4);
-  background: rgba(239, 68, 68, 0.04);
+  border-color: color-mix(in srgb, var(--accent-delete) 40%, transparent);
+  background: color-mix(in srgb, var(--accent-delete) 4%, transparent);
 }
 
 .reqRowDragging {
@@ -775,8 +775,8 @@
 }
 
 .reqStatusPass { color: var(--accent-get); }
-.reqStatusFail { color: #ef4444; }
-.reqStatusError { color: #ef4444; }
+.reqStatusFail { color: var(--accent-delete); }
+.reqStatusError { color: var(--accent-delete); }
 
 .spinner {
   width: 14px;
@@ -835,7 +835,7 @@
 }
 
 .reqMetaPass { color: var(--accent-get); }
-.reqMetaFail { color: #ef4444; }
+.reqMetaFail { color: var(--accent-delete); }
 
 .removeBtn {
   display: none;
@@ -966,10 +966,10 @@
   border-radius: 3px;
 }
 
-.runStatusPass { background: rgba(16, 185, 129, 0.15); color: var(--accent-get); }
-.runStatusFail { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-.runStatusPartial { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
-.runStatusError { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.runStatusPass { background: color-mix(in srgb, var(--accent-get) 15%, transparent); color: var(--accent-get); }
+.runStatusFail { background: color-mix(in srgb, var(--accent-delete) 15%, transparent); color: var(--accent-delete); }
+.runStatusPartial { background: color-mix(in srgb, var(--accent-put) 15%, transparent); color: var(--accent-put); }
+.runStatusError { background: color-mix(in srgb, var(--accent-delete) 15%, transparent); color: var(--accent-delete); }
 
 .runMeta {
   flex: 1;
@@ -1023,7 +1023,7 @@
 }
 
 .statusError {
-  color: #ef4444;
+  color: var(--accent-delete);
   font-size: 12px;
 }
 
@@ -1058,18 +1058,18 @@
 }
 
 .testRowPass {
-  background: rgba(16, 185, 129, 0.05);
-  border-color: rgba(16, 185, 129, 0.2);
+  background: color-mix(in srgb, var(--accent-get) 5%, transparent);
+  border-color: color-mix(in srgb, var(--accent-get) 20%, transparent);
 }
 
 .testRowFail {
-  background: rgba(239, 68, 68, 0.05);
-  border-color: rgba(239, 68, 68, 0.2);
+  background: color-mix(in srgb, var(--accent-delete) 5%, transparent);
+  border-color: color-mix(in srgb, var(--accent-delete) 20%, transparent);
 }
 
 .testRowWarn {
-  background: rgba(245, 158, 11, 0.05);
-  border-color: rgba(245, 158, 11, 0.2);
+  background: color-mix(in srgb, var(--accent-put) 5%, transparent);
+  border-color: color-mix(in srgb, var(--accent-put) 20%, transparent);
 }
 
 .testIcon {
@@ -1079,8 +1079,8 @@
 }
 
 .testIconPass { color: var(--accent-get); }
-.testIconFail { color: #ef4444; }
-.testIconWarn { color: #f59e0b; }
+.testIconFail { color: var(--accent-delete); }
+.testIconWarn { color: var(--accent-put); }
 
 .testDesc {
   flex: 1;
@@ -1089,7 +1089,7 @@
 }
 
 .testError {
-  color: #ef4444;
+  color: var(--accent-delete);
   font-size: 11px;
   margin-top: 2px;
 }
@@ -1349,7 +1349,7 @@
 }
 
 .flowEndNode {
-  border-color: #ef4444;
+  border-color: var(--accent-delete);
 }
 
 .flowNodeLabel {
@@ -1365,7 +1365,7 @@
 }
 
 .flowEndNode .flowNodeLabel {
-  color: #ef4444;
+  color: var(--accent-delete);
 }
 
 .flowConnector {
@@ -1413,8 +1413,8 @@
 
 .dropZoneActive {
   height: 20px;
-  background: rgba(59, 130, 246, 0.2);
-  border: 2px dashed #3b82f6;
+  background: color-mix(in srgb, var(--accent-post) 20%, transparent);
+  border: 2px dashed var(--accent-post);
 }
 
 .stepConnector {
@@ -1445,7 +1445,7 @@
   width: 100%;
   max-width: 460px;
   height: 2px;
-  background: #3b82f6;
+  background: var(--accent-post);
   border-radius: 1px;
   margin: 2px 0;
   pointer-events: none;
@@ -1492,11 +1492,11 @@
 }
 
 .stepCard_stop {
-  border-color: rgba(239, 68, 68, 0.4);
+  border-color: color-mix(in srgb, var(--accent-delete) 40%, transparent);
 }
 
 .stepCard_stop:hover {
-  border-color: rgba(239, 68, 68, 0.7);
+  border-color: color-mix(in srgb, var(--accent-delete) 70%, transparent);
 }
 
 .stepInner {
@@ -1538,14 +1538,14 @@
   line-height: 1;
 }
 
-.chipRequest     { background: #3b82f6; }
-.chipDelay       { background: #f59e0b; }
-.chipRepeat      { background: #a855f7; }
-.chipBranch      { background: #f97316; }
-.chipStop        { background: #ef4444; }
-.chipLog         { background: #0ea5e9; }
-.chipCsvIterator { background: #a855f7; }
-.chipSetEnv      { background: #10b981; }
+.chipRequest     { background: var(--accent-post); }
+.chipDelay       { background: var(--accent-put); }
+.chipRepeat      { background: var(--accent-patch); }
+.chipBranch      { background: var(--accent-put); }
+.chipStop        { background: var(--accent-delete); }
+.chipLog         { background: var(--accent-options); }
+.chipCsvIterator { background: var(--accent-patch); }
+.chipSetEnv      { background: var(--accent-get); }
 
 .iteratorDatasetLabel {
   font-size: 12px;
@@ -1595,10 +1595,10 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   padding: 2px 6px;
-  background: color-mix(in srgb, #a855f7 15%, transparent);
-  border: 1px solid color-mix(in srgb, #a855f7 30%, transparent);
+  background: color-mix(in srgb, var(--accent-patch) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-patch) 30%, transparent);
   border-radius: 4px;
-  color: #a855f7;
+  color: var(--accent-patch);
 }
 
 .csvIteratorNoFile {
@@ -1706,8 +1706,8 @@
 }
 
 .stepRemove:hover {
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.1);
+  color: var(--accent-delete);
+  background: color-mix(in srgb, var(--accent-delete) 10%, transparent);
 }
 
 .stepConfirm {
@@ -1731,25 +1731,25 @@
 }
 
 .stepConfirmYes {
-  background: rgba(34, 197, 94, 0.2);
-  border-color: #22c55e;
-  color: #22c55e;
+  background: color-mix(in srgb, var(--accent-get) 20%, transparent);
+  border-color: var(--accent-get);
+  color: var(--accent-get);
 }
 
 .stepConfirmYes:hover {
-  background: rgba(34, 197, 94, 0.3);
-  border-color: #16a34a;
+  background: color-mix(in srgb, var(--accent-get) 30%, transparent);
+  border-color: var(--accent-get);
 }
 
 .stepConfirmNo {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: #ef4444;
-  color: #ef4444;
+  background: color-mix(in srgb, var(--accent-delete) 20%, transparent);
+  border-color: var(--accent-delete);
+  color: var(--accent-delete);
 }
 
 .stepConfirmNo:hover {
-  background: rgba(239, 68, 68, 0.3);
-  border-color: #dc2626;
+  background: color-mix(in srgb, var(--accent-delete) 30%, transparent);
+  border-color: var(--accent-delete);
 }
 
 /* ─── Custom dropdowns ────────────────────────────────────── */
@@ -1971,7 +1971,7 @@
 
 /* ─── Fan-out ─────────────────────────────────────────────── */
 
-.chipFanout { background: #06b6d4; }
+.chipFanout { background: var(--accent-options); }
 
 .stepCard_fanout {
   width: 952px; /* same footprint as branch (2 × 476px) */
@@ -2018,8 +2018,8 @@
   height: 36px;
   background: transparent;
   border: none;
-  border-bottom: 2px solid #06b6d4;
-  color: #06b6d4;
+  border-bottom: 2px solid var(--accent-options);
+  color: var(--accent-options);
   font-size: 13px;
   font-weight: 600;
   cursor: default;
@@ -2048,7 +2048,7 @@
   cursor: pointer;
   transition: color 0.15s, background 0.15s;
 }
-.fanoutTabClose:hover { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+.fanoutTabClose:hover { color: var(--accent-delete); background: color-mix(in srgb, var(--accent-delete) 10%, transparent); }
 
 .fanoutTabAdd {
   display: inline-flex;
@@ -2067,11 +2067,11 @@
   transition: color 0.15s;
   margin-bottom: -1px;
 }
-.fanoutTabAdd:hover { color: #06b6d4; }
+.fanoutTabAdd:hover { color: var(--accent-options); }
 
 .fanoutTabConfirmLabel {
   font-size: 11px;
-  color: #ef4444;
+  color: var(--accent-delete);
   font-weight: 500;
 }
 
@@ -2087,7 +2087,7 @@
   color: var(--accent-get);
   transition: background 0.15s;
 }
-.fanoutTabConfirmYes:hover { background: rgba(16, 185, 129, 0.15); }
+.fanoutTabConfirmYes:hover { background: color-mix(in srgb, var(--accent-get) 15%, transparent); }
 
 .fanoutTabConfirmNo {
   display: inline-flex;
@@ -2098,10 +2098,10 @@
   border-radius: 2px;
   font-size: 11px;
   cursor: pointer;
-  color: #ef4444;
+  color: var(--accent-delete);
   transition: background 0.15s;
 }
-.fanoutTabConfirmNo:hover { background: rgba(239, 68, 68, 0.1); }
+.fanoutTabConfirmNo:hover { background: color-mix(in srgb, var(--accent-delete) 10%, transparent); }
 
 /* ─── Past runs panel ─────────────────────────────────────── */
 
@@ -2205,12 +2205,12 @@
 }
 
 .clearConfirmYes {
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.4);
+  color: var(--accent-delete);
+  border-color: color-mix(in srgb, var(--accent-delete) 40%, transparent);
 }
 
 .clearConfirmYes:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: color-mix(in srgb, var(--accent-delete) 10%, transparent);
 }
 
 .clearConfirmNo:hover {
@@ -2245,10 +2245,10 @@
   align-self: flex-start;
 }
 
-.runStatusPass    { background: rgba(16, 185, 129, 0.15); color: var(--accent-get); }
-.runStatusFail    { background: rgba(239, 68, 68, 0.15);  color: #ef4444; }
-.runStatusPartial { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
-.runStatusError   { background: rgba(239, 68, 68, 0.15);  color: #ef4444; }
+.runStatusPass    { background: color-mix(in srgb, var(--accent-get) 15%, transparent); color: var(--accent-get); }
+.runStatusFail    { background: color-mix(in srgb, var(--accent-delete) 15%, transparent);  color: var(--accent-delete); }
+.runStatusPartial { background: color-mix(in srgb, var(--accent-put) 15%, transparent); color: var(--accent-put); }
+.runStatusError   { background: color-mix(in srgb, var(--accent-delete) 15%, transparent);  color: var(--accent-delete); }
 
 .runMeta {
   font-size: 11px;
@@ -2284,7 +2284,7 @@
 }
 
 .deleteRunBtn:hover {
-  color: #ef4444;
+  color: var(--accent-delete);
 }
 
 .runRowConfirming {

@@ -161,8 +161,8 @@
 
 .confirmNo {
   background: rgba(239, 68, 68, 0.2);
-  border-color: #ef4444;
-  color: #ef4444;
+  border-color: var(--accent-delete);
+  color: var(--accent-delete);
 }
 
 .confirmNo:hover {

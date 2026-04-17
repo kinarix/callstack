@@ -136,6 +136,36 @@
 
 }
 
+/* Bright accent theme — vivid / neon */
+[data-accent='bright'] {
+  --accent:          #00aaff;
+  --accent-get:      #00e896;
+  --accent-post:     #00aaff;
+  --accent-put:      #ffcc00;
+  --accent-delete:   #ff3b5c;
+  --accent-patch:    #cc44ff;
+  --accent-head:     #8899aa;
+  --accent-options:  #00ccff;
+  --status-success:  #00e896;
+  --status-error:    #ff3b5c;
+  --status-warning:  #ffcc00;
+}
+
+/* Mono accent theme — greyscale */
+[data-accent='mono'] {
+  --accent:          #a0a0a8;
+  --accent-get:      #b8b8c0;
+  --accent-post:     #a0a0a8;
+  --accent-put:      #888890;
+  --accent-delete:   #787880;
+  --accent-patch:    #989898;
+  --accent-head:     #606068;
+  --accent-options:  #ababab;
+  --status-success:  #b8b8c0;
+  --status-error:    #787880;
+  --status-warning:  #888890;
+}
+
 /* System theme (respects prefers-color-scheme) */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {

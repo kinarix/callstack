@@ -173,7 +173,7 @@
 }
 
 .editorWrapInvalid {
-  border-color: #ef4444 !important;
+  border-color: var(--accent-delete) !important;
 }
 
 .toolbarContainer {
@@ -197,7 +197,7 @@
   padding: 4px 8px;
   border-radius: 3px;
   font-family: 'JetBrains Mono', monospace;
-  color: #f59e0b;
+  color: var(--accent-put);
   background: rgba(245, 158, 11, 0.15);
   white-space: nowrap;
 }
@@ -216,12 +216,12 @@
 
 .validationTagValid {
   background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
+  color: var(--accent-get);
 }
 
 .validationTagInvalid {
   background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+  color: var(--accent-delete);
 }
 
 .flashCopy {
@@ -262,7 +262,7 @@
 .csvInfo {
   font-size: 11px;
   font-family: 'Outfit', sans-serif;
-  color: #f59e0b;
+  color: var(--accent-put);
   padding: 4px 8px;
   background: rgba(245, 158, 11, 0.08);
   border-radius: var(--radius-sm);

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { ThemeToggle } from '../Header/ThemeToggle';
+import { AccentToggle } from '../Header/AccentToggle';
 import { useApp } from '../../context/AppContext';
 import { useDatabase } from '../../hooks/useDatabase';
 import { useShortcuts } from '../../hooks/useShortcuts';
@@ -1029,6 +1030,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
             <GearIcon />
           </button>
           <ThemeToggle />
+          <AccentToggle />
           <button className={styles.iconAction} onClick={() => setShowNewProjectModal(true)} title="New Project">
             <svg width="18" height="18" viewBox="0 0 13 13" fill="none">
               <rect x="1.5" y="3.5" width="10" height="7.5" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
@@ -1037,9 +1039,15 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
             </svg>
           </button>
           <button className={`${styles.iconAction} ${styles.collapseBtn}`} onClick={onToggleCollapse} title="Collapse navigator">
-            ‹
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <rect x="1.5" y="1.5" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="1.3"/>
+              <path d="M5.5 3.5V12.5" stroke="var(--accent-post)" strokeWidth="1.3" strokeLinecap="round"/>
+              <path d="M9.5 6L7.5 8L9.5 10" stroke="var(--accent-post)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </button>
         </div>
+
+        <div className={styles.treeDivider} />
 
         <div className={styles.tree}>
           {projects.length === 0 ? (

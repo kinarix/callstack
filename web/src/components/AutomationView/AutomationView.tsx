@@ -34,8 +34,8 @@ function formatDate(iso: string): string {
 
 function statusColor(status: number): string {
   if (status >= 200 && status < 300) return 'var(--accent-get)';
-  if (status >= 300 && status < 400) return '#f59e0b';
-  if (status >= 400) return '#ef4444';
+  if (status >= 300 && status < 400) return 'var(--accent-put)';
+  if (status >= 400) return 'var(--accent-delete)';
   return 'var(--text-secondary)';
 }
 
@@ -141,14 +141,14 @@ function newStep(type: AutomationStep['type'], requestId?: number): AutomationSt
 // ── Palette ──────────────────────────────────────────────────
 
 const PALETTE_ITEMS: { type: AutomationStep['type']; label: string; color: string; icon: string; hint: string }[] = [
-  { type: 'set_env', label: 'Set Env', color: '#10b981', icon: '⊙', hint: 'Switch active environment' },
-  { type: 'delay', label: 'Delay', color: '#f59e0b', icon: '⏱', hint: 'Wait before next step' },
-  { type: 'repeat', label: 'Repeat', color: '#a855f7', icon: '↻', hint: 'Loop elements N times' },
+  { type: 'set_env', label: 'Set Env', color: 'var(--accent-get)', icon: '⊙', hint: 'Switch active environment' },
+  { type: 'delay', label: 'Delay', color: 'var(--accent-put)', icon: '⏱', hint: 'Wait before next step' },
+  { type: 'repeat', label: 'Repeat', color: 'var(--accent-patch)', icon: '↻', hint: 'Loop elements N times' },
   { type: 'csv_iterator', label: 'Iterator', color: 'var(--accent-patch)', icon: '⊞', hint: 'Run steps once per CSV row' },
-  { type: 'branch', label: 'Branch', color: '#f97316', icon: '⑂', hint: 'If/else fork' },
-  { type: 'fanout', label: 'Fanout', color: '#06b6d4', icon: '⑃', hint: 'Run all lanes sequentially with same input' },
-  { type: 'log', label: 'Log', color: '#0ea5e9', icon: '⊕', hint: 'Log a value to the console' },
-  { type: 'stop', label: 'Stop', color: '#ef4444', icon: '◼', hint: 'End the run' },
+  { type: 'branch', label: 'Branch', color: 'var(--accent-put)', icon: '⑂', hint: 'If/else fork' },
+  { type: 'fanout', label: 'Fanout', color: 'var(--accent-options)', icon: '⑃', hint: 'Run all lanes sequentially with same input' },
+  { type: 'log', label: 'Log', color: 'var(--accent-post)', icon: '⊕', hint: 'Log a value to the console' },
+  { type: 'stop', label: 'Stop', color: 'var(--accent-delete)', icon: '◼', hint: 'End the run' },
 ];
 
 // ── Step list editor ─────────────────────────────────────────
@@ -408,7 +408,14 @@ function ConditionSelector({
   );
 }
 
-const LANE_COLORS = ['#06b6d4', '#a855f7', '#f97316', '#10b981', '#f59e0b', '#ef4444'];
+const LANE_COLORS = [
+  'var(--accent-options)',
+  'var(--accent-patch)',
+  'var(--accent-put)',
+  'var(--accent-get)',
+  'var(--accent-put)',
+  'var(--accent-delete)',
+];
 
 // ── Fanout step (needs own useState for activeLane) ──────────
 
@@ -838,7 +845,7 @@ function StepCard({ step, requests, automationProjectId, projectEnvs, onChange, 
               {step.trueSteps.length === 0 && <div className={styles.nestedEmpty}>Drop elements here</div>}
             </div>
             <div className={styles.branchColumn}>
-              <div className={styles.branchLabel} style={{ color: '#ef4444' }}>✗ If false</div>
+              <div className={styles.branchLabel} style={{ color: 'var(--accent-delete)' }}>✗ If false</div>
               <StepList
                 steps={step.falseSteps}
                 onChange={(s) => onChange({ ...step, falseSteps: s })}
