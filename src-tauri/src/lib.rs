@@ -228,10 +228,28 @@ fn get_db_stats(db: tauri::State<'_, Database>) -> Result<serde_json::Value, Str
         conn.query_row(&format!("SELECT COUNT(*) FROM {}", table), [], |row| row.get::<_, i64>(0))
             .map_err(|e| e.to_string())
     };
+    // Checkpoint the WAL into the main DB file so the file size is accurate
+    let _ = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");
     let db_path = crate::database::db_path()
         .map(|p| p.to_string_lossy().to_string())
         .unwrap_or_default();
-    let db_size_bytes: i64 = std::fs::metadata(&db_path).map(|m| m.len() as i64).unwrap_or(0);
+    let table_sizes: Vec<serde_json::Value> = {
+        let mut stmt = conn
+            .prepare("SELECT name, SUM(pgsize) FROM dbstat WHERE name NOT LIKE 'sqlite_%' GROUP BY name ORDER BY 2 DESC")
+            .map_err(|e| e.to_string())?;
+        let sizes = match stmt.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))) {
+            Err(_) => vec![],
+            Ok(rows) => rows
+                .filter_map(|r| r.ok())
+                .map(|(name, size)| serde_json::json!({ "name": name, "sizeBytes": size }))
+                .collect(),
+        };
+        sizes
+    };
+    let db_size_bytes: i64 = table_sizes
+        .iter()
+        .filter_map(|t| t.get("sizeBytes").and_then(|v| v.as_i64()))
+        .sum();
     Ok(serde_json::json!({
         "projects":        count("projects")?,
         "requests":        count("requests")?,
@@ -243,7 +261,16 @@ fn get_db_stats(db: tauri::State<'_, Database>) -> Result<serde_json::Value, Str
         "data_files":      count("data_files")?,
         "dbPath":          db_path,
         "dbSizeBytes":     db_size_bytes,
+        "tableSizes":      table_sizes,
     }))
+}
+
+#[tauri::command]
+fn compact_database(db: tauri::State<'_, Database>) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute_batch("VACUUM;").map_err(|e| e.to_string())?;
+    conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);").map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -252,6 +279,13 @@ pub fn run() {
     let cancel_handle = CancelHandle(tokio::sync::Mutex::new(None));
 
     tauri::Builder::default()
+        .setup(|app| {
+            let db = app.state::<Database>();
+            if let Ok(conn) = db.conn.lock() {
+                let _ = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");
+            }
+            Ok(())
+        })
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
@@ -306,6 +340,7 @@ pub fn run() {
             pick_attachment_files,
             reset_all_data,
             get_db_stats,
+            compact_database,
             get_full_snapshot,
             write_clipboard,
             open_system_url,

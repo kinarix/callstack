@@ -56,6 +56,7 @@ interface DbStats {
   data_files: number;
   dbPath: string;
   dbSizeBytes: number;
+  tableSizes: { name: string; sizeBytes: number }[];
 }
 
 interface LsEntry {
@@ -103,6 +104,8 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onReset, onR
   const [copiedSnapshot, setCopiedSnapshot] = useState(false);
   const [copiedFullSnapshot, setCopiedFullSnapshot] = useState(false);
   const [copyingFull, setCopyingFull] = useState(false);
+  const [compacting, setCompacting] = useState(false);
+  const [compactDone, setCompactDone] = useState(false);
   const [appVersion, setAppVersion] = useState<string>(() => {
     try { return (window as any).__APP_VERSION__ ?? __APP_VERSION__; } catch { return __APP_VERSION__; }
   });
@@ -186,6 +189,22 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onReset, onR
       setCopyingFull(false);
     }
   }, [appVersion, dbStats, lsInfo]);
+
+  const handleCompact = useCallback(async () => {
+    setCompacting(true);
+    setCompactDone(false);
+    try {
+      await invoke('compact_database');
+      setCompactDone(true);
+      setTimeout(() => setCompactDone(false), 2000);
+      // Refresh stats to show updated sizes
+      invoke<DbStats>('get_db_stats').then(setDbStats).catch(() => {});
+    } catch {
+      // swallow — button stays available for retry
+    } finally {
+      setCompacting(false);
+    }
+  }, []);
 
   const handleClearUiState = useCallback(() => {
     // Remove every localStorage key under the callstack namespace.
@@ -343,6 +362,23 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onReset, onR
                       <div className={styles.statCell}><span className={styles.statLabel}>Automations</span><span className={styles.statValue}>{dbStats.automations}</span></div>
                       <div className={styles.statCell}><span className={styles.statLabel}>Automation runs</span><span className={styles.statValue}>{dbStats.automation_runs}</span></div>
                       <div className={styles.statCell}><span className={styles.statLabel}>DB size</span><span className={styles.statValue}>{formatBytes(dbStats.dbSizeBytes)}</span></div>
+                    </div>
+                    {dbStats.tableSizes.length > 0 && (
+                      <div className={styles.tableSizes}>
+                        <div className={styles.tableSizesTitle}>Table sizes</div>
+                        {dbStats.tableSizes.map((t) => (
+                          <div key={t.name} className={styles.tableSizeRow}>
+                            <span className={styles.tableSizeName}>{t.name}</span>
+                            <span className={styles.tableSizeVal}>{formatBytes(t.sizeBytes)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className={styles.compactRow}>
+                      <button className={styles.compactBtn} onClick={handleCompact} disabled={compacting}>
+                        {compacting ? 'Compacting…' : compactDone ? 'Done' : 'Compact database'}
+                      </button>
+                      <span className={styles.compactDesc}>Runs VACUUM to reclaim space from deleted records</span>
                     </div>
                     <div className={styles.dbPathRow} title={dbStats.dbPath}>{dbStats.dbPath}</div>
                   </>

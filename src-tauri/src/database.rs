@@ -72,6 +72,14 @@ pub struct Database {
     pub conn: Mutex<Connection>,
 }
 
+impl Drop for Database {
+    fn drop(&mut self) {
+        if let Ok(conn) = self.conn.lock() {
+            let _ = conn.execute_batch("VACUUM; PRAGMA wal_checkpoint(TRUNCATE);");
+        }
+    }
+}
+
 pub fn db_path() -> Result<std::path::PathBuf, String> {
     let db_dir = dirs::data_dir()
         .ok_or("Cannot find data directory")?
