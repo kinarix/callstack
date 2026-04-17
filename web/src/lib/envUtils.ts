@@ -1,9 +1,9 @@
 export function getEnvColor(name: string): string {
   const n = name.toLowerCase();
-  if (/prod|production/.test(n)) return '#ef4444';
-  if (/stag|staging/.test(n)) return '#f59e0b';
-  if (/dev|local|development/.test(n)) return '#10b981';
-  if (/test|qa|testing|uat|canary/.test(n)) return '#3b82f6';
-  if (/sandbox|demo/.test(n)) return '#a855f7';
-  return '#6b7280';
+  if (/prod|production/.test(n)) return 'var(--accent-delete)';
+  if (/stag|staging/.test(n)) return 'var(--accent-put)';
+  if (/dev|local|development/.test(n)) return 'var(--accent-get)';
+  if (/test|qa|testing|uat|canary/.test(n)) return 'var(--accent-post)';
+  if (/sandbox|demo/.test(n)) return 'var(--accent-patch)';
+  return 'var(--text-tertiary)';
 }

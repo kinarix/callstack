@@ -66,7 +66,7 @@
   font-weight: 700;
   padding: 1px 5px;
   border-radius: 3px;
-  background: #0ea5e9;
+  background: var(--accent-options);
   color: #fff;
   flex-shrink: 0;
 }
@@ -178,7 +178,7 @@
 }
 
 .logRowError .logSummary {
-  background: color-mix(in srgb, #ef4444 5%, transparent);
+  background: color-mix(in srgb, var(--accent-delete) 5%, transparent);
 }
 
 .logSummary {
@@ -210,7 +210,7 @@
 }
 
 .logRowAutomation .logSummary {
-  background: color-mix(in srgb, #0ea5e9 5%, transparent);
+  background: color-mix(in srgb, var(--accent-options) 5%, transparent);
 }
 
 .logAutomationBadge {
@@ -218,7 +218,7 @@
   font-weight: 700;
   padding: 1px 5px;
   border-radius: 3px;
-  background: #0ea5e9;
+  background: var(--accent-options);
   color: #fff;
   flex-shrink: 0;
 }
@@ -276,7 +276,7 @@
 
 .logError {
   font-size: 11px;
-  color: #ef4444;
+  color: var(--accent-delete);
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;

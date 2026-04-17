@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Automation, DataFile, Environment, Folder, Project, Request } from '../../lib/types';
-import { getEnvColor } from '../../lib/envUtils';
 import { RequestItem } from './RequestItem';
 import {
   AutomationIcon,
@@ -519,7 +518,7 @@ export function ProjectRow({
                           onCancel={() => onEnvRenameCommit(env.id, env.name)}
                         />
                       ) : (
-                        <span className={styles.envName} style={{ color: getEnvColor(env.name) }}>{env.name}</span>
+                        <span className={styles.envName}>{env.name}</span>
                       )}
                       <button
                         className={`${styles.iconBtn} ${styles.renameBtn}`}

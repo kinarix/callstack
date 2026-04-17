@@ -468,7 +468,7 @@
 
 .testsSummaryFail {
   font-weight: 600;
-  color: #ef4444;
+  color: var(--accent-delete);
 }
 
 .testsSummarySep {
@@ -530,11 +530,11 @@
 }
 
 .testsRowFail .testsIcon {
-  color: #ef4444;
+  color: var(--accent-delete);
 }
 
 .testsRowWarn .testsIcon {
-  color: #f59e0b;
+  color: var(--accent-put);
 }
 
 .testsDetail {
@@ -573,7 +573,7 @@
 .testsError {
   font-size: 11.5px;
   font-family: 'JetBrains Mono', monospace;
-  color: #ef4444;
+  color: var(--accent-delete);
   white-space: pre-wrap;
   word-break: break-word;
   opacity: 0.85;
