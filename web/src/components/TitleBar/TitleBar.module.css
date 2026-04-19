@@ -1,0 +1,61 @@
+.titlebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  display: flex;
+  align-items: stretch;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.titlebar.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Always keep the hover target active even when invisible */
+.titlebar {
+  pointer-events: auto;
+}
+
+.dragRegion {
+  flex: 1;
+  cursor: default;
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.controls {
+  display: flex;
+  align-items: stretch;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.btn {
+  width: 46px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: background 0.1s, color 0.1s;
+  padding: 0;
+}
+
+.btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.closeBtn:hover {
+  background: #e81123;
+  color: #fff;
+}
