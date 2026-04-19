@@ -2,7 +2,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 3px var(--space-1);
+  padding: 3px var(--space-1) 3px 0;
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
