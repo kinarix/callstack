@@ -9,7 +9,6 @@ import EnvironmentView from './components/EnvironmentView/EnvironmentView';
 import DataFileView from './components/DataFileView/DataFileView';
 import { Footer } from './components/Footer/Footer';
 import { SettingsModal } from './components/SettingsModal/SettingsModal';
-import { TitleBar } from './components/TitleBar/TitleBar';
 import styles from './App.module.css';
 import { useDatabase } from './hooks/useDatabase';
 import { useSettings, matchesShortcut } from './hooks/useSettings';
@@ -305,8 +304,7 @@ function AppContent() {
 
   return (
     <div className={styles.app} style={{ zoom: settings.zoom }}>
-      <TitleBar />
-      <div className={styles.body}>
+<div className={styles.body}>
       <div className={styles.content} style={{ gridTemplateColumns: gridCols }}>
         <div className={styles.sidebarWrap}>
           <Sidebar
