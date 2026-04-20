@@ -2,6 +2,9 @@ import { useRef, useEffect, useState } from 'react';
 import type { KeyValue } from '../../lib/types';
 import { BinIcon } from '../Sidebar/SidebarIcons';
 import { TemplateInput } from './TemplateInput';
+import { isJwt } from '../../lib/jwt';
+import { JwtBadge } from '../JwtBadge/JwtBadge';
+import { resolveTemplate } from '../../lib/template';
 import styles from './KeyValueEditor.module.css';
 
 interface KeyValueEditorProps {
@@ -90,6 +93,7 @@ export function KeyValueEditor({
                 secrets={secrets}
                 disabled={readOnly}
               />
+              {(() => { const resolved = resolveTemplate(item.value, [...envVars, ...secrets]); return isJwt(resolved) && <JwtBadge token={resolved} />; })()}
               {!readOnly && (
                 confirmIndex === index ? (
                   <span className={styles.confirm}>

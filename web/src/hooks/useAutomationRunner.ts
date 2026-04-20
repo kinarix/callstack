@@ -214,7 +214,7 @@ export function useAutomationRunner() {
         const req = requestMap.get(step.requestId);
         if (!req) continue;
 
-        let currentEnvVars = envVarsRef.current;
+        let currentEnvVars = [...envVarsRef.current, ...secretsRef.current];
 
         const resolvedParams = req.params.map((p) => ({
           ...p,
