@@ -286,6 +286,8 @@ pub fn run() {
                 let _ = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");
             }
             if let Some(win) = app.get_webview_window("main") {
+                use tauri_plugin_window_state::{StateFlags, WindowExt};
+                let _ = win.restore_state(StateFlags::MAXIMIZED | StateFlags::SIZE | StateFlags::POSITION);
                 let _ = win.show();
             }
             Ok(())
@@ -296,6 +298,7 @@ pub fn run() {
                 let _ = window.set_focus();
             }
         }))
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_shell::init())
         .manage(db)
         .manage(cancel_handle)

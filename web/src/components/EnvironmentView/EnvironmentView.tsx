@@ -208,7 +208,7 @@ export default function EnvironmentView({ environmentId, showExpandBtn, onExpand
             </svg>
             Variables
           </div>
-          <KeyValueEditor items={variables} onChange={setVariables} />
+          <KeyValueEditor items={variables} onChange={setVariables} envVars={variables} secrets={secrets} />
         </div>
 
         <div className={modalStyles.secretsSection}>
