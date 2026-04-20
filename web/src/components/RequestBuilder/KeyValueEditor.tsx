@@ -19,23 +19,14 @@ export function KeyValueEditor({
   envVars = [],
   secrets = [],
 }: KeyValueEditorProps) {
-  const handleKeyChange = (index: number, key: string) => {
-    const updated = [...items];
-    updated[index].key = key;
-    onChange(updated);
-  };
+  const handleKeyChange = (index: number, key: string) =>
+    onChange(items.map((item, i) => (i === index ? { ...item, key } : item)));
 
-  const handleValueChange = (index: number, value: string) => {
-    const updated = [...items];
-    updated[index].value = value;
-    onChange(updated);
-  };
+  const handleValueChange = (index: number, value: string) =>
+    onChange(items.map((item, i) => (i === index ? { ...item, value } : item)));
 
-  const handleEnabledToggle = (index: number) => {
-    const updated = [...items];
-    updated[index] = { ...updated[index], enabled: !(updated[index].enabled ?? true) };
-    onChange(updated);
-  };
+  const handleEnabledToggle = (index: number) =>
+    onChange(items.map((item, i) => (i === index ? { ...item, enabled: !(item.enabled ?? true) } : item)));
 
   const newKeyRef = useRef<HTMLInputElement | null>(null);
   const prevLengthRef = useRef(items.length);
