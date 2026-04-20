@@ -13,7 +13,7 @@ help:
 	@echo "  help        Show this help"
 
 release:
-	@bash scripts/set-release-version.sh
+	@node scripts/set-release-version.js
 
 dev:
 	cd src-tauri && cargo tauri dev

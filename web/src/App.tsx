@@ -304,7 +304,7 @@ function AppContent() {
 
   return (
     <div className={styles.app} style={{ zoom: settings.zoom }}>
-      <div className={styles.body}>
+<div className={styles.body}>
       <div className={styles.content} style={{ gridTemplateColumns: gridCols }}>
         <div className={styles.sidebarWrap}>
           <Sidebar

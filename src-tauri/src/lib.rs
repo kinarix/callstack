@@ -279,10 +279,14 @@ pub fn run() {
     let cancel_handle = CancelHandle(tokio::sync::Mutex::new(None));
 
     tauri::Builder::default()
+        .menu(|handle| tauri::menu::Menu::default(handle))
         .setup(|app| {
             let db = app.state::<Database>();
             if let Ok(conn) = db.conn.lock() {
                 let _ = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");
+            }
+            if let Some(win) = app.get_webview_window("main") {
+                let _ = win.show();
             }
             Ok(())
         })

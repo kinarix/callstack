@@ -33,7 +33,9 @@ There are no automated tests.
 
 **Authentication**: Google Sign-In (optional); user data stored in `requests.user_email` column and `localStorage`.
 
-**Theming**: CSS custom properties with `[data-theme="light|dark"]` attribute. Defaults to system preference. Theme toggle in header.
+**Theming**: CSS custom properties with `[data-theme="light|dark"]` attribute. Defaults to system preference. Theme toggle in sidebar icon bar.
+
+**Accent themes**: Three modes (`color`/`bright`/`mono`) controlled via `[data-accent]` attribute on `document.documentElement`. `color` is the default (no attribute set). Implemented in `web/src/hooks/useAccentTheme.ts` with cycle button `web/src/components/Header/AccentToggle.tsx` in the sidebar icon bar.
 
 ### SQLite Schema
 
@@ -63,12 +65,17 @@ data_files (id, project_id, name, content, created_at, updated_at)
 
 **Sidebar Layout**: Projects are expandable/collapsible sections containing requests. The expand button (▼) rotates -90° when collapsed. Delete button (×) appears on project header hover.
 
-**Accent colors by HTTP method** (via CSS tokens):
-- GET: `--accent-get` (#10b981 teal)
+**Accent colors by HTTP method** (via CSS tokens — always use variables, never hardcode hex):
+- GET: `--accent-get` (#10b981 teal in `color` mode)
 - POST: `--accent-post` (#3b82f6 blue)
 - PUT: `--accent-put` (#f59e0b amber)
 - DELETE: `--accent-delete` (#ef4444 red)
 - PATCH: `--accent-patch` (#a855f7 purple)
+- OPTIONS/other: `--accent-options` (#06b6d4 cyan)
+
+For semi-transparent accent fills, use `color-mix(in srgb, var(--accent-X) N%, transparent)` — never `rgba(hardcoded, N)`.
+
+`getEnvColor(name)` in `web/src/lib/envUtils.ts` returns CSS variable strings (e.g. `'var(--accent-delete)'`) — safe to use as inline `color` style on icons.
 
 **Typography**: JetBrains Mono for code/URLs/responses. Outfit for UI chrome. Both self-hosted in `web/public/fonts/`.
 
