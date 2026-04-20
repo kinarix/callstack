@@ -1,0 +1,99 @@
+.wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: var(--space-1);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--accent-options) 50%, transparent);
+  background: color-mix(in srgb, var(--accent-options) 12%, transparent);
+  color: var(--accent-options);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  white-space: nowrap;
+}
+
+.chip:hover {
+  background: color-mix(in srgb, var(--accent-options) 22%, transparent);
+}
+
+.popover {
+  z-index: 9999;
+  min-width: 280px;
+  max-width: 420px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-1);
+}
+
+.sectionLabel {
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  padding: var(--space-half) var(--space-1);
+  margin-bottom: 2px;
+}
+
+.row {
+  display: flex;
+  gap: var(--space-1);
+  padding: 3px var(--space-1);
+  border-radius: var(--radius-sm);
+  align-items: baseline;
+}
+
+.row:hover {
+  background: var(--bg-hover);
+}
+
+.key {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--syntax-key);
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
+.val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.expired {
+  color: var(--status-error);
+}
+
+section + section {
+  margin-top: var(--space-1);
+  border-top: 1px solid var(--border-secondary);
+  padding-top: var(--space-1);
+}
+
+.footer {
+  margin-top: var(--space-1);
+  padding: var(--space-half) var(--space-1);
+  border-top: 1px solid var(--border-secondary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-style: italic;
+}

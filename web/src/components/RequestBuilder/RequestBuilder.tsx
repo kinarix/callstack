@@ -462,16 +462,19 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
     // Clear console on each send
     setConsoleLogs([]);
 
-    // Apply template resolution using active env variables
-    let resolvedUrl = resolveTemplate(request.url, envVars);
-    let resolvedBody = resolveTemplate(request.body, envVars);
+    // Apply template resolution using active env variables + secrets
+    const allVars = [...envVars, ...secrets];
+    let resolvedUrl = resolveTemplate(request.url, allVars);
+    let resolvedBody = resolveTemplate(request.body, allVars);
+    // Quote any unresolved {{#...}} data-file vars so the JSON body stays valid
+    resolvedBody = resolvedBody.replace(/(?<!")\{\{#[\w.$-]+\}\}(?!")/g, '"$&"');
     let resolvedParams = request.params.map((p) => ({
       ...p,
-      value: resolveTemplate(p.value, envVars),
+      value: resolveTemplate(p.value, allVars),
     }));
     let resolvedHeaders = request.headers.map((h) => ({
       ...h,
-      value: resolveTemplate(h.value, envVars),
+      value: resolveTemplate(h.value, allVars),
     }));
 
     // Run pre-request script

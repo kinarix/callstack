@@ -12,6 +12,8 @@ import { tags } from '@lezer/highlight';
 import type { Response, TestResult } from '../../lib/types';
 import { getStatusColor, formatBytes } from '../../lib/utils';
 import { formatBody, normalizeLineEndings } from '../../lib/formatBody';
+import { isJwt, findJwtsInBody } from '../../lib/jwt';
+import { JwtBadge } from '../JwtBadge/JwtBadge';
 import styles from './ResponseViewer.module.css';
 
 function PinIcon({ pinned }: { pinned: boolean }) {
@@ -301,7 +303,10 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
                 {response.headers.map((header, i) => (
                   <div key={i} className={styles.headerRow}>
                     <span className={styles.headerKey}>{header.key}</span>
-                    <span className={styles.headerValue}>{header.value}</span>
+                    <span className={styles.headerValue}>
+                      {header.value}
+                      {isJwt(header.value) && <JwtBadge token={header.value} popoverAlign="right" />}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -358,6 +363,23 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
               <div className={styles.copyToast}>Copied to clipboard</div>
             )}
           </div>
+          {(() => {
+            const jwts = findJwtsInBody(response.body);
+            if (jwts.length === 0) return null;
+            return (
+              <div className={styles.jwtPanel}>
+                <div className={styles.jwtPanelHeader}>JWT tokens in body</div>
+                <div className={styles.jwtPanelContent}>
+                  {jwts.map((found, i) => (
+                    <div key={i} className={styles.jwtPanelRow}>
+                      {found.path && <span className={styles.jwtPanelPath}>{found.path}</span>}
+                      <JwtBadge token={found.value} popoverAlign="right" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -369,7 +391,10 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
                 {response.headers.map((header, i) => (
                   <div key={i} className={styles.headerRow}>
                     <span className={styles.headerKey}>{header.key}</span>
-                    <span className={styles.headerValue}>{header.value}</span>
+                    <span className={styles.headerValue}>
+                      {header.value}
+                      {isJwt(header.value) && <JwtBadge token={header.value} popoverAlign="right" />}
+                    </span>
                   </div>
                 ))}
               </div>
