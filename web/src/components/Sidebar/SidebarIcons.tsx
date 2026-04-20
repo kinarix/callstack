@@ -230,6 +230,36 @@ export function NewDataFileIcon() {
   );
 }
 
+export function CookiesGroupIcon() {
+  return (
+    <svg className={`${styles.treeIcon} ${styles.treeIconCookie}`} width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden>
+      {/* Lid */}
+      <rect x="3.2" y="1.8" width="6.6" height="1.4" rx="0.6" fill="currentColor" fillOpacity="0.45" stroke="currentColor" strokeWidth="1"/>
+      {/* Neck */}
+      <rect x="4" y="3.2" width="5" height="1" rx="0" fill="currentColor" fillOpacity="0.1" stroke="currentColor" strokeWidth="0.9"/>
+      {/* Body */}
+      <path d="M3 4.2h7L9.2 11H3.8L3 4.2Z" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"/>
+      {/* Chips */}
+      <circle cx="5.4" cy="6.4" r="0.75" fill="currentColor"/>
+      <circle cx="7.4" cy="6" r="0.6" fill="currentColor"/>
+      <circle cx="7.1" cy="8.6" r="0.65" fill="currentColor"/>
+      <circle cx="5.1" cy="8.9" r="0.55" fill="currentColor"/>
+    </svg>
+  );
+}
+
+export function CookieDomainIcon() {
+  return (
+    <svg className={`${styles.treeIcon} ${styles.treeIconCookie}`} width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
+      <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.2" fill="currentColor" fillOpacity="0.1"/>
+      <circle cx="4.2" cy="5" r="0.8" fill="currentColor"/>
+      <circle cx="7.5" cy="4.5" r="0.6" fill="currentColor"/>
+      <circle cx="7" cy="7.5" r="0.7" fill="currentColor"/>
+      <circle cx="4.5" cy="7.8" r="0.55" fill="currentColor"/>
+    </svg>
+  );
+}
+
 export function ImportedFolderIcon() {
   return (
     <svg

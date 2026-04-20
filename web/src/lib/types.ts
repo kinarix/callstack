@@ -96,6 +96,19 @@ export interface DataFile {
   updated_at: string;
 }
 
+export interface Cookie {
+  id: number;
+  projectId: number;
+  domain: string;
+  path: string;
+  name: string;
+  value: string;
+  expires: number | null;
+  secure: boolean;
+  httpOnly: boolean;
+  sameSite: string | null;
+}
+
 export interface LogEntry {
   id: number;
   timestamp: number;
@@ -128,10 +141,12 @@ export interface AppState {
   expandedFolders: Set<number>;
   logs: LogEntry[];
   automations: Automation[];
-  activeView: 'request' | 'automation' | 'environment' | 'dataFile';
+  activeView: 'request' | 'automation' | 'environment' | 'dataFile' | 'cookies';
   activeAutomationId: number | null;
   activeEnvironmentId: number | null;
   activeDataFileId: number | null;
+  activeCookieDomain: string | null;
+  cookieJarVersion: number;
   error: { message: string; showReset: boolean } | null;
 }
 
@@ -172,7 +187,9 @@ export type AppAction =
   | { type: 'ADD_AUTOMATION'; payload: Automation }
   | { type: 'UPDATE_AUTOMATION'; payload: Automation }
   | { type: 'DELETE_AUTOMATION'; payload: number }
-  | { type: 'SET_VIEW'; payload: 'request' | 'automation' | 'environment' | 'dataFile' }
+  | { type: 'SET_VIEW'; payload: 'request' | 'automation' | 'environment' | 'dataFile' | 'cookies' }
+  | { type: 'SET_ACTIVE_COOKIE_DOMAIN'; payload: string | null }
+  | { type: 'BUMP_COOKIE_JAR_VERSION' }
   | { type: 'SET_DATA_FILES'; payload: DataFile[] }
   | { type: 'ADD_DATA_FILE'; payload: DataFile }
   | { type: 'UPDATE_DATA_FILE'; payload: DataFile }

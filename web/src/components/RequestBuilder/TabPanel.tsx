@@ -145,9 +145,12 @@ interface TabPanelProps {
   secrets?: KeyValue[];
   onScriptTest?: (script: string, isPost: boolean) => void;
   copyFlash?: boolean;
+  useCookieJar?: boolean;
+  onUseCookieJarChange?: (value: boolean) => void;
+  projectId?: number | null;
 }
 
-export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, secrets, onScriptTest, copyFlash }: TabPanelProps) {
+export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, secrets, onScriptTest, copyFlash, useCookieJar = true, onUseCookieJarChange, projectId = null }: TabPanelProps) {
   const [pinned, setPinned] = useState<Set<PinnableTab>>(() => request ? loadPinned(request.id) : new Set());
   const [activeTab, setActiveTab] = useState<TabName>(() => {
     if (!request) return 'params';
@@ -280,6 +283,14 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
             </div>
           );
         })}
+        <label className={styles.cookieToggle} title="Automatically send and store cookies">
+          <input
+            type="checkbox"
+            checked={useCookieJar}
+            onChange={(e) => onUseCookieJarChange?.(e.target.checked)}
+          />
+          <span>Cookies</span>
+        </label>
       </div>
 
       {/* Pinned panels — shown when pinned and a different tab is active */}

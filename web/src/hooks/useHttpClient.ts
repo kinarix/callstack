@@ -10,6 +10,8 @@ interface SendOptions {
   body: string;
   followRedirects: boolean;
   attachments: FileAttachment[];
+  projectId: number | null;
+  useCookieJar: boolean;
 }
 
 interface SendResult {

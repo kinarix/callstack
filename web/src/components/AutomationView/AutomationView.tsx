@@ -1183,7 +1183,7 @@ export default function AutomationView({ automationId, showExpandBtn, onExpand }
 
     const { results, durationMs, overallStatus } = await run(localSteps, requestMap, envVars, activeEnvId, (entry) => {
       dispatch({ type: 'ADD_LOG', payload: { ...entry, id: Date.now() ^ (Math.random() * 0xffffffff | 0) } });
-    }, state.dataFiles, projectEnvs);
+    }, state.dataFiles, projectEnvs, automation?.projectId ?? null);
     const saved = await saveAutomationRun(automationId, overallStatus, results, durationMs);
     setPastRuns((prev) => [saved, ...prev.slice(0, 9)]);
     setMode('results');

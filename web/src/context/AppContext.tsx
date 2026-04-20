@@ -214,6 +214,10 @@ function appReducer(state: AppState, action: AppAction): AppState {
     }
     case 'SET_ACTIVE_DATA_FILE':
       return { ...state, activeDataFileId: action.payload };
+    case 'SET_ACTIVE_COOKIE_DOMAIN':
+      return { ...state, activeCookieDomain: action.payload };
+    case 'BUMP_COOKIE_JAR_VERSION':
+      return { ...state, cookieJarVersion: state.cookieJarVersion + 1 };
     case 'SHOW_ERROR':
       return { ...state, error: action.payload };
     case 'CLEAR_ERROR':
@@ -252,11 +256,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       expandedFolders: parseIds('callstack.expandedFolders'),
       logs: [],
       automations: [],
-      activeView: ((): 'request' | 'automation' | 'environment' | 'dataFile' => {
+      activeView: ((): 'request' | 'automation' | 'environment' | 'dataFile' | 'cookies' => {
         const v = localStorage.getItem('callstack.activeView');
         if (v === 'automation') return 'automation';
         if (v === 'environment') return 'environment';
         if (v === 'dataFile') return 'dataFile';
+        if (v === 'cookies') return 'cookies';
         return 'request';
       })(),
       activeAutomationId: ((): number | null => {
@@ -277,6 +282,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const n = parseInt(v, 10);
         return Number.isFinite(n) ? n : null;
       })(),
+      activeCookieDomain: null,
+      cookieJarVersion: 0,
       error: null,
     };
   });
