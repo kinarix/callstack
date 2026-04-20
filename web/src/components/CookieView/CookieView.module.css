@@ -1,0 +1,255 @@
+.view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: var(--bg-primary);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-2);
+  height: 48px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  gap: var(--space-2);
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.expandBtn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+}
+
+.expandBtn:hover { color: var(--text-primary); }
+
+.filterChip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: color-mix(in srgb, var(--accent-post) 12%, transparent);
+  color: var(--accent-post);
+  border: 1px solid color-mix(in srgb, var(--accent-post) 25%, transparent);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 500;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.filterChip:hover {
+  background: color-mix(in srgb, var(--accent-post) 20%, transparent);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.btn {
+  background: none;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: border-color var(--transition-base), color var(--transition-base);
+}
+
+.btnDanger:hover {
+  border-color: var(--accent-delete);
+  color: var(--accent-delete);
+}
+
+.btnSmall {
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--text-tertiary);
+  font-size: 14px;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  flex: 1;
+  padding: var(--space-4);
+}
+
+.emptyIcon {
+  color: var(--border-secondary, var(--border-primary));
+  opacity: 0.6;
+}
+
+.emptyTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.emptySubtext {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin: 0;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.domainGroup {
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.domainHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 6px var(--space-2);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.domainName {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.domainCount {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--bg-tertiary, var(--border-primary));
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.table th {
+  text-align: left;
+  padding: 5px var(--space-2);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.table tr:not(:last-child) td {
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.table td {
+  padding: 6px var(--space-2);
+  vertical-align: middle;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.valueCell {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.pathCell, .expiresCell {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.flagsCell {
+  white-space: nowrap;
+}
+
+.flag {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent-put) 15%, transparent);
+  color: var(--accent-put);
+  margin-right: 3px;
+}
+
+.nameCell {
+  white-space: nowrap;
+}
+
+.actionsCell {
+  width: 32px;
+  text-align: center;
+}
+
+.deleteBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin: auto;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--transition-base), background var(--transition-base);
+}
+
+.deleteBtn:hover {
+  color: var(--accent-delete);
+  background: color-mix(in srgb, var(--accent-delete) 12%, transparent);
+}

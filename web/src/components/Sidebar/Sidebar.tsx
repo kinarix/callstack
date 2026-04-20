@@ -16,7 +16,7 @@ import { exportFolderAsPostman, exportProjectAsPostman } from '../../utils/postm
 import { exportProject as exportCallstackProject, exportProjectPlain, importArchive, deserializeAutomationStep } from '../../utils/callstackArchive';
 import type { ArchivePreview } from '../../lib/callstackSchema';
 import { invoke } from '@tauri-apps/api/core';
-import type { Automation, DataFile, Environment, Request } from '../../lib/types';
+import type { Automation, Cookie, DataFile, Environment, Request } from '../../lib/types';
 import { FilePickerModal } from '../FilePickerModal/FilePickerModal';
 import { ProjectRow } from './ProjectRow';
 import type { DragOver } from './ProjectRow';
@@ -93,6 +93,8 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     importRequests,
     getLastResponse,
     saveResponse,
+    listCookies,
+    clearCookies,
   } = useDatabase();
 
   const { projects, requests, folders, environments, automations, dataFiles, currentRequestId, expandedProjects, expandedFolders } = state;
@@ -129,6 +131,19 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
   useEffect(() => {
     localStorage.setItem('callstack.expandedDataFileSections', JSON.stringify([...expandedDataFileSections]));
   }, [expandedDataFileSections]);
+  const [expandedCookieSections, setExpandedCookieSections] = useState<Set<number>>(() => {
+    try { return new Set<number>(JSON.parse(localStorage.getItem('callstack.expandedCookieSections') || '[]')); }
+    catch { return new Set<number>(); }
+  });
+  const [cookieDomainsByProject, setCookieDomainsByProject] = useState<Record<number, string[]>>({});
+  const [pendingCookieClear, setPendingCookieClear] = useState<
+    | { type: 'all'; projectId: number }
+    | { type: 'domain'; projectId: number; domain: string }
+    | null
+  >(null);
+  useEffect(() => {
+    localStorage.setItem('callstack.expandedCookieSections', JSON.stringify([...expandedCookieSections]));
+  }, [expandedCookieSections]);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [shortcutModalRequestId, setShortcutModalRequestId] = useState<number | null>(null);
   const { shortcuts, assignShortcut, removeShortcut, getShortcutForRequest } = useShortcuts();
@@ -299,6 +314,65 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     dispatch({ type: 'SET_ACTIVE_DATA_FILE', payload: dataFile.id });
     dispatch({ type: 'SET_VIEW', payload: 'dataFile' });
   };
+
+  const handleCookieSectionToggle = useCallback(async (projectId: number) => {
+    const isExpanding = !expandedCookieSections.has(projectId);
+    setExpandedCookieSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(projectId)) next.delete(projectId); else next.add(projectId);
+      return next;
+    });
+    if (isExpanding) {
+      try {
+        const cookies = await listCookies(projectId);
+        const domains = [...new Set(cookies.map((c: Cookie) => c.domain))];
+        setCookieDomainsByProject((prev) => ({ ...prev, [projectId]: domains }));
+      } catch { /* ignore */ }
+    }
+  }, [expandedCookieSections, listCookies]);
+
+  const handleCookieDomainClick = useCallback((domain: string) => {
+    dispatch({ type: 'SET_VIEW', payload: 'cookies' });
+    dispatch({ type: 'SET_ACTIVE_COOKIE_DOMAIN', payload: domain });
+  }, [dispatch]);
+
+  const handleClearAllCookies = useCallback((projectId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPendingCookieClear({ type: 'all', projectId });
+  }, []);
+
+  const handleClearDomainCookies = useCallback((projectId: number, domain: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPendingCookieClear({ type: 'domain', projectId, domain });
+  }, []);
+
+  const handleConfirmCookieClear = useCallback(async () => {
+    if (!pendingCookieClear) return;
+    const p = pendingCookieClear;
+    setPendingCookieClear(null);
+    if (p.type === 'all') {
+      await clearCookies(p.projectId);
+      setCookieDomainsByProject((prev) => ({ ...prev, [p.projectId]: [] }));
+      dispatch({ type: 'SET_ACTIVE_COOKIE_DOMAIN', payload: null });
+    } else {
+      await clearCookies(p.projectId, p.domain);
+      setCookieDomainsByProject((prev) => ({
+        ...prev,
+        [p.projectId]: (prev[p.projectId] ?? []).filter((d) => d !== p.domain),
+      }));
+    }
+    dispatch({ type: 'BUMP_COOKIE_JAR_VERSION' });
+  }, [pendingCookieClear, clearCookies, dispatch]);
+
+  // Auto-refresh cookie domains when a response is received
+  useEffect(() => {
+    const pid = state.currentProjectId;
+    if (pid == null) return;
+    listCookies(pid).then((cookies) => {
+      const domains = [...new Set(cookies.map((c: Cookie) => c.domain))];
+      setCookieDomainsByProject((prev) => ({ ...prev, [pid]: domains }));
+    }).catch(() => {});
+  }, [state.currentResponse]);
 
   const requestDeleteDataFile = (id: number, name: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1000,6 +1074,21 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
         </ConfirmModal>
       )}
 
+      {pendingCookieClear && (
+        <ConfirmModal
+          title={pendingCookieClear.type === 'all' ? 'Clear all cookies?' : `Clear cookies for ${pendingCookieClear.domain}?`}
+          confirmLabel="Clear"
+          onConfirm={handleConfirmCookieClear}
+          onCancel={() => setPendingCookieClear(null)}
+        >
+          {pendingCookieClear.type === 'all' ? (
+            <p>This will permanently delete all stored cookies for this project. This action cannot be undone.</p>
+          ) : (
+            <p>This will permanently delete all cookies for <strong>{pendingCookieClear.domain}</strong>. This action cannot be undone.</p>
+          )}
+        </ConfirmModal>
+      )}
+
       {shortcutModalRequestId !== null && (
         <ShortcutModal
           requestId={shortcutModalRequestId}
@@ -1120,6 +1209,13 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
                 onFolderExport={handleFolderExportClick}
                 getShortcutForRequest={getShortcutForRequest}
                 onOpenShortcutModal={setShortcutModalRequestId}
+                cookieDomains={cookieDomainsByProject[project.id] ?? []}
+                expandedCookieSections={expandedCookieSections}
+                onCookieSectionToggle={handleCookieSectionToggle}
+                onCookieDomainClick={handleCookieDomainClick}
+                onClearAllCookies={handleClearAllCookies}
+                onClearDomainCookies={handleClearDomainCookies}
+                activeCookieDomain={state.activeCookieDomain}
                 onEnvClick={handleOpenEnvironment}
                 onToggleProject={() => dispatch({ type: 'TOGGLE_PROJECT', payload: project.id })}
                 onToggleFolder={(id) => dispatch({ type: 'TOGGLE_FOLDER', payload: id })}

@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import type { Project, Request, Folder, Response, Environment, DataFile, KeyValue, Automation, AutomationRun, AutomationRequestResult, AutomationStep } from '../lib/types';
+import type { Project, Request, Folder, Response, Environment, DataFile, KeyValue, Automation, AutomationRun, AutomationRequestResult, AutomationStep, Cookie } from '../lib/types';
 
 /** Ensure every nested step type has its required arrays, guarding against old DB data. */
 function normalizeSteps(steps: AutomationStep[]): AutomationStep[] {
@@ -492,6 +492,18 @@ export function useDatabase() {
     await invoke('delete_data_file', { id });
   }, []);
 
+  const listCookies = useCallback(async (projectId: number): Promise<Cookie[]> => {
+    return invoke<Cookie[]>('list_cookies', { projectId });
+  }, []);
+
+  const deleteCookie = useCallback(async (id: number): Promise<void> => {
+    await invoke('delete_cookie', { id });
+  }, []);
+
+  const clearCookies = useCallback(async (projectId: number, domain?: string): Promise<void> => {
+    await invoke('clear_cookies', { projectId, domain: domain ?? null });
+  }, []);
+
   return {
     isReady: true, // Always ready — Rust manages the DB
     loadUserProjects,
@@ -530,5 +542,8 @@ export function useDatabase() {
     listAutomationRuns,
     clearAutomationRuns,
     deleteAutomationRun,
+    listCookies,
+    deleteCookie,
+    clearCookies,
   };
 }

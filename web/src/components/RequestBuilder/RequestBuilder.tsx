@@ -120,8 +120,9 @@ function buildCurl(method: string, url: string, params: KeyValue[], headers: Key
   }
   const activeParams = params.filter(p => p.enabled !== false && p.key.trim());
   if (activeParams.length > 0) {
+    const baseUrl = url.includes('?') ? url.slice(0, url.indexOf('?')) : url;
     const qs = activeParams.map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`).join('&');
-    url = url.includes('?') ? `${url}&${qs}` : `${url}?${qs}`;
+    url = `${baseUrl}?${qs}`;
   }
   parts.push(JSON.stringify(url));
   return parts.join(' ');
@@ -172,6 +173,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
   const [urlError, setUrlError] = useState<UrlError | null>(null);
   const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
   const [followRedirects, setFollowRedirects] = useState(true);
+  const [useCookieJar, setUseCookieJar] = useState(true);
   const [files, setFiles] = useState<FileAttachment[]>(() => request?.files ?? []);
   const [activeEnvId, setActiveEnvId] = useState<number | null>(request?.env_id ?? null);
 
@@ -546,6 +548,8 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         body: resolvedBody,
         followRedirects,
         attachments: files,
+        projectId: state.currentProjectId,
+        useCookieJar,
       });
 
       // Run post-request script
@@ -694,6 +698,9 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
             secrets={secrets}
             onScriptTest={handleScriptTest}
             copyFlash={copyFlashPane === 'request'}
+            useCookieJar={useCookieJar}
+            onUseCookieJarChange={setUseCookieJar}
+            projectId={state.currentProjectId}
           />
         </div>
         <div className={styles.splitHandle} onMouseDown={startPanelResize} />

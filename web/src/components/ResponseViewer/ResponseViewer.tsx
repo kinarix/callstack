@@ -103,6 +103,36 @@ const responseViewerHighlight = HighlightStyle.define([
 const responseViewerThemeExtension = [responseViewerEditorTheme, syntaxHighlighting(responseViewerHighlight)];
 
 
+interface ParsedSetCookie {
+  name: string;
+  value: string;
+  domain?: string;
+  path?: string;
+  expires?: string;
+  secure: boolean;
+  httpOnly: boolean;
+  sameSite?: string;
+}
+
+function parseSetCookie(header: string): ParsedSetCookie {
+  const parts = header.split(/;\s*/);
+  const eqIdx = (parts[0] ?? '').indexOf('=');
+  const name = eqIdx >= 0 ? parts[0].slice(0, eqIdx).trim() : parts[0].trim();
+  const value = eqIdx >= 0 ? parts[0].slice(eqIdx + 1) : '';
+  const cookie: ParsedSetCookie = { name, value, secure: false, httpOnly: false };
+  for (const part of parts.slice(1)) {
+    const lower = part.toLowerCase();
+    if (lower === 'secure') cookie.secure = true;
+    else if (lower === 'httponly') cookie.httpOnly = true;
+    else if (lower.startsWith('domain=')) cookie.domain = part.slice(7);
+    else if (lower.startsWith('path=')) cookie.path = part.slice(5);
+    else if (lower.startsWith('expires=')) cookie.expires = part.slice(8);
+    else if (lower.startsWith('max-age=')) cookie.expires = `${part.slice(8)}s`;
+    else if (lower.startsWith('samesite=')) cookie.sameSite = part.slice(9);
+  }
+  return cookie;
+}
+
 function getLabel(contentType: string): string {
   if (contentType.includes('json')) {
     return 'JSON';
@@ -132,7 +162,7 @@ function isPreviewable(contentType: string): boolean {
 
 export function ResponseViewer({ response, requestName, copyFlash, onClear, onCopy }: ResponseViewerProps) {
   const { dispatch } = useApp();
-  const [tab, setTab] = useState<'body' | 'headers' | 'preview' | 'tests'>('body');
+  const [tab, setTab] = useState<'body' | 'headers' | 'preview' | 'tests' | 'cookies'>('body');
   const [headersPinned, setHeadersPinned] = useState(false);
   const [testsPinned, setTestsPinned] = useState(false);
 
@@ -287,6 +317,19 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
                 <PinIcon pinned={testsPinned} />
               </button>
             </div>
+          );
+        })()}
+        {(() => {
+          const setCookieHeaders = response.headers?.filter(h => h.key.toLowerCase() === 'set-cookie') ?? [];
+          if (setCookieHeaders.length === 0) return null;
+          return (
+            <button
+              className={`${styles.tab} ${tab === 'cookies' ? styles.tabActive : ''}`}
+              onClick={() => setTab('cookies')}
+            >
+              Cookies
+              <span className={styles.tabCount}>{setCookieHeaders.length}</span>
+            </button>
           );
         })()}
       </div>
@@ -481,6 +524,44 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
                   ))}
                 </div>
               </>
+            );
+          })()}
+        </div>
+      )}
+
+      {tab === 'cookies' && (
+        <div className={styles.cookiesPane}>
+          {(() => {
+            const setCookieHeaders = response.headers?.filter(h => h.key.toLowerCase() === 'set-cookie') ?? [];
+            const cookies = setCookieHeaders.map(h => parseSetCookie(h.value));
+            return (
+              <table className={styles.cookiesTable}>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Value</th>
+                    <th>Domain</th>
+                    <th>Path</th>
+                    <th>Expires</th>
+                    <th>Flags</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cookies.map((c, i) => (
+                    <tr key={i}>
+                      <td className={styles.cookiesCell}>{c.name}</td>
+                      <td className={`${styles.cookiesCell} ${styles.cookiesCellValue}`}>{c.value}</td>
+                      <td className={styles.cookiesCell}>{c.domain ?? '—'}</td>
+                      <td className={styles.cookiesCell}>{c.path ?? '/'}</td>
+                      <td className={styles.cookiesCell}>{c.expires ?? 'Session'}</td>
+                      <td className={styles.cookiesCell}>
+                        {[c.secure && 'Secure', c.httpOnly && 'HttpOnly', c.sameSite && `SameSite=${c.sameSite}`]
+                          .filter(Boolean).join(', ') || '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             );
           })()}
         </div>

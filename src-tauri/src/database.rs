@@ -183,6 +183,22 @@ impl Database {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+            );
+            CREATE TABLE IF NOT EXISTS cookies (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id INTEGER NOT NULL,
+                domain TEXT NOT NULL,
+                path TEXT NOT NULL DEFAULT '/',
+                name TEXT NOT NULL,
+                value TEXT NOT NULL,
+                expires INTEGER,
+                secure INTEGER NOT NULL DEFAULT 0,
+                http_only INTEGER NOT NULL DEFAULT 0,
+                same_site TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+                UNIQUE(project_id, domain, path, name) ON CONFLICT REPLACE
             );",
         )
         .map_err(|e| format!("Cannot create tables: {e}"))?;
@@ -1443,5 +1459,79 @@ pub fn delete_data_file(db: tauri::State<Database>, id: i64) -> Result<(), Strin
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM data_files WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// --- Cookie jar commands ---
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Cookie {
+    pub id: i64,
+    pub project_id: i64,
+    pub domain: String,
+    pub path: String,
+    pub name: String,
+    pub value: String,
+    pub expires: Option<i64>,
+    pub secure: bool,
+    pub http_only: bool,
+    pub same_site: Option<String>,
+}
+
+#[tauri::command]
+pub fn list_cookies(db: tauri::State<Database>, project_id: i64) -> Result<Vec<Cookie>, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, project_id, domain, path, name, value, expires, secure, http_only, same_site
+             FROM cookies WHERE project_id = ?1 ORDER BY domain, name",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![project_id], |row| {
+            Ok(Cookie {
+                id: row.get(0)?,
+                project_id: row.get(1)?,
+                domain: row.get(2)?,
+                path: row.get(3)?,
+                name: row.get(4)?,
+                value: row.get(5)?,
+                expires: row.get(6)?,
+                secure: row.get::<_, i64>(7)? != 0,
+                http_only: row.get::<_, i64>(8)? != 0,
+                same_site: row.get(9)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_cookie(db: tauri::State<Database>, id: i64) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM cookies WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn clear_cookies(
+    db: tauri::State<Database>,
+    project_id: i64,
+    domain: Option<String>,
+) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    match domain {
+        Some(d) => conn.execute(
+            "DELETE FROM cookies WHERE project_id = ?1 AND domain = ?2",
+            params![project_id, d],
+        ),
+        None => conn.execute(
+            "DELETE FROM cookies WHERE project_id = ?1",
+            params![project_id],
+        ),
+    }
+    .map_err(|e| e.to_string())?;
     Ok(())
 }

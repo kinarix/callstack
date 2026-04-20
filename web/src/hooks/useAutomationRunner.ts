@@ -23,8 +23,9 @@ function buildCurlCmd(method: string, url: string, params: KeyValue[], headers: 
   for (const h of activeHeaders) parts.push(`-H ${JSON.stringify(`${h.key}: ${h.value}`)}`);
   const activeParams = params.filter((p) => p.enabled !== false && p.key.trim());
   if (activeParams.length) {
+    const baseUrl = url.includes('?') ? url.slice(0, url.indexOf('?')) : url;
     const qs = activeParams.map((p) => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`).join('&');
-    url = url.includes('?') ? `${url}&${qs}` : `${url}?${qs}`;
+    url = `${baseUrl}?${qs}`;
   }
   if (body.trim() && ['POST', 'PUT', 'PATCH'].includes(method)) {
     parts.push(`-d ${JSON.stringify(body.trim())}`);
@@ -83,6 +84,7 @@ export function useAutomationRunner() {
   });
 
   const cancelledRef = useRef(false);
+  const projectIdRef = useRef<number | null>(null);
   const dataFilesRef = useRef<DataFile[]>([]);
   const environmentsRef = useRef<Environment[]>([]);
   const secretsRef = useRef<KeyValue[]>([]);
@@ -279,6 +281,8 @@ export function useAutomationRunner() {
             body: effectiveBody,
             followRedirects: true,
             attachments: req.files ?? [],
+            projectId: projectIdRef.current,
+            useCookieJar: true,
           });
 
           let testResults: import('../lib/types').TestResult[] = [];
@@ -388,8 +392,10 @@ export function useAutomationRunner() {
       onLog?: (entry: Omit<LogEntry, 'id'>) => void,
       dataFiles?: DataFile[],
       environments?: Environment[],
+      projectId?: number | null,
     ): Promise<{ results: AutomationRequestResult[]; durationMs: number; overallStatus: TestStatus | 'ERROR' }> => {
       cancelledRef.current = false;
+      projectIdRef.current = projectId ?? null;
       dataFilesRef.current = dataFiles ?? [];
       environmentsRef.current = environments ?? [];
       currentEnvNameRef.current = activeEnvId != null

@@ -7,6 +7,7 @@ import { RequestBuilder } from './components/RequestBuilder/RequestBuilder';
 import AutomationView from './components/AutomationView/AutomationView';
 import EnvironmentView from './components/EnvironmentView/EnvironmentView';
 import DataFileView from './components/DataFileView/DataFileView';
+import CookieView from './components/CookieView/CookieView';
 import { Footer } from './components/Footer/Footer';
 import { SettingsModal } from './components/SettingsModal/SettingsModal';
 import styles from './App.module.css';
@@ -335,6 +336,11 @@ function AppContent() {
             ) : state.activeView === 'dataFile' && state.activeDataFileId !== null ? (
               <DataFileView
                 dataFileId={state.activeDataFileId}
+                showExpandBtn={sidebarCollapsed}
+                onExpand={() => setSidebarCollapsed(false)}
+              />
+            ) : state.activeView === 'cookies' ? (
+              <CookieView
                 showExpandBtn={sidebarCollapsed}
                 onExpand={() => setSidebarCollapsed(false)}
               />

@@ -6,6 +6,8 @@ import {
   AutomationsFolderIcon,
   BinIcon,
   Chevron,
+  CookiesGroupIcon,
+  CookieDomainIcon,
   CopyIcon,
   DataFileIcon,
   DatasetItemIcon,
@@ -23,6 +25,22 @@ import {
   ProjectIcon,
 } from './SidebarIcons';
 import styles from './Sidebar.module.css';
+
+function DomainFavicon({ domain }: { domain: string }) {
+  const [failed, setFailed] = useState(false);
+  const clean = domain.replace(/^\./, '');
+  if (failed) return <CookieDomainIcon />;
+  return (
+    <img
+      src={`https://www.google.com/s2/favicons?domain=${clean}&sz=16`}
+      width={12}
+      height={12}
+      style={{ flexShrink: 0, borderRadius: 2 }}
+      onError={() => setFailed(true)}
+      alt=""
+    />
+  );
+}
 
 // ─── InlineNameInput ──────────────────────────────────────────────────────────
 
@@ -80,7 +98,7 @@ export interface ProjectRowProps {
   editingRequestId: number | null;
   onEditRequest: (id: number | null) => void;
   currentRequestId: number | null;
-  activeView: 'request' | 'automation' | 'environment' | 'dataFile';
+  activeView: 'request' | 'automation' | 'environment' | 'dataFile' | 'cookies';
   activeAutomationId: number | null;
   activeEnvironmentId: number | null;
   activeDataFileId: number | null;
@@ -130,6 +148,13 @@ export interface ProjectRowProps {
   getShortcutForRequest: (id: number) => string | null;
   onOpenShortcutModal: (id: number) => void;
   onEnvClick: (env: Environment) => void;
+  cookieDomains: string[];
+  expandedCookieSections: Set<number>;
+  onCookieSectionToggle: (projectId: number) => void;
+  onCookieDomainClick: (domain: string) => void;
+  onClearAllCookies: (projectId: number, e: React.MouseEvent) => void;
+  onClearDomainCookies: (projectId: number, domain: string, e: React.MouseEvent) => void;
+  activeCookieDomain: string | null;
   onToggleProject: () => void;
   onToggleFolder: (id: number) => void;
   onDropOnProject: (e: React.DragEvent, projectId: number) => void;
@@ -207,6 +232,13 @@ export function ProjectRow({
   getShortcutForRequest,
   onOpenShortcutModal,
   onEnvClick,
+  cookieDomains,
+  expandedCookieSections,
+  onCookieSectionToggle,
+  onCookieDomainClick,
+  onClearAllCookies,
+  onClearDomainCookies,
+  activeCookieDomain,
   onToggleProject,
   onToggleFolder,
   onDropOnProject,
@@ -221,6 +253,7 @@ export function ProjectRow({
 
   const isProjectDragOver = dragOver?.type === 'project' && dragOver.id === project.id;
   const envsExpanded = expandedEnvSections.has(project.id);
+  const cookiesExpanded = expandedCookieSections.has(project.id);
   const automationsExpanded = expandedAutomationSections.has(project.id);
   const dataFilesExpanded = expandedDataFileSections.has(project.id);
 
@@ -531,6 +564,55 @@ export function ProjectRow({
                         className={`${styles.iconBtn} ${styles.deleteBtn}`}
                         onClick={(e) => onDeleteEnv(env.id, env.name, e)}
                         title="Delete environment"
+                      >
+                        <BinIcon />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Cookies group */}
+          <div className={styles.folder}>
+            <div
+              className={styles.folderRow}
+              onClick={() => onCookieSectionToggle(project.id)}
+            >
+              <Chevron expanded={cookiesExpanded} />
+              <CookiesGroupIcon />
+              <span className={styles.folderName}>Cookies</span>
+              {cookieDomains.length > 0 && (
+                <span className={styles.countBadge}>{cookieDomains.length}</span>
+              )}
+              {cookieDomains.length > 0 && (
+                <button
+                  className={`${styles.iconBtn} ${styles.deleteBtn}`}
+                  onClick={(e) => onClearAllCookies(project.id, e)}
+                  title="Clear all cookies"
+                >
+                  <BinIcon />
+                </button>
+              )}
+            </div>
+            {cookiesExpanded && (
+              <div className={styles.folderChildren}>
+                {cookieDomains.length === 0 ? (
+                  <div className={`${styles.treeRow} ${styles.emptyRow}`}>No cookies stored</div>
+                ) : (
+                  cookieDomains.map((domain) => (
+                    <div
+                      key={domain}
+                      className={`${styles.treeRow} ${styles.envRow} ${activeView === 'cookies' && activeCookieDomain === domain ? styles.selected : ''}`}
+                      onClick={() => onCookieDomainClick(domain)}
+                    >
+                      <DomainFavicon domain={domain} />
+                      <span className={styles.envName}>{domain}</span>
+                      <button
+                        className={`${styles.iconBtn} ${styles.deleteBtn}`}
+                        onClick={(e) => onClearDomainCookies(project.id, domain, e)}
+                        title={`Clear cookies for ${domain}`}
                       >
                         <BinIcon />
                       </button>
