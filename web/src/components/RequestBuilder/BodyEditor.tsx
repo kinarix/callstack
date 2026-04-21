@@ -132,7 +132,6 @@ const appEditorTheme = EditorView.theme({
   '&': {
     color: 'var(--text-primary)',
     fontFamily: "'JetBrains Mono', monospace",
-    fontSize: '12px',
   },
   '.cm-content': {
     caretColor: 'var(--text-primary)',

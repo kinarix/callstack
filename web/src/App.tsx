@@ -27,6 +27,28 @@ function AppContent() {
   const { loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations, listDataFiles, createRequest, duplicateRequest, getLastResponse } = useDatabase();
   const { settings, setZoom, setShortcut, setResponseHistoryLimit, resetSettings } = useSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [displayZoom, setDisplayZoom] = useState(settings.zoom);
+  const displayZoomRef = useRef(settings.zoom);
+  const zoomRafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const target = settings.zoom;
+    const start = displayZoomRef.current;
+    if (start === target) return;
+    if (zoomRafRef.current) cancelAnimationFrame(zoomRafRef.current);
+    const duration = 180;
+    const t0 = performance.now();
+    const animate = (now: number) => {
+      const p = Math.min((now - t0) / duration, 1);
+      const eased = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+      const v = start + (target - start) * eased;
+      displayZoomRef.current = v;
+      setDisplayZoom(v);
+      if (p < 1) zoomRafRef.current = requestAnimationFrame(animate);
+    };
+    zoomRafRef.current = requestAnimationFrame(animate);
+    return () => { if (zoomRafRef.current) cancelAnimationFrame(zoomRafRef.current); };
+  }, [settings.zoom]);
 
   const executeRef = useRef<(() => void) | null>(null);
   const [externalRenameId, setExternalRenameId] = useState<number | null>(null);
@@ -287,6 +309,25 @@ function AppContent() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [settings.shortcuts, state.currentRequestId, state.currentProjectId, state.currentResponse, state.requests, activePane, createRequest, duplicateRequest, dispatch]);
 
+  const ZOOM_LEVELS = [1, 1.1, 1.25, 1.5];
+  useEffect(() => {
+    const onZoomKey = (e: KeyboardEvent) => {
+      if (matchesShortcut(e, settings.shortcuts.zoomIn)) {
+        e.preventDefault();
+        const idx = ZOOM_LEVELS.indexOf(settings.zoom);
+        const next = ZOOM_LEVELS[Math.min(idx + 1, ZOOM_LEVELS.length - 1)];
+        if (next !== settings.zoom) setZoom(next);
+      } else if (matchesShortcut(e, settings.shortcuts.zoomOut)) {
+        e.preventDefault();
+        const idx = ZOOM_LEVELS.indexOf(settings.zoom);
+        const prev = ZOOM_LEVELS[Math.max(idx - 1, 0)];
+        if (prev !== settings.zoom) setZoom(prev);
+      }
+    };
+    window.addEventListener('keydown', onZoomKey, true);
+    return () => window.removeEventListener('keydown', onZoomKey, true);
+  }, [settings.zoom, settings.shortcuts.zoomIn, settings.shortcuts.zoomOut, setZoom]);
+
   useEffect(() => {
     if (state.error == null) return;
     const onKey = (e: KeyboardEvent) => {
@@ -304,7 +345,7 @@ function AppContent() {
   const gridCols = sidebarCollapsed ? `0px 0px 1fr` : `${sidebarWidth}px 4px 1fr`;
 
   return (
-    <div className={styles.app} style={{ zoom: settings.zoom }}>
+    <div className={styles.app} style={{ zoom: displayZoom, ['--app-zoom' as string]: displayZoom }}>
 <div className={styles.body}>
       <div className={styles.content} style={{ gridTemplateColumns: gridCols }}>
         <div className={styles.sidebarWrap}>

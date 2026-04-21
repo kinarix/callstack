@@ -143,11 +143,12 @@
   background: var(--bg-secondary);
   border: 1px solid var(--border-secondary);
   border-radius: var(--radius-md);
+  zoom: calc(1 / var(--app-zoom, 1));
 }
 
 .editorWrap :global(.cm-editor) {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
+  font-size: calc(12px * var(--app-zoom, 1));
   height: 100%;
 }
 

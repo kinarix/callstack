@@ -21,6 +21,8 @@ const ACTION_LABELS: { key: keyof ActionShortcuts; label: string }[] = [
   { key: 'copyResponse', label: 'Copy response' },
   { key: 'cloneRequest', label: 'Clone request' },
   { key: 'saveResponse', label: 'Save response' },
+  { key: 'zoomIn',       label: 'Zoom in' },
+  { key: 'zoomOut',      label: 'Zoom out' },
 ];
 
 const BLOCKED_KEYS = new Set([

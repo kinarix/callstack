@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { decodeJwt } from '../../lib/jwt';
 import styles from './JwtBadge.module.css';
@@ -25,9 +25,33 @@ interface Props {
 
 type PopoverPos = { top: number; left?: number; right?: number } | { bottom: number; left?: number; right?: number };
 
+function readZoom(el: HTMLElement): number {
+  return parseFloat(getComputedStyle(el).getPropertyValue('--app-zoom')) || 1;
+}
+
+function calcPopoverPos(r: DOMRect, zoom: number, popoverAlign: 'left' | 'right', vh: number, vw: number): PopoverPos {
+  const top = r.top * zoom;
+  const bottom = r.bottom * zoom;
+  const left = r.left * zoom;
+  const right = r.right * zoom;
+  const horiz = popoverAlign === 'right' ? { left } : { right: vw - right };
+  if (vh - bottom < 220 * zoom) {
+    return { bottom: vh - top + 4, ...horiz };
+  }
+  return { top: bottom + 4, ...horiz };
+}
+
+function posEqual(a: PopoverPos | null, b: PopoverPos): boolean {
+  if (!a) return false;
+  const ak = a as Record<string, number>;
+  const bk = b as Record<string, number>;
+  return Object.keys(bk).every(k => ak[k] === bk[k]) && Object.keys(ak).every(k => bk[k] === ak[k]);
+}
+
 export function JwtBadge({ token, popoverAlign = 'left' }: Props) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<PopoverPos | null>(null);
+  const [popoverZoom, setPopoverZoom] = useState(1);
   const chipRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const decoded = open ? decodeJwt(token) : null;
@@ -35,16 +59,25 @@ export function JwtBadge({ token, popoverAlign = 'left' }: Props) {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (chipRef.current) {
+      const zoom = readZoom(chipRef.current);
       const r = chipRef.current.getBoundingClientRect();
-      const horiz = popoverAlign === 'right' ? { left: r.left } : { right: window.innerWidth - r.right };
-      if (window.innerHeight - r.bottom < 220) {
-        setPos({ bottom: window.innerHeight - r.top + 4, ...horiz });
-      } else {
-        setPos({ top: r.bottom + 4, ...horiz });
-      }
+      setPopoverZoom(zoom);
+      setPos(calcPopoverPos(r, zoom, popoverAlign, window.innerHeight, window.innerWidth));
     }
     setOpen(v => !v);
   };
+
+  // Re-read zoom and position every render while open so keyboard-driven zoom changes
+  // are reflected immediately (AppContent re-renders every RAF frame during animation).
+  // Functional updates with equality checks prevent infinite re-render loops.
+  useLayoutEffect(() => {
+    if (!open || !chipRef.current) return;
+    const z = readZoom(chipRef.current);
+    const r = chipRef.current.getBoundingClientRect();
+    const newPos = calcPopoverPos(r, z, popoverAlign, window.innerHeight, window.innerWidth);
+    setPopoverZoom(prev => (prev === z ? prev : z));
+    setPos(prev => (posEqual(prev, newPos) ? prev : newPos));
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -57,11 +90,21 @@ export function JwtBadge({ token, popoverAlign = 'left' }: Props) {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
+  // transform: scale() scales visually without affecting fixed-position coordinates,
+  // avoiding WebKit's non-standard behavior where zoom: X also multiplies top/left values.
+  const isFlipped = pos !== null && 'bottom' in pos;
+  const transformOrigin = `${isFlipped ? 'bottom' : 'top'} ${popoverAlign === 'right' ? 'left' : 'right'}`;
+
   const popoverContent = open && pos ? (
     <div
       ref={popoverRef}
       className={styles.popover}
-      style={{ position: 'fixed', ...pos }}
+      style={{
+        position: 'fixed',
+        ...pos,
+        transform: `scale(${popoverZoom})`,
+        transformOrigin,
+      }}
     >
       {decoded ? (
         <>

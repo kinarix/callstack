@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import type { KeyValue } from '../../lib/types';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript, localCompletionSource } from '@codemirror/lang-javascript';
@@ -6,6 +6,9 @@ import { EditorView, keymap, showTooltip, type Tooltip } from '@codemirror/view'
 import { indentWithTab } from '@codemirror/commands';
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
 import { StateField } from '@codemirror/state';
+import * as prettier from 'prettier/standalone';
+import * as parserBabel from 'prettier/plugins/babel';
+import * as pluginEstree from 'prettier/plugins/estree';
 import { tags } from '@lezer/highlight';
 import {
   autocompletion,
@@ -38,10 +41,10 @@ const editorTheme = EditorView.theme({
   '&': {
     color: 'var(--text-primary)',
     fontFamily: "'JetBrains Mono', monospace",
-    fontSize: '12px',
   },
   '.cm-content': {
     lineHeight: '1.6',
+    padding: '8px 0',
   },
   '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--accent-get)' },
   '.cm-selectionBackground': { backgroundColor: 'rgba(59, 130, 246, 0.3) !important' },
@@ -549,8 +552,21 @@ function loadScriptTab(requestId?: number): ScriptTab {
   return 'pre';
 }
 
+async function prettify(source: string): Promise<string> {
+  return prettier.format(source, {
+    parser: 'babel',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    plugins: [parserBabel as any, pluginEstree as any],
+    tabWidth: 2,
+    singleQuote: true,
+    semi: true,
+    printWidth: 100,
+  });
+}
+
 export function ScriptEditor({ requestId, preScript, postScript, onChange, consoleLogs, onClearLogs, envVars = [], secrets = [], onTest }: ScriptEditorProps) {
   const [activeTab, setActiveTab] = useState<ScriptTab>(() => loadScriptTab(requestId));
+  const [formatError, setFormatError] = useState<string | null>(null);
 
   useEffect(() => {
     setActiveTab(loadScriptTab(requestId));
@@ -605,19 +621,6 @@ export function ScriptEditor({ requestId, preScript, postScript, onChange, conso
     [secrets]
   );
 
-  const extensions = useMemo(() => [
-    javascript(),
-    editorTheme,
-    syntaxHighlighting(jsHighlight),
-    keymap.of([indentWithTab]),
-    autocompletion({
-      override: [makeCompletionSource(isPost, envVarKeys, secretKeys), localCompletionSource],
-      activateOnTyping: true,
-      maxRenderedOptions: 20,
-    }),
-    sigHelpField,
-  ], [isPost, envVarKeys, secretKeys]);
-
   const currentScript = isPost ? postScript : preScript;
 
   const handleChange = (value: string) => {
@@ -627,6 +630,42 @@ export function ScriptEditor({ requestId, preScript, postScript, onChange, conso
       onChange({ post_script: value });
     }
   };
+
+  const runFormat = useCallback(async () => {
+    if (activeTab === 'examples') return;
+    const source = isPost ? postScript : preScript;
+    if (!source.trim()) return;
+    try {
+      const formatted = await prettify(source);
+      if (formatted === source) return;
+      onChange(isPost ? { post_script: formatted } : { pre_script: formatted });
+      setFormatError(null);
+    } catch (e) {
+      setFormatError(e instanceof Error ? e.message.split('\n')[0] : 'Format failed');
+      setTimeout(() => setFormatError(null), 3000);
+    }
+  }, [activeTab, isPost, postScript, preScript, onChange]);
+
+  const formatKeymap = useMemo(
+    () => keymap.of([
+      { key: 'Shift-Alt-f', preventDefault: true, run: () => { runFormat(); return true; } },
+    ]),
+    [runFormat],
+  );
+
+  const extensions = useMemo(() => [
+    javascript(),
+    editorTheme,
+    syntaxHighlighting(jsHighlight),
+    formatKeymap,
+    keymap.of([indentWithTab]),
+    autocompletion({
+      override: [makeCompletionSource(isPost, envVarKeys, secretKeys), localCompletionSource],
+      activateOnTyping: true,
+      maxRenderedOptions: 20,
+    }),
+    sigHelpField,
+  ], [isPost, envVarKeys, secretKeys, formatKeymap]);
 
   return (
     <div className={styles.scriptEditor}>
@@ -657,6 +696,15 @@ export function ScriptEditor({ requestId, preScript, postScript, onChange, conso
             ? 'Runs before the request is sent. Mutate request, headers, params.'
             : 'Runs after the response. Use test() to assert, env.set() to store values.'}
         </div>
+        {activeTab !== 'examples' && (
+          <button
+            className={styles.formatBtn}
+            onClick={runFormat}
+            title={formatError ?? 'Format script (Shift+Alt+F)'}
+          >
+            {formatError ? 'Format failed' : 'Format'}
+          </button>
+        )}
         {onTest && activeTab !== 'examples' && (
           <button
             className={styles.testBtn}

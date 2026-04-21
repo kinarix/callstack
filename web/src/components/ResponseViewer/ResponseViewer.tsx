@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useApp } from '../../context/AppContext';
 import CodeMirror from '@uiw/react-codemirror';
@@ -68,7 +68,6 @@ const responseViewerEditorTheme = EditorView.theme({
   '.cm-content': {
     caretColor: 'var(--text-primary)',
     fontFamily: "'JetBrains Mono', monospace",
-    fontSize: '12px',
     lineHeight: '1.6',
     padding: '8px 0',
   },
@@ -78,7 +77,6 @@ const responseViewerEditorTheme = EditorView.theme({
     borderRight: '1px solid var(--border-secondary)',
     color: 'var(--text-tertiary)',
     fontFamily: "'JetBrains Mono', monospace",
-    fontSize: '11px',
   },
   '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--accent-get)' },
   '&.cm-focused .cm-selectionBackground, .cm-selectionBackground': {
@@ -244,6 +242,7 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
   const [tab, setTab] = useState<'body' | 'headers' | 'preview' | 'tests' | 'cookies' | 'history'>('body');
   const [headersPinned, setHeadersPinned] = useState(false);
   const [testsPinned, setTestsPinned] = useState(false);
+  const bodyEditorRef = useRef<EditorView | null>(null);
 
   // History state
   const [history, setHistory] = useState<Response[]>([]);
@@ -283,6 +282,7 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
         setTab('headers');
       } else {
         setTab('body');
+        setTimeout(() => bodyEditorRef.current?.focus(), 0);
       }
     }
   }, [response?.timestamp]);
@@ -347,7 +347,7 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
       <div className={styles.header}>
         <span className={styles.sectionLabel}>Response</span>
         <div className={styles.status} style={{ backgroundColor: statusColor }}>
-          {displayedResponse.statusText || displayedResponse.status}
+          {displayedResponse.status}{displayedResponse.statusText ? ` ${displayedResponse.statusText}` : ''}
         </div>
         <div className={styles.info}>
           <span className={styles.infoItem}>
@@ -403,9 +403,9 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
             Preview
           </button>
         )}
-        {displayedResponse.testResults && displayedResponse.testResults.length > 0 && (() => {
-          const passed = displayedResponse.testResults!.filter(r => r.passed).length;
-          const failed = displayedResponse.testResults!.length - passed;
+        {response.testResults && response.testResults.length > 0 && (() => {
+          const passed = response.testResults!.filter(r => r.passed).length;
+          const failed = response.testResults!.length - passed;
           const statusColor = failed === 0 ? 'var(--accent-get)' : passed === 0 ? '#ef4444' : '#f59e0b';
           return (
             <div className={styles.tabGroup}>
@@ -417,7 +417,7 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
               >
                 Tests
                 <span className={styles.tabCount} style={{ background: `${statusColor}22`, color: statusColor }}>
-                  {failed === 0 ? `${passed} passed` : passed === 0 ? `${failed} failed` : `${passed}/${displayedResponse.testResults!.length}`}
+                  {failed === 0 ? `${passed} passed` : passed === 0 ? `${failed} failed` : `${passed}/${response.testResults!.length}`}
                 </span>
               </button>
               <button
@@ -482,14 +482,14 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
         </div>
       )}
 
-      {testsPinned && tab === 'body' && displayedResponse.testResults && (
+      {testsPinned && tab === 'body' && response.testResults && (
         <div className={styles.pinnedPanel}>
           <div className={styles.pinnedHeader}>
             <span>Tests</span>
           </div>
           <div className={styles.pinnedContent}>
             <div className={styles.testsTable}>
-              {displayedResponse.testResults.map((r, i) => (
+              {response.testResults.map((r, i) => (
                 <div key={i} className={`${styles.testsRow} ${r.severity === 'warning' ? styles.testsRowWarn : r.passed ? styles.testsRowPass : styles.testsRowFail}`}>
                   <span className={styles.testsIcon}>{r.severity === 'warning' ? '⚠' : r.passed ? '✓' : '✗'}</span>
                   <div className={styles.testsDetail}>
@@ -523,6 +523,7 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
                 highlightSelectionMatches: false,
               }}
               className={styles.responseEditor}
+              onCreateEditor={(view) => { bodyEditorRef.current = view; }}
             />
             {copyFlash && (
               <div className={styles.copyToast}>Copied to clipboard</div>
@@ -615,10 +616,10 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
         </div>
       )}
 
-      {tab === 'tests' && displayedResponse.testResults && (
+      {tab === 'tests' && response.testResults && (
         <div className={styles.testsPane}>
           {(() => {
-            const results = displayedResponse.testResults!;
+            const results = response.testResults!;
             const passed = results.filter(r => r.passed).length;
             const failed = results.length - passed;
             return (

@@ -196,6 +196,12 @@
   flex-shrink: 0;
   padding: 0 var(--space-1);
   height: 36px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .tab {
@@ -275,6 +281,7 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  zoom: calc(1 / var(--app-zoom, 1));
 }
 
 .jwtPanel {
@@ -326,7 +333,7 @@
   overflow: auto;
   height: 100%;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
+  font-size: calc(12px * var(--app-zoom, 1));
 }
 
 .flashCopy {
