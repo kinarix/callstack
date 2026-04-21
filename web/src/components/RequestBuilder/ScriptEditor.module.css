@@ -96,6 +96,34 @@
   flex-shrink: 0;
 }
 
+.formatBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  margin-right: var(--space-half);
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--accent-patch) 35%, transparent);
+  background: color-mix(in srgb, var(--accent-patch) 10%, transparent);
+  color: var(--accent-patch);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'Outfit', sans-serif;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.formatBtn:hover {
+  background: color-mix(in srgb, var(--accent-patch) 20%, transparent);
+  border-color: color-mix(in srgb, var(--accent-patch) 55%, transparent);
+}
+
+.formatBtn:active {
+  transform: scale(0.96);
+}
+
 .testBtn:hover {
   background: rgba(245, 158, 11, 0.2);
   border-color: rgba(245, 158, 11, 0.55);
@@ -116,6 +144,10 @@
   min-height: 0;
   overflow: hidden;
   background: var(--bg-secondary);
+  /* Cancel app-level CSS zoom for this subtree — WebKit's Range.getClientRects
+     doesn't respect zoom, which breaks CM6 click-to-position. Font-size below
+     restores the visual "zoom" via larger text. */
+  zoom: calc(1 / var(--app-zoom, 1));
 }
 
 .editorWrap :global(.cm-editor) {
@@ -123,11 +155,8 @@
 }
 
 .editorWrap :global(.cm-scroller) {
-  overflow: auto;
-  height: 100%;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  padding: 8px 0;
+  font-size: calc(12px * var(--app-zoom, 1));
 }
 
 /* ── Resize handle ─────────────────────────────────────────── */

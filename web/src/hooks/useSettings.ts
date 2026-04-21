@@ -12,6 +12,8 @@ export interface ActionShortcuts {
   copyResponse: string;
   cloneRequest: string;
   saveResponse: string;
+  zoomIn: string;
+  zoomOut: string;
 }
 
 export interface Settings {
@@ -29,6 +31,8 @@ export const DEFAULTS: Settings = {
     copyResponse: `${mod}+c`,
     cloneRequest: `${mod}+d`,
     saveResponse: `${mod}+s`,
+    zoomIn:       `${mod}+=`,
+    zoomOut:      `${mod}+-`,
   },
   responseHistoryLimit: 10,
 };
@@ -48,6 +52,8 @@ function loadSettings(): Settings {
         copyResponse: s.copyResponse ?? DEFAULTS.shortcuts.copyResponse,
         cloneRequest: s.cloneRequest ?? DEFAULTS.shortcuts.cloneRequest,
         saveResponse: s.saveResponse ?? DEFAULTS.shortcuts.saveResponse,
+        zoomIn:       s.zoomIn       ?? DEFAULTS.shortcuts.zoomIn,
+        zoomOut:      s.zoomOut      ?? DEFAULTS.shortcuts.zoomOut,
       },
       responseHistoryLimit: parsed.responseHistoryLimit ?? DEFAULTS.responseHistoryLimit,
     };
