@@ -663,6 +663,10 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
             resp.timeMs,
             resp.size,
             resp.timestamp,
+            0,
+            [],
+            [],
+            '',
           );
         }
       }
