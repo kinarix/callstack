@@ -325,6 +325,8 @@ pub fn run() {
             cancel_request,
             database::save_response,
             database::get_last_response,
+            database::get_response_history,
+            database::clear_response_history,
             database::list_environments,
             database::create_environment,
             database::update_environment,

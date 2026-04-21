@@ -668,3 +668,319 @@
   text-overflow: ellipsis;
   color: var(--text-secondary);
 }
+
+/* ── History pane ─────────────────────────────────────── */
+
+.historyPane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.historyList {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-1) 0;
+}
+
+.historyRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 5px var(--space-2);
+  border-bottom: 1px solid var(--border-secondary);
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  transition: background 0.1s;
+}
+
+.historyRow:last-child {
+  border-bottom: none;
+}
+
+.historyRow:hover {
+  background: var(--bg-hover);
+}
+
+.historyRowActive {
+  background: color-mix(in srgb, var(--accent-get) 6%, transparent);
+}
+
+.historySelectors {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.historySel {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-secondary);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.1s;
+}
+
+.historySel:hover {
+  border-color: var(--border-primary);
+  color: var(--text-primary);
+}
+
+.historySelActive {
+  background: var(--accent-get);
+  border-color: var(--accent-get);
+  color: #fff;
+}
+
+.historyIndex {
+  color: var(--text-tertiary);
+  min-width: 28px;
+  flex-shrink: 0;
+}
+
+.historyTimestamp {
+  color: var(--text-secondary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.historyStatus {
+  font-weight: 700;
+  min-width: 36px;
+  flex-shrink: 0;
+}
+
+.historyMeta {
+  color: var(--text-tertiary);
+  min-width: 50px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.historyViewBtn {
+  width: 52px;
+  padding: 2px 0;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-secondary);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.1s;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.historyViewBtn:hover {
+  border-color: var(--accent-get);
+  color: var(--accent-get);
+}
+
+.historyViewBtnActive {
+  border-color: var(--accent-get);
+  color: var(--accent-get);
+  background: color-mix(in srgb, var(--accent-get) 10%, transparent);
+}
+
+.historyCurrentTag {
+  width: 52px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--text-secondary) 12%, transparent);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.historyCurrentTag:hover {
+  background: color-mix(in srgb, var(--accent-get) 15%, transparent);
+  color: var(--accent-get);
+}
+
+.historyActions {
+  padding: var(--space-1) var(--space-2);
+  border-top: 1px solid var(--border-primary);
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.compareBtn {
+  padding: 5px 20px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--accent-get);
+  background: color-mix(in srgb, var(--accent-get) 12%, transparent);
+  color: var(--accent-get);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.compareBtn:hover {
+  background: color-mix(in srgb, var(--accent-get) 20%, transparent);
+}
+
+.historyBadge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent-put) 18%, var(--bg-tertiary));
+  color: var(--accent-put);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ── Diff view ────────────────────────────────────────── */
+
+.diffView {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.diffHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 6px var(--space-2);
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.diffSide {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1;
+}
+
+.diffSideRight {
+  justify-content: flex-end;
+}
+
+.diffLabel {
+  font-size: 10px;
+  font-weight: 800;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-secondary);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.diffTs {
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+
+.diffBody {
+  flex: 1;
+  overflow-y: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.diffLine {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 0 var(--space-2);
+}
+
+.diffAdded {
+  background: color-mix(in srgb, var(--accent-get) 12%, transparent);
+}
+
+.diffRemoved {
+  background: color-mix(in srgb, var(--accent-delete) 12%, transparent);
+}
+
+.diffUnchanged {
+  background: transparent;
+}
+
+.diffPrefix {
+  color: var(--text-tertiary);
+  user-select: none;
+  flex-shrink: 0;
+  width: 10px;
+}
+
+.diffAdded .diffPrefix {
+  color: var(--accent-get);
+}
+
+.diffRemoved .diffPrefix {
+  color: var(--accent-delete);
+}
+
+.diffLineText {
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-all;
+  flex: 1;
+}
+
+.diffIdentical {
+  padding: 4px var(--space-2);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  font-style: italic;
+}
+
+.diffSection {
+  border-bottom: 1px solid var(--border-secondary);
+  padding-bottom: 2px;
+  margin-bottom: 2px;
+}
+
+.diffSection:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.diffSectionLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-tertiary);
+  padding: 6px var(--space-2) 3px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-secondary);
+}

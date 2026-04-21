@@ -69,6 +69,9 @@ export interface Response {
   isBase64?: boolean;
   testResults?: TestResult[];
   testStatus?: TestStatus;
+  requestHeaders?: KeyValue[];
+  requestParams?: KeyValue[];
+  requestBody?: string;
 }
 
 export interface FileAttachment {

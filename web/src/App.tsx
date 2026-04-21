@@ -25,7 +25,7 @@ function clearUIState() {
 function AppContent() {
   const { state, dispatch } = useApp();
   const { loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations, listDataFiles, createRequest, duplicateRequest, getLastResponse } = useDatabase();
-  const { settings, setZoom, setShortcut, resetSettings } = useSettings();
+  const { settings, setZoom, setShortcut, setResponseHistoryLimit, resetSettings } = useSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const executeRef = useRef<(() => void) | null>(null);
@@ -383,6 +383,7 @@ function AppContent() {
           settings={settings}
           onSetZoom={setZoom}
           onSetShortcut={setShortcut}
+          onSetResponseHistoryLimit={setResponseHistoryLimit}
           onReset={resetSettings}
           onResetAll={() => invoke('reset_all_data')}
           onClose={() => setSettingsOpen(false)}

@@ -82,16 +82,26 @@ function readCallstackLocalStorage(): { entries: LsEntry[]; totalBytes: number }
 
 type Tab = 'general' | 'data';
 
+const HISTORY_LIMIT_OPTIONS: { label: string; value: number }[] = [
+  { label: '5', value: 5 },
+  { label: '10', value: 10 },
+  { label: '25', value: 25 },
+  { label: '50', value: 50 },
+  { label: '100', value: 100 },
+  { label: 'Unlimited', value: 0 },
+];
+
 interface SettingsModalProps {
   settings: Settings;
   onSetZoom: (zoom: number) => void;
   onSetShortcut: (action: keyof ActionShortcuts, value: string) => void;
+  onSetResponseHistoryLimit: (limit: number) => void;
   onReset?: () => void;
   onResetAll?: () => Promise<void>;
   onClose: () => void;
 }
 
-export function SettingsModal({ settings, onSetZoom, onSetShortcut, onReset, onResetAll, onClose }: SettingsModalProps) {
+export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetResponseHistoryLimit, onReset, onResetAll, onClose }: SettingsModalProps) {
   const [tab, setTab] = useState<Tab>('general');
   const [recording, setRecording] = useState<keyof ActionShortcuts | null>(null);
   const [confirmingReset, setConfirmingReset] = useState(false);
@@ -106,6 +116,9 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onReset, onR
   const [copyingFull, setCopyingFull] = useState(false);
   const [compacting, setCompacting] = useState(false);
   const [compactDone, setCompactDone] = useState(false);
+  const [confirmClearHistory, setConfirmClearHistory] = useState(false);
+  const [clearingHistory, setClearingHistory] = useState(false);
+  const [historyCleared, setHistoryCleared] = useState(false);
   const [appVersion, setAppVersion] = useState<string>(() => {
     try { return (window as any).__APP_VERSION__ ?? __APP_VERSION__; } catch { return __APP_VERSION__; }
   });
@@ -203,6 +216,21 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onReset, onR
       // swallow — button stays available for retry
     } finally {
       setCompacting(false);
+    }
+  }, []);
+
+  const handleClearHistory = useCallback(async () => {
+    setClearingHistory(true);
+    try {
+      await invoke('clear_response_history');
+      setHistoryCleared(true);
+      setConfirmClearHistory(false);
+      setTimeout(() => setHistoryCleared(false), 2000);
+      invoke<DbStats>('get_db_stats').then(setDbStats).catch(() => {});
+    } catch {
+      // swallow
+    } finally {
+      setClearingHistory(false);
     }
   }, []);
 
@@ -336,11 +364,49 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onReset, onR
                   ))}
                 </div>
               </section>
+
             </>
           )}
 
           {tab === 'data' && (
             <>
+              <section className={styles.section}>
+                <div className={styles.sectionTitle}>Response History</div>
+                <div className={styles.sectionDesc}>
+                  Number of responses to keep per request. Older entries are automatically removed when a new response is saved.
+                </div>
+                <div className={styles.historyLimitRow}>
+                  <select
+                    className={styles.historySelect}
+                    value={settings.responseHistoryLimit}
+                    onChange={(e) => onSetResponseHistoryLimit(Number(e.target.value))}
+                  >
+                    {HISTORY_LIMIT_OPTIONS.map(({ label, value }) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                  <div className={styles.resetRow}>
+                    {!confirmClearHistory ? (
+                      <button
+                        className={styles.resetBtn}
+                        onClick={() => setConfirmClearHistory(true)}
+                        disabled={historyCleared}
+                      >
+                        {historyCleared ? 'Cleared ✓' : 'Clear all history'}
+                      </button>
+                    ) : (
+                      <div className={styles.dangerConfirmActions}>
+                        <span className={styles.mutedText}>Deletes all saved responses.</span>
+                        <button className={styles.dangerCancelBtn} onClick={() => setConfirmClearHistory(false)}>Cancel</button>
+                        <button className={styles.dangerConfirmBtn} onClick={handleClearHistory} disabled={clearingHistory}>
+                          {clearingHistory ? 'Clearing…' : 'Yes, clear'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
+
               <section className={styles.section}>
                 <div className={styles.sectionTitle}>Database</div>
                 <div className={styles.sectionDesc}>
