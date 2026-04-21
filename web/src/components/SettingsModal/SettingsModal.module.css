@@ -333,6 +333,24 @@
   margin-bottom: var(--space-half);
 }
 
+.historyLimitRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.historySelect {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 /* ── Shortcuts ────────────────────────────── */
 
 .shortcutList {

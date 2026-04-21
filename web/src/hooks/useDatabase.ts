@@ -279,6 +279,10 @@ export function useDatabase() {
       timeMs: number,
       size: number,
       timestampMs: number,
+      historyLimit: number,
+      requestHeaders: Response['headers'],
+      requestParams: Response['headers'],
+      requestBody: string,
     ): Promise<void> => {
       await invoke('save_response', {
         requestId,
@@ -289,6 +293,10 @@ export function useDatabase() {
         timeMs,
         size,
         timestampMs,
+        historyLimit,
+        requestHeaders: JSON.stringify(requestHeaders),
+        requestParams: JSON.stringify(requestParams),
+        requestBody,
       });
     },
     []
@@ -386,6 +394,9 @@ export function useDatabase() {
         timeMs: number;
         size: number;
         timestampMs: number;
+        requestHeaders: string;
+        requestParams: string;
+        requestBody: string;
       }
       const raw = await invoke<RawStoredResponse | null>('get_last_response', { requestId });
       if (!raw) return null;
@@ -399,7 +410,45 @@ export function useDatabase() {
         time: raw.timeMs,
         size: raw.size,
         timestamp: raw.timestampMs || undefined,
+        requestHeaders: JSON.parse(raw.requestHeaders || '[]'),
+        requestParams: JSON.parse(raw.requestParams || '[]'),
+        requestBody: raw.requestBody || undefined,
       };
+    },
+    []
+  );
+
+  const getResponseHistory = useCallback(
+    async (requestId: number): Promise<Response[]> => {
+      interface RawStoredResponse {
+        id: number;
+        requestId: number;
+        status: number;
+        statusText: string;
+        headers: string;
+        body: string;
+        timeMs: number;
+        size: number;
+        timestampMs: number;
+        requestHeaders: string;
+        requestParams: string;
+        requestBody: string;
+      }
+      const rows = await invoke<RawStoredResponse[]>('get_response_history', { requestId });
+      return rows.map((raw) => ({
+        id: raw.id,
+        request_id: raw.requestId,
+        status: raw.status,
+        statusText: raw.statusText,
+        headers: JSON.parse(raw.headers || '[]'),
+        body: raw.body,
+        time: raw.timeMs,
+        size: raw.size,
+        timestamp: raw.timestampMs || undefined,
+        requestHeaders: JSON.parse(raw.requestHeaders || '[]'),
+        requestParams: JSON.parse(raw.requestParams || '[]'),
+        requestBody: raw.requestBody || undefined,
+      }));
     },
     []
   );
@@ -526,6 +575,7 @@ export function useDatabase() {
     duplicateFolder,
     saveResponse,
     getLastResponse,
+    getResponseHistory,
     listEnvironments,
     createEnvironment,
     updateEnvironment,

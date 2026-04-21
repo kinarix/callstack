@@ -17,6 +17,7 @@ export interface ActionShortcuts {
 export interface Settings {
   zoom: number;
   shortcuts: ActionShortcuts;
+  responseHistoryLimit: number;
 }
 
 export const DEFAULTS: Settings = {
@@ -29,6 +30,7 @@ export const DEFAULTS: Settings = {
     cloneRequest: `${mod}+d`,
     saveResponse: `${mod}+s`,
   },
+  responseHistoryLimit: 10,
 };
 
 function loadSettings(): Settings {
@@ -47,6 +49,7 @@ function loadSettings(): Settings {
         cloneRequest: s.cloneRequest ?? DEFAULTS.shortcuts.cloneRequest,
         saveResponse: s.saveResponse ?? DEFAULTS.shortcuts.saveResponse,
       },
+      responseHistoryLimit: parsed.responseHistoryLimit ?? DEFAULTS.responseHistoryLimit,
     };
   } catch {
     return DEFAULTS;
@@ -102,10 +105,18 @@ export function useSettings() {
     });
   }, []);
 
+  const setResponseHistoryLimit = useCallback((responseHistoryLimit: number) => {
+    setSettings((prev) => {
+      const next = { ...prev, responseHistoryLimit };
+      saveSettings(next);
+      return next;
+    });
+  }, []);
+
   const resetSettings = useCallback(() => {
     setSettings(DEFAULTS);
     saveSettings(DEFAULTS);
   }, []);
 
-  return { settings, setZoom, setShortcut, resetSettings };
+  return { settings, setZoom, setShortcut, setResponseHistoryLimit, resetSettings };
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useApp } from '../../context/AppContext';
 import CodeMirror from '@uiw/react-codemirror';
@@ -7,13 +7,14 @@ import { xml } from '@codemirror/lang-xml';
 import { EditorView } from '@codemirror/view';
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
-
+import { diffLines } from 'diff';
 
 import type { Response, TestResult } from '../../lib/types';
 import { getStatusColor, formatBytes } from '../../lib/utils';
 import { formatBody, normalizeLineEndings } from '../../lib/formatBody';
 import { isJwt, findJwtsInBody } from '../../lib/jwt';
 import { JwtBadge } from '../JwtBadge/JwtBadge';
+import { useDatabase } from '../../hooks/useDatabase';
 import styles from './ResponseViewer.module.css';
 
 function PinIcon({ pinned }: { pinned: boolean }) {
@@ -47,6 +48,7 @@ function formatTimestamp(ts: number): string {
 
 interface ResponseViewerProps {
   response: Response | null;
+  requestId?: number;
   requestName?: string;
   copyFlash?: boolean;
   onClear?: () => void;
@@ -160,26 +162,130 @@ function isPreviewable(contentType: string): boolean {
   return contentType.includes('html') || contentType.includes('image/') || contentType.includes('video/') || contentType.includes('audio/');
 }
 
-export function ResponseViewer({ response, requestName, copyFlash, onClear, onCopy }: ResponseViewerProps) {
+interface DiffViewProps {
+  responseA: Response;
+  responseB: Response;
+  onExit: () => void;
+}
+
+function formatKV(kvs: import('../../lib/types').KeyValue[] | undefined): string {
+  if (!kvs || kvs.length === 0) return '(none)';
+  return kvs.filter(kv => kv.enabled !== false).map(kv => `${kv.key}: ${kv.value}`).join('\n');
+}
+
+function DiffSection({ label, textA, textB }: { label: string; textA: string; textB: string }) {
+  const changes = diffLines(textA, textB);
+  const hasChanges = changes.some(c => c.added || c.removed);
+  return (
+    <div className={styles.diffSection}>
+      <div className={styles.diffSectionLabel}>{label}</div>
+      {!hasChanges ? (
+        <div className={styles.diffIdentical}>Identical</div>
+      ) : (
+        changes.map((change, i) => {
+          const lines = change.value.split('\n');
+          if (lines[lines.length - 1] === '') lines.pop();
+          return lines.map((line, j) => (
+            <div
+              key={`${i}-${j}`}
+              className={`${styles.diffLine} ${change.added ? styles.diffAdded : change.removed ? styles.diffRemoved : styles.diffUnchanged}`}
+            >
+              <span className={styles.diffPrefix}>{change.added ? '+' : change.removed ? '-' : ' '}</span>
+              <span className={styles.diffLineText}>{line}</span>
+            </div>
+          ));
+        })
+      )}
+    </div>
+  );
+}
+
+function DiffView({ responseA, responseB, onExit }: DiffViewProps) {
+  const ctA = getContentType(responseA.headers ?? []);
+  const ctB = getContentType(responseB.headers ?? []);
+  const bodyA = formatBody(responseA.body, ctA);
+  const bodyB = formatBody(responseB.body, ctB);
+
+  return (
+    <div className={styles.diffView}>
+      <div className={styles.diffHeader}>
+        <div className={styles.diffSide}>
+          <span className={styles.diffLabel}>A</span>
+          <span style={{ color: getStatusColor(responseA.status) }}>{responseA.status} {responseA.statusText}</span>
+          {responseA.timestamp != null && (
+            <span className={styles.diffTs}>{formatTimestamp(responseA.timestamp)}</span>
+          )}
+        </div>
+        <div className={`${styles.diffSide} ${styles.diffSideRight}`}>
+          <span className={styles.diffLabel}>B</span>
+          <span style={{ color: getStatusColor(responseB.status) }}>{responseB.status} {responseB.statusText}</span>
+          {responseB.timestamp != null && (
+            <span className={styles.diffTs}>{formatTimestamp(responseB.timestamp)}</span>
+          )}
+        </div>
+      </div>
+      <div className={styles.diffBody}>
+        <DiffSection label="Request Params" textA={formatKV(responseA.requestParams)} textB={formatKV(responseB.requestParams)} />
+        <DiffSection label="Request Headers" textA={formatKV(responseA.requestHeaders)} textB={formatKV(responseB.requestHeaders)} />
+        <DiffSection label="Request Body" textA={responseA.requestBody || '(none)'} textB={responseB.requestBody || '(none)'} />
+        <DiffSection label="Response Headers" textA={formatKV(responseA.headers)} textB={formatKV(responseB.headers)} />
+        <DiffSection label="Response Body" textA={bodyA} textB={bodyB} />
+      </div>
+      <div className={styles.historyActions}>
+        <button className={styles.compareBtn} onClick={onExit}>Exit diff</button>
+      </div>
+    </div>
+  );
+}
+
+export function ResponseViewer({ response, requestId, requestName, copyFlash, onClear, onCopy }: ResponseViewerProps) {
   const { dispatch } = useApp();
-  const [tab, setTab] = useState<'body' | 'headers' | 'preview' | 'tests' | 'cookies'>('body');
+  const { getResponseHistory } = useDatabase();
+  const [tab, setTab] = useState<'body' | 'headers' | 'preview' | 'tests' | 'cookies' | 'history'>('body');
   const [headersPinned, setHeadersPinned] = useState(false);
   const [testsPinned, setTestsPinned] = useState(false);
+
+  // History state
+  const [history, setHistory] = useState<Response[]>([]);
+  const [previewResponse, setPreviewResponse] = useState<Response | null>(null);
+  const [diffA, setDiffA] = useState<number | null>(null);
+  const [diffB, setDiffB] = useState<number | null>(null);
+  const [diffMode, setDiffMode] = useState(false);
+
+  const refreshHistory = useCallback(() => {
+    if (requestId) {
+      getResponseHistory(requestId).then(setHistory).catch(console.error);
+    }
+  }, [requestId, getResponseHistory]);
+
+  // Refresh history whenever a new response arrives
+  useEffect(() => {
+    if (response) {
+      setPreviewResponse(null);
+      setDiffA(null);
+      setDiffB(null);
+      setDiffMode(false);
+      refreshHistory();
+    }
+  }, [response?.timestamp]);
+
+  // Load history when requestId changes
+  useEffect(() => {
+    refreshHistory();
+  }, [requestId]);
 
   useEffect(() => {
     if (response) {
       const contentType = getContentType(response.headers);
       if (isPreviewable(contentType)) {
         setTab('preview');
-      } else if (tab === 'preview') {
-        setTab('body');
-      } else if (!response.body.trim() && tab === 'body') {
+      } else if (!response.body.trim()) {
         setTab('headers');
       } else {
         setTab('body');
       }
     }
-  }, [response]);
+  }, [response?.timestamp]);
 
   const getFileExtension = (contentType: string): string => {
     if (contentType.includes('json')) return 'json';
@@ -192,7 +298,7 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
   };
 
   const handleCopy = async () => {
-    if (response?.body) {
+    if (displayedResponse?.body) {
       await navigator.clipboard.writeText(formattedBody);
       onCopy?.();
     }
@@ -203,15 +309,15 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
   };
 
   const handleSave = async () => {
-    if (!response?.body || !response.body.trim()) return;
+    if (!displayedResponse?.body || !displayedResponse.body.trim()) return;
 
-    const contentType = response.headers
+    const contentType = displayedResponse.headers
       ?.find((h) => h.key.toLowerCase() === 'content-type')?.value || 'text/plain';
     const ext = getFileExtension(contentType);
     const filename = `${requestName || 'response'}.${ext}`;
 
     try {
-      await invoke('save_file', { filename, content: response.body });
+      await invoke('save_file', { filename, content: displayedResponse.body });
     } catch (err) {
       console.error('Failed to save response:', err);
       dispatch({ type: 'SHOW_ERROR', payload: { message: `Failed to save response: ${String(err)}`, showReset: true } });
@@ -227,9 +333,11 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
     );
   }
 
-  const statusColor = getStatusColor(response.status);
-  const contentType = getContentType(response.headers ?? []);
-  const formattedBody = formatBody(response.body, contentType);
+  const displayedResponse = previewResponse ?? response;
+
+  const statusColor = getStatusColor(displayedResponse.status);
+  const contentType = getContentType(displayedResponse.headers ?? []);
+  const formattedBody = formatBody(displayedResponse.body, contentType);
   const label = getLabel(contentType);
   const bodyLanguage = getLanguage(contentType);
   const bodyExtensions = bodyLanguage ? [...responseViewerThemeExtension, bodyLanguage] : responseViewerThemeExtension;
@@ -239,22 +347,25 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
       <div className={styles.header}>
         <span className={styles.sectionLabel}>Response</span>
         <div className={styles.status} style={{ backgroundColor: statusColor }}>
-          {response.statusText || response.status}
+          {displayedResponse.statusText || displayedResponse.status}
         </div>
         <div className={styles.info}>
           <span className={styles.infoItem}>
-            Time: <strong>{response.time}ms</strong>
+            Time: <strong>{displayedResponse.time}ms</strong>
           </span>
           <span className={styles.infoItem}>
-            Size: <strong>{formatBytes(response.size)}</strong>
+            Size: <strong>{formatBytes(displayedResponse.size)}</strong>
           </span>
-          {response.timestamp != null && (
+          {displayedResponse.timestamp != null && (
             <span className={styles.infoItem}>
-              At: <strong>{formatTimestamp(response.timestamp)}</strong>
+              At: <strong>{formatTimestamp(displayedResponse.timestamp)}</strong>
             </span>
           )}
         </div>
         <div className={styles.spacer} />
+        {previewResponse && (
+          <span className={styles.historyBadge}>history</span>
+        )}
         {contentType && <span className={styles.typeBadge}>{label}</span>}
       </div>
 
@@ -266,8 +377,8 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
             disabled={headersPinned}
           >
             Headers
-            {response.headers?.length > 0 && (
-              <span className={styles.tabCount}>{response.headers.length}</span>
+            {displayedResponse.headers?.length > 0 && (
+              <span className={styles.tabCount}>{displayedResponse.headers.length}</span>
             )}
           </button>
           <button
@@ -284,7 +395,7 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
         >
           Body
         </button>
-        {isPreviewable(getContentType(response.headers)) && (
+        {isPreviewable(getContentType(displayedResponse.headers)) && (
           <button
             className={`${styles.tab} ${tab === 'preview' ? styles.tabActive : ''}`}
             onClick={() => setTab('preview')}
@@ -292,9 +403,9 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
             Preview
           </button>
         )}
-        {response.testResults && response.testResults.length > 0 && (() => {
-          const passed = response.testResults.filter(r => r.passed).length;
-          const failed = response.testResults.length - passed;
+        {displayedResponse.testResults && displayedResponse.testResults.length > 0 && (() => {
+          const passed = displayedResponse.testResults!.filter(r => r.passed).length;
+          const failed = displayedResponse.testResults!.length - passed;
           const statusColor = failed === 0 ? 'var(--accent-get)' : passed === 0 ? '#ef4444' : '#f59e0b';
           return (
             <div className={styles.tabGroup}>
@@ -306,7 +417,7 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
               >
                 Tests
                 <span className={styles.tabCount} style={{ background: `${statusColor}22`, color: statusColor }}>
-                  {failed === 0 ? `${passed} passed` : passed === 0 ? `${failed} failed` : `${passed}/${response.testResults.length}`}
+                  {failed === 0 ? `${passed} passed` : passed === 0 ? `${failed} failed` : `${passed}/${displayedResponse.testResults!.length}`}
                 </span>
               </button>
               <button
@@ -320,7 +431,7 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
           );
         })()}
         {(() => {
-          const setCookieHeaders = response.headers?.filter(h => h.key.toLowerCase() === 'set-cookie') ?? [];
+          const setCookieHeaders = displayedResponse.headers?.filter(h => h.key.toLowerCase() === 'set-cookie') ?? [];
           if (setCookieHeaders.length === 0) return null;
           return (
             <button
@@ -332,6 +443,17 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
             </button>
           );
         })()}
+        {requestId != null && (
+          <button
+            className={`${styles.tab} ${tab === 'history' ? styles.tabActive : ''}`}
+            onClick={() => setTab('history')}
+          >
+            History
+            {history.length > 0 && (
+              <span className={styles.tabCount}>{history.length}</span>
+            )}
+          </button>
+        )}
       </div>
 
 
@@ -341,9 +463,9 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
             <span>Headers</span>
           </div>
           <div className={styles.pinnedContent}>
-            {response.headers?.length > 0 ? (
+            {displayedResponse.headers?.length > 0 ? (
               <div className={styles.headers}>
-                {response.headers.map((header, i) => (
+                {displayedResponse.headers.map((header, i) => (
                   <div key={i} className={styles.headerRow}>
                     <span className={styles.headerKey}>{header.key}</span>
                     <span className={styles.headerValue}>
@@ -360,14 +482,14 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
         </div>
       )}
 
-      {testsPinned && tab === 'body' && response.testResults && (
+      {testsPinned && tab === 'body' && displayedResponse.testResults && (
         <div className={styles.pinnedPanel}>
           <div className={styles.pinnedHeader}>
             <span>Tests</span>
           </div>
           <div className={styles.pinnedContent}>
             <div className={styles.testsTable}>
-              {response.testResults.map((r, i) => (
+              {displayedResponse.testResults.map((r, i) => (
                 <div key={i} className={`${styles.testsRow} ${r.severity === 'warning' ? styles.testsRowWarn : r.passed ? styles.testsRowPass : styles.testsRowFail}`}>
                   <span className={styles.testsIcon}>{r.severity === 'warning' ? '⚠' : r.passed ? '✓' : '✗'}</span>
                   <div className={styles.testsDetail}>
@@ -407,7 +529,7 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
             )}
           </div>
           {(() => {
-            const jwts = findJwtsInBody(response.body);
+            const jwts = findJwtsInBody(displayedResponse.body);
             if (jwts.length === 0) return null;
             return (
               <div className={styles.jwtPanel}>
@@ -429,9 +551,9 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
       {tab === 'headers' && (
         <div className={styles.headerList}>
           <div className={styles.headersWrapper}>
-            {response.headers?.length > 0 ? (
+            {displayedResponse.headers?.length > 0 ? (
               <div className={styles.headers}>
-                {response.headers.map((header, i) => (
+                {displayedResponse.headers.map((header, i) => (
                   <div key={i} className={styles.headerRow}>
                     <span className={styles.headerKey}>{header.key}</span>
                     <span className={styles.headerValue}>
@@ -451,11 +573,11 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
       {tab === 'preview' && (
         <div className={styles.preview}>
           {(() => {
-            const ct = getContentType(response.headers);
+            const ct = getContentType(displayedResponse.headers);
             if (ct.includes('html')) {
               return (
                 <iframe
-                  srcDoc={response.body}
+                  srcDoc={displayedResponse.body}
                   sandbox="allow-same-origin allow-scripts"
                   className={styles.previewFrame}
                 />
@@ -464,7 +586,7 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
             if (ct.includes('image/')) {
               return (
                 <img
-                  src={`data:${ct};base64,${response.body}`}
+                  src={`data:${ct};base64,${displayedResponse.body}`}
                   className={styles.previewImage}
                   alt="Preview"
                 />
@@ -473,7 +595,7 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
             if (ct.includes('video/')) {
               return (
                 <video
-                  src={`data:${ct};base64,${response.body}`}
+                  src={`data:${ct};base64,${displayedResponse.body}`}
                   controls
                   className={styles.previewMedia}
                 />
@@ -482,7 +604,7 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
             if (ct.includes('audio/')) {
               return (
                 <audio
-                  src={`data:${ct};base64,${response.body}`}
+                  src={`data:${ct};base64,${displayedResponse.body}`}
                   controls
                   className={styles.previewMedia}
                 />
@@ -493,10 +615,10 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
         </div>
       )}
 
-      {tab === 'tests' && response.testResults && (
+      {tab === 'tests' && displayedResponse.testResults && (
         <div className={styles.testsPane}>
           {(() => {
-            const results = response.testResults;
+            const results = displayedResponse.testResults!;
             const passed = results.filter(r => r.passed).length;
             const failed = results.length - passed;
             return (
@@ -532,7 +654,7 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
       {tab === 'cookies' && (
         <div className={styles.cookiesPane}>
           {(() => {
-            const setCookieHeaders = response.headers?.filter(h => h.key.toLowerCase() === 'set-cookie') ?? [];
+            const setCookieHeaders = displayedResponse.headers?.filter(h => h.key.toLowerCase() === 'set-cookie') ?? [];
             const cookies = setCookieHeaders.map(h => parseSetCookie(h.value));
             return (
               <table className={styles.cookiesTable}>
@@ -564,6 +686,80 @@ export function ResponseViewer({ response, requestName, copyFlash, onClear, onCo
               </table>
             );
           })()}
+        </div>
+      )}
+
+      {tab === 'history' && (
+        <div className={styles.historyPane}>
+          {diffMode && diffA !== null && diffB !== null && (() => {
+            const rA = history.find(r => r.id === diffA);
+            const rB = history.find(r => r.id === diffB);
+            if (!rA || !rB) return null;
+            return <DiffView responseA={rA} responseB={rB} onExit={() => setDiffMode(false)} />;
+          })()}
+          {!diffMode && (
+            <>
+              {history.length === 0 ? (
+                <div className={styles.emptyMessage}>No history yet</div>
+              ) : (
+                <div className={styles.historyList}>
+                  {history.map((r, i) => (
+                    <div
+                      key={r.id}
+                      className={`${styles.historyRow} ${previewResponse?.id === r.id ? styles.historyRowActive : ''}`}
+                    >
+                      <div className={styles.historySelectors}>
+                        <button
+                          className={`${styles.historySel} ${diffA === r.id ? styles.historySelActive : ''}`}
+                          onClick={() => setDiffA(diffA === r.id ? null : r.id)}
+                          title="Select as A for diff"
+                        >A</button>
+                        <button
+                          className={`${styles.historySel} ${diffB === r.id ? styles.historySelActive : ''}`}
+                          onClick={() => setDiffB(diffB === r.id ? null : r.id)}
+                          title="Select as B for diff"
+                        >B</button>
+                      </div>
+                      <span className={styles.historyIndex}>#{history.length - i}</span>
+                      <span className={styles.historyTimestamp}>
+                        {r.timestamp ? formatTimestamp(r.timestamp) : '—'}
+                      </span>
+                      <span className={styles.historyStatus} style={{ color: getStatusColor(r.status) }}>
+                        {r.status}
+                      </span>
+                      <span className={styles.historyMeta}>{r.time}ms</span>
+                      <span className={styles.historyMeta}>{formatBytes(r.size)}</span>
+                      {i === 0 ? (
+                        <button
+                          className={styles.historyCurrentTag}
+                          onClick={() => { setPreviewResponse(null); setTab('body'); }}
+                          title="View current response"
+                        >current</button>
+                      ) : (
+                      <button
+                        className={`${styles.historyViewBtn} ${previewResponse?.id === r.id ? styles.historyViewBtnActive : ''}`}
+                        onClick={() => {
+                          const next = previewResponse?.id === r.id ? null : r;
+                          setPreviewResponse(next);
+                          if (next) setTab('body');
+                        }}
+                      >
+                        {previewResponse?.id === r.id ? 'Hide' : 'View'}
+                      </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {diffA !== null && diffB !== null && diffA !== diffB && (
+                <div className={styles.historyActions}>
+                  <button className={styles.compareBtn} onClick={() => setDiffMode(true)}>
+                    Compare A vs B
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>

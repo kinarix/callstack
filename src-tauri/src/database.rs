@@ -66,6 +66,9 @@ pub struct StoredResponse {
     pub time_ms: i64,
     pub size: i64,
     pub timestamp_ms: i64,
+    pub request_headers: String,
+    pub request_params: String,
+    pub request_body: String,
 }
 
 pub struct Database {
@@ -218,6 +221,18 @@ impl Database {
         );
         let _ = conn.execute(
             "ALTER TABLE responses ADD COLUMN timestamp_ms INTEGER NOT NULL DEFAULT 0",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE responses ADD COLUMN request_headers TEXT NOT NULL DEFAULT ''",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE responses ADD COLUMN request_params TEXT NOT NULL DEFAULT ''",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE responses ADD COLUMN request_body TEXT NOT NULL DEFAULT ''",
             [],
         );
 
@@ -1005,13 +1020,63 @@ pub fn save_response(
     time_ms: i64,
     size: i64,
     timestamp_ms: i64,
+    history_limit: i64,
+    request_headers: String,
+    request_params: String,
+    request_body: String,
 ) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     conn.execute(
-        "INSERT INTO responses (request_id, status, status_text, headers, body, time_ms, size, timestamp_ms) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        params![request_id, status, status_text, headers, body, time_ms, size, timestamp_ms],
+        "INSERT INTO responses (request_id, status, status_text, headers, body, time_ms, size, timestamp_ms, request_headers, request_params, request_body) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        params![request_id, status, status_text, headers, body, time_ms, size, timestamp_ms, request_headers, request_params, request_body],
     )
     .map_err(|e| e.to_string())?;
+    if history_limit > 0 {
+        conn.execute(
+            "DELETE FROM responses WHERE request_id = ?1 AND id NOT IN (SELECT id FROM responses WHERE request_id = ?1 ORDER BY id DESC LIMIT ?2)",
+            params![request_id, history_limit],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_response_history(
+    db: tauri::State<Database>,
+    request_id: i64,
+) -> Result<Vec<StoredResponse>, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, request_id, status, status_text, headers, body, time_ms, size, timestamp_ms, request_headers, request_params, request_body FROM responses WHERE request_id = ?1 ORDER BY id DESC LIMIT 100",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![request_id], |row| {
+            Ok(StoredResponse {
+                id: row.get(0)?,
+                request_id: row.get(1)?,
+                status: row.get(2)?,
+                status_text: row.get(3)?,
+                headers: row.get(4)?,
+                body: row.get(5)?,
+                time_ms: row.get(6)?,
+                size: row.get(7)?,
+                timestamp_ms: row.get(8)?,
+                request_headers: row.get::<_, Option<String>>(9)?.unwrap_or_default(),
+                request_params: row.get::<_, Option<String>>(10)?.unwrap_or_default(),
+                request_body: row.get::<_, Option<String>>(11)?.unwrap_or_default(),
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn clear_response_history(db: tauri::State<Database>) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM responses", []).map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -1022,7 +1087,7 @@ pub fn get_last_response(
 ) -> Result<Option<StoredResponse>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let result = conn.query_row(
-        "SELECT id, request_id, status, status_text, headers, body, time_ms, size, timestamp_ms FROM responses WHERE request_id = ?1 ORDER BY id DESC LIMIT 1",
+        "SELECT id, request_id, status, status_text, headers, body, time_ms, size, timestamp_ms, request_headers, request_params, request_body FROM responses WHERE request_id = ?1 ORDER BY id DESC LIMIT 1",
         params![request_id],
         |row| {
             Ok(StoredResponse {
@@ -1035,6 +1100,9 @@ pub fn get_last_response(
                 time_ms: row.get(6)?,
                 size: row.get(7)?,
                 timestamp_ms: row.get(8)?,
+                request_headers: row.get::<_, Option<String>>(9)?.unwrap_or_default(),
+                request_params: row.get::<_, Option<String>>(10)?.unwrap_or_default(),
+                request_body: row.get::<_, Option<String>>(11)?.unwrap_or_default(),
             })
         },
     );

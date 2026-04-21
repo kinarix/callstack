@@ -11,6 +11,7 @@ import { resolveTemplate, replaceTokensForValidation } from '../../lib/template'
 import { runScript } from '../../hooks/useScriptRunner';
 import type { EnvMutations } from '../../hooks/useScriptRunner';
 import { loadSecrets, saveSecrets } from '../../lib/secrets';
+import { useSettings } from '../../hooks/useSettings';
 
 interface RequestBuilderProps {
   request: Request | null;
@@ -168,6 +169,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
   const { state, dispatch } = useApp();
   const { send, cancelRequest } = useHttpClient();
   const { updateRequest, saveResponse, updateEnvironment } = useDatabase();
+  const { settings } = useSettings();
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [bodyError, setBodyError] = useState<string | null>(null);
   const [urlError, setUrlError] = useState<UrlError | null>(null);
@@ -572,6 +574,21 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         testStatus = passed === testResults.length ? 'PASS' : passed === 0 ? 'FAIL' : 'PARTIAL';
       }
 
+      await saveResponse(
+        request.id,
+        result.status,
+        result.statusText,
+        result.headers,
+        result.body,
+        result.timeMs,
+        result.size,
+        sentAt,
+        settings.responseHistoryLimit,
+        resolvedHeaders,
+        resolvedParams,
+        resolvedBody,
+      ).catch(console.error);
+
       dispatch({
         type: 'SET_RESPONSE',
         payload: {
@@ -588,17 +605,6 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
           testStatus: testStatus || undefined,
         },
       });
-
-      saveResponse(
-        request.id,
-        result.status,
-        result.statusText,
-        result.headers,
-        result.body,
-        result.timeMs,
-        result.size,
-        sentAt,
-      ).catch(console.error);
 
       const log: LogEntry = {
         id: ++logIdCounter,
@@ -707,6 +713,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         <div className={styles.responsePane} onFocus={onResponseFocus}>
           <ResponseViewer
             response={state.currentResponse}
+            requestId={request?.id}
             requestName={request?.name}
             copyFlash={copyFlashPane === 'response'}
             onClear={() => dispatch({ type: 'SET_RESPONSE', payload: null })}
