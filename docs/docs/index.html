@@ -71,6 +71,8 @@
     <section class="docs-section" id="getting-started">
       <h2 class="docs-h2"><span class="section-num">1</span> Getting Started</h2>
 
+      <p class="docs-p">CALLSTACK is a native desktop REST API client built with Tauri 2 and React. It uses a Rust HTTP engine under the hood — so there are no CORS restrictions, no browser Origin headers injected automatically, and no need for a proxy server. All data is stored locally in a SQLite database. No account is required.</p>
+
       <h3 class="docs-h3">System Requirements</h3>
       <div class="docs-table-wrap">
         <table class="docs-table">
@@ -78,42 +80,66 @@
             <tr><th>Platform</th><th>Minimum Version</th><th>Notes</th></tr>
           </thead>
           <tbody>
-            <tr><td>macOS</td><td>10.13 (High Sierra)</td><td>Apple Silicon and Intel supported</td></tr>
-            <tr><td>Linux</td><td>glibc 2.29+</td><td>AppImage works on most distros</td></tr>
-            <tr><td>Windows</td><td>Windows 10</td><td>x64 only</td></tr>
+            <tr><td>macOS</td><td>10.13 (High Sierra)</td><td>Apple Silicon (M1/M2/M3) and Intel fully supported</td></tr>
+            <tr><td>Linux</td><td>glibc 2.29+</td><td>AppImage works on most modern distros (Ubuntu 20.04+, Fedora 32+)</td></tr>
+            <tr><td>Windows</td><td>Windows 10 (1803+)</td><td>x64 only; ARM64 Windows not supported</td></tr>
           </tbody>
         </table>
       </div>
 
       <h3 class="docs-h3">Installation</h3>
 
-      <p class="docs-p"><strong>macOS (recommended)</strong> — via Homebrew:</p>
+      <p class="docs-p"><strong>macOS — Homebrew (recommended):</strong></p>
       <div class="code-block">
         <div class="code-block-header"><span>Terminal</span><button class="copy-btn">Copy</button></div>
         <pre><code>brew tap kinarix/callstack
 brew install --cask callstack</code></pre>
       </div>
 
-      <p class="docs-p"><strong>All platforms</strong> — download from <a href="https://github.com/kinarix/callstack/releases/latest" target="_blank" rel="noopener">GitHub Releases</a>:</p>
+      <p class="docs-p"><strong>All platforms — direct download:</strong> Visit <a href="https://github.com/kinarix/callstack/releases/latest" target="_blank" rel="noopener">GitHub Releases</a> and download the package for your platform:</p>
       <ul class="docs-ul">
-        <li><strong>macOS</strong>: <code>.dmg</code> — open and drag to Applications</li>
-        <li><strong>Linux</strong>: <code>.AppImage</code> — make executable (<code>chmod +x</code>), run directly</li>
-        <li><strong>Windows</strong>: <code>.msi</code> — run the installer</li>
+        <li><strong>macOS</strong>: <code>.dmg</code> — open the disk image and drag CALLSTACK to your Applications folder.</li>
+        <li><strong>Linux</strong>: <code>.AppImage</code> — make executable (<code>chmod +x CALLSTACK*.AppImage</code>) then run it directly. No installation needed.</li>
+        <li><strong>Windows</strong>: <code>.msi</code> — run the installer. CALLSTACK will be added to your Start menu.</li>
       </ul>
+
+      <div class="callout callout-warn">
+        <span class="callout-icon">⚠️</span>
+        <div class="callout-body">
+          <strong>macOS Gatekeeper</strong>
+          <span>If macOS says "CALLSTACK cannot be opened because it is from an unidentified developer", right-click the app in Finder and choose <strong>Open</strong>, then click <strong>Open</strong> again in the dialog. You only need to do this once.</span>
+        </div>
+      </div>
 
       <h3 class="docs-h3">First Launch</h3>
       <ol class="steps">
-        <li><div>Open CALLSTACK from your Applications folder (or wherever you installed it).</div></li>
-        <li><div>The app creates a local SQLite database at <code>~/Library/Application Support/callstack/callstack.db</code> (macOS) or the equivalent on your platform.</div></li>
-        <li><div><strong>Optionally</strong> sign in with Google (Settings → Account) to scope your data to an email address — useful if multiple people share one machine. Sign-in is not required.</div></li>
-        <li><div>Create your first project using the <strong>+ Project</strong> button in the sidebar.</div></li>
+        <li><div>Open CALLSTACK from your Applications folder (macOS), launcher (Linux), or Start menu (Windows).</div></li>
+        <li><div>On first launch the app creates a local SQLite database:
+          <ul class="docs-ul" style="margin-top:8px">
+            <li><strong>macOS</strong>: <code>~/Library/Application Support/callstack/callstack.db</code></li>
+            <li><strong>Linux</strong>: <code>~/.local/share/callstack/callstack.db</code></li>
+            <li><strong>Windows</strong>: <code>%APPDATA%\callstack\callstack.db</code></li>
+          </ul>
+        </div></li>
+        <li><div><strong>Optionally</strong> sign in with Google via Settings → Account. This scopes your data to your email address — useful if multiple developers share one machine. It is not required for any feature.</div></li>
+        <li><div>Click <strong>+ Project</strong> in the sidebar to create your first project and start making requests.</div></li>
+      </ol>
+
+      <h3 class="docs-h3">Your First Request</h3>
+      <p class="docs-p">A quick walkthrough to make your first API call:</p>
+      <ol class="steps">
+        <li><div>Click <strong>+ Project</strong> and name it (e.g. "My API").</div></li>
+        <li><div>Inside the project, click <strong>+ Request</strong>. A new request appears in the sidebar and opens in the editor.</div></li>
+        <li><div>Set the method to <strong>GET</strong> and enter a URL: <code>https://httpbin.org/get</code>.</div></li>
+        <li><div>Click <strong>Send</strong> (or press <kbd>⌘</kbd><kbd>X</kbd> on Mac / <kbd>Ctrl</kbd><kbd>X</kbd> on Windows/Linux).</div></li>
+        <li><div>The response appears in the right panel: status 200, the JSON body, headers, and timing information.</div></li>
       </ol>
 
       <div class="callout callout-tip">
         <span class="callout-icon">💡</span>
         <div class="callout-body">
           <strong>No account needed</strong>
-          <span>CALLSTACK works entirely offline. Google Sign-In is optional and only used to namespace local data on shared machines.</span>
+          <span>CALLSTACK works entirely offline. Everything — requests, responses, environments, scripts — is stored locally. Google Sign-In is entirely optional.</span>
         </div>
       </div>
     </section>
@@ -123,30 +149,52 @@ brew install --cask callstack</code></pre>
       <h2 class="docs-h2"><span class="section-num">2</span> Core Concepts</h2>
 
       <h3 class="docs-h3">Data Hierarchy</h3>
-      <p class="docs-p">Everything in CALLSTACK is organised in a three-level tree:</p>
+      <p class="docs-p">Everything in CALLSTACK is organised in a tree structure:</p>
       <div class="code-block">
         <pre><code>Project
-└── Folder (optional, nestable)
-    └── Request</code></pre>
+├── Environment (multiple per project)
+├── Folder (optional, nestable)
+│   └── Request
+├── Request (directly in project root)
+├── Automation
+└── Data File (CSV)</code></pre>
       </div>
       <ul class="docs-ul">
-        <li><strong>Projects</strong> are top-level containers (e.g. "Payment API", "Auth Service").</li>
-        <li><strong>Folders</strong> group related requests within a project. They can be nested.</li>
-        <li><strong>Requests</strong> are individual API calls with their own URL, method, headers, body, and scripts.</li>
+        <li><strong>Projects</strong> are top-level containers — think of each as a separate API or service (e.g. "Payment API", "Auth Service", "Internal Admin").</li>
+        <li><strong>Folders</strong> group related requests within a project. They can be nested to arbitrary depth. Folders are purely organisational — they don't affect how requests are sent.</li>
+        <li><strong>Requests</strong> are individual API calls with their own URL, method, headers, body, and scripts. Each request is independent.</li>
+        <li><strong>Environments</strong> are named sets of variables attached to a project (e.g. "Development", "Staging", "Production"). Only one environment can be active at a time per request.</li>
+        <li><strong>Automations</strong> are visual multi-step workflows that chain requests together with loops, conditionals, and parallel branches.</li>
+        <li><strong>Data Files</strong> are CSV tables used to drive data-iteration in automations.</li>
       </ul>
-      <p class="docs-p">Deleting a project cascades — all its folders, requests, environments, automations, and data files are removed.</p>
+      <p class="docs-p">Deleting a project cascades — all its folders, requests, environments, automations, and data files are removed permanently.</p>
+
+      <h3 class="docs-h3">Persistence</h3>
+      <p class="docs-p">All data is persisted to SQLite immediately. There is no "save" button — every change (renaming a request, editing a URL, toggling a header) is written to disk automatically. Closing the app without explicitly saving is safe.</p>
 
       <h3 class="docs-h3">Environments</h3>
-      <p class="docs-p">Each project can have multiple <strong>environments</strong> (e.g. Development, Staging, Production). An environment holds key-value pairs that can be substituted anywhere in your request using <code>{{variableName}}</code> syntax.</p>
+      <p class="docs-p">Each project can have multiple environments. An environment holds key-value pairs that are substituted into your requests using <code>{{variableName}}</code> syntax. This lets you keep a single set of requests that work across dev, staging, and production by simply switching the active environment.</p>
+      <p class="docs-p">Variables can be marked as <strong>Secret</strong> to mask them in the UI. Environment variables can also be read and written by scripts at runtime.</p>
 
       <h3 class="docs-h3">Request Lifecycle</h3>
+      <p class="docs-p">When you click Send, CALLSTACK executes the following sequence:</p>
       <ol class="steps">
-        <li><div><strong>Build</strong> — Set method, URL, params, headers, body, and scripts.</div></li>
-        <li><div><strong>Pre-script</strong> — JavaScript runs before the request is sent (modify variables, generate data).</div></li>
-        <li><div><strong>Send</strong> — Rust HTTP client sends the request (no CORS, full header control).</div></li>
-        <li><div><strong>Post-script</strong> — JavaScript runs with the response (extract tokens, run assertions).</div></li>
-        <li><div><strong>View</strong> — Inspect the response body, headers, timing, and test results.</div></li>
+        <li><div><strong>Resolve</strong> — All <code>{{variable}}</code> and <code>{{$token}}</code> references in the URL, params, headers, and body are resolved against the active environment.</div></li>
+        <li><div><strong>Pre-script</strong> — If a pre-request script is attached, it runs in a JavaScript sandbox. It can read and mutate <code>env</code> variables, modify <code>request</code> headers/body, and call <code>faker</code> to generate data.</div></li>
+        <li><div><strong>Send</strong> — The Rust HTTP client sends the fully-resolved request. No CORS, no injected browser headers, no proxy needed.</div></li>
+        <li><div><strong>Post-script</strong> — If a post-response script is attached, it runs with access to the <code>response</code> object. Use it to extract tokens, run assertions with <code>test()</code>, or emit values for downstream automation steps.</div></li>
+        <li><div><strong>Persist</strong> — The response is saved to the database if you have history saving enabled, and logged to the Request Log footer.</div></li>
+        <li><div><strong>Display</strong> — The response appears in the viewer: body, headers, timing, and test results.</div></li>
       </ol>
+
+      <h3 class="docs-h3">Why a Native HTTP Client?</h3>
+      <p class="docs-p">Most web-based API tools (Insomnia web app, Bruno web, etc.) are constrained by the browser's networking stack. That means:</p>
+      <ul class="docs-ul">
+        <li>CORS restrictions block requests to APIs that don't send permissive <code>Access-Control-Allow-Origin</code> headers.</li>
+        <li>Browsers automatically inject headers like <code>Origin</code>, <code>Referer</code>, and <code>User-Agent</code> that you can't remove.</li>
+        <li>Certain headers (<code>Host</code>, <code>Cookie</code>, <code>Authorization</code> with some values) are restricted.</li>
+      </ul>
+      <p class="docs-p">CALLSTACK uses a Rust HTTP client (reqwest) that operates outside the browser entirely. You get full control over every header and byte sent on the wire.</p>
     </section>
 
     <!-- ── 3. Request Builder ─────────────────────────────── -->
@@ -154,7 +202,7 @@ brew install --cask callstack</code></pre>
       <h2 class="docs-h2"><span class="section-num">3</span> Request Builder</h2>
 
       <h3 class="docs-h3">Method &amp; URL</h3>
-      <p class="docs-p">Select the HTTP method from the dropdown. The badge changes colour to match:</p>
+      <p class="docs-p">Select the HTTP method from the dropdown on the left of the URL bar. The badge changes colour to match the method type:</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:var(--sp-3);">
         <span class="method method-get">GET</span>
         <span class="method method-post">POST</span>
@@ -162,33 +210,103 @@ brew install --cask callstack</code></pre>
         <span class="method method-delete">DELETE</span>
         <span class="method method-patch">PATCH</span>
       </div>
-      <p class="docs-p">Type or paste the URL in the URL bar. Use <code>{{variable}}</code> syntax to substitute environment values:</p>
+      <p class="docs-p">Available methods: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS. Type or paste the full URL in the bar. Use <code>{{variable}}</code> syntax to substitute environment values:</p>
       <div class="code-block">
-        <pre><code>{{BASE_URL}}/api/v1/users/{{USER_ID}}</code></pre>
+        <pre><code>{{BASE_URL}}/api/v1/users/{{USER_ID}}/profile</code></pre>
       </div>
+      <p class="docs-p">The URL bar accepts both <code>http://</code> and <code>https://</code>. If you omit the scheme, CALLSTACK prepends <code>https://</code> automatically.</p>
 
       <h3 class="docs-h3">Query Parameters</h3>
-      <p class="docs-p">Click the <strong>Params</strong> tab to add URL query parameters as key-value rows. Each row has an enable/disable toggle — disabled rows are excluded from the request. Parameters support <code>{{variable}}</code> substitution.</p>
+      <p class="docs-p">The <strong>Params</strong> tab lets you manage URL query parameters as key-value rows — without manually constructing <code>?key=value&amp;key2=value2</code> strings.</p>
+      <ul class="docs-ul">
+        <li>Each row has a toggle checkbox — unchecked rows are excluded from the request entirely.</li>
+        <li>Keys and values support <code>{{variable}}</code> substitution.</li>
+        <li>Params you add are merged with any query string already in the URL bar.</li>
+        <li>URL-encoding is handled automatically.</li>
+      </ul>
+      <div class="code-block">
+        <div class="code-block-header"><span>Example params → resulting URL</span></div>
+        <pre><code>Key: page         Value: {{PAGE_NUM}}
+Key: per_page     Value: 25
+Key: sort         Value: created_at
+
+→ https://api.example.com/users?page=1&per_page=25&sort=created_at</code></pre>
+      </div>
 
       <h3 class="docs-h3">Headers</h3>
-      <p class="docs-p">The <strong>Headers</strong> tab lets you add arbitrary HTTP headers. Each row has an enable/disable toggle. CALLSTACK automatically inserts <code>Content-Type</code> based on your body type and an <code>Origin</code> header derived from the URL.</p>
-
+      <p class="docs-p">The <strong>Headers</strong> tab lets you add arbitrary HTTP request headers. Each row has an enable/disable toggle. Common patterns:</p>
+      <div class="code-block">
+        <div class="code-block-header"><span>Bearer token auth</span><button class="copy-btn">Copy</button></div>
+        <pre><code>Authorization: Bearer {{ACCESS_TOKEN}}</code></pre>
+      </div>
+      <div class="code-block">
+        <div class="code-block-header"><span>Basic auth (base64 encoded)</span><button class="copy-btn">Copy</button></div>
+        <pre><code>Authorization: Basic {{BASIC_AUTH_B64}}</code></pre>
+      </div>
+      <div class="code-block">
+        <div class="code-block-header"><span>API key header</span><button class="copy-btn">Copy</button></div>
+        <pre><code>X-API-Key: {{API_KEY}}</code></pre>
+      </div>
       <div class="callout callout-note">
         <span class="callout-icon">ℹ️</span>
         <div class="callout-body">
           <strong>Full header control</strong>
-          <span>Because CALLSTACK uses a Rust HTTP client (not a browser), you can set any header — including <code>Host</code>, <code>Origin</code>, and custom headers that browsers normally forbid.</span>
+          <span>Because CALLSTACK uses a Rust HTTP client, you can set headers that browsers normally forbid — including <code>Host</code>, <code>Origin</code>, <code>Referer</code>, <code>Cookie</code>, and arbitrary custom headers. This makes it ideal for testing APIs with strict header requirements.</span>
         </div>
       </div>
 
       <h3 class="docs-h3">Request Body</h3>
-      <p class="docs-p">The <strong>Body</strong> tab shows a CodeMirror editor with syntax highlighting for JSON and XML. The editor validates your JSON on-the-fly and shows errors inline. You can also write plain text.</p>
+      <p class="docs-p">The <strong>Body</strong> tab has several modes depending on what your API expects:</p>
+      <div class="docs-table-wrap">
+        <table class="docs-table">
+          <thead><tr><th>Mode</th><th>Content-Type set</th><th>Use when</th></tr></thead>
+          <tbody>
+            <tr><td><strong>None</strong></td><td>—</td><td>GET, HEAD, DELETE requests with no body</td></tr>
+            <tr><td><strong>JSON</strong></td><td><code>application/json</code></td><td>Sending JSON payloads (most REST APIs)</td></tr>
+            <tr><td><strong>XML</strong></td><td><code>application/xml</code></td><td>SOAP or XML-based APIs</td></tr>
+            <tr><td><strong>Text</strong></td><td><code>text/plain</code></td><td>Arbitrary plain-text payloads</td></tr>
+            <tr><td><strong>Form</strong></td><td><code>application/x-www-form-urlencoded</code></td><td>HTML form submissions, OAuth token endpoints</td></tr>
+            <tr><td><strong>Multipart</strong></td><td><code>multipart/form-data</code></td><td>File uploads, mixed text+file bodies</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="docs-p">The CodeMirror editor in JSON and XML modes provides syntax highlighting, real-time validation, and error indicators. JSON errors appear as red underlines — hover to see the message. The <strong>Format</strong> button (or the format button in the toolbar) pretty-prints your JSON with correct indentation.</p>
+      <p class="docs-p">Body content supports <code>{{variable}}</code> substitution — values are resolved at send time, so your saved body can contain placeholders:</p>
+      <div class="code-block">
+        <div class="code-block-header"><span>JSON body with variables</span><button class="copy-btn">Copy</button></div>
+        <pre><code>{
+  "email": "{{TEST_EMAIL}}",
+  "org_id": {{ORG_ID}},
+  "request_id": "{{$randomUUID}}"
+}</code></pre>
+      </div>
 
-      <h3 class="docs-h3">File Attachments</h3>
-      <p class="docs-p">In the <strong>Body</strong> tab, switch to multipart mode to attach files. Click <strong>Add file</strong> to open the native file picker. Each attachment shows its name, size, and MIME type. Files are sent as <code>multipart/form-data</code>.</p>
+      <h3 class="docs-h3">Form Body</h3>
+      <p class="docs-p">In <strong>Form</strong> mode, you enter key-value pairs (similar to Params). These are URL-encoded and sent as the request body. This is the correct format for OAuth 2.0 token endpoints:</p>
+      <div class="code-block">
+        <div class="code-block-header"><span>OAuth token request body</span><button class="copy-btn">Copy</button></div>
+        <pre><code>grant_type: client_credentials
+client_id: {{CLIENT_ID}}
+client_secret: {{CLIENT_SECRET}}
+scope: read:users write:users</code></pre>
+      </div>
+
+      <h3 class="docs-h3">File Attachments (Multipart)</h3>
+      <p class="docs-p">Switch to <strong>Multipart</strong> mode to send files alongside form fields. Click <strong>Add file</strong> to open the native file picker. Each attachment row shows its field name, filename, size, and MIME type. Files are copied into CALLSTACK's app data directory and referenced by path — so the original file can be moved or deleted without affecting the saved request.</p>
+      <p class="docs-p">You can mix text fields and file fields in the same multipart body:</p>
+      <ul class="docs-ul">
+        <li><strong>Text field</strong>: key-value pair sent as a form field</li>
+        <li><strong>File field</strong>: the file contents sent with <code>Content-Disposition: form-data; name="..."; filename="..."</code></li>
+      </ul>
 
       <h3 class="docs-h3">Sending &amp; Cancelling</h3>
-      <p class="docs-p">Click <strong>Send</strong> (or press <kbd>⌘</kbd><kbd>↩</kbd>) to execute the request. A spinner appears while the request is in flight. Click <strong>Cancel</strong> to abort mid-flight. CALLSTACK enforces a 30-second timeout by default.</p>
+      <p class="docs-p">Click <strong>Send</strong> or use the keyboard shortcut (<kbd>⌘</kbd><kbd>X</kbd> on Mac, <kbd>Ctrl</kbd><kbd>X</kbd> on Windows/Linux) to execute the request. A spinner appears in the Send button while the request is in flight. To abort a running request, click <strong>Cancel</strong>. CALLSTACK enforces a 30-second default timeout — if no response is received within 30 seconds, the request is automatically cancelled with a timeout error.</p>
+
+      <h3 class="docs-h3">Redirects</h3>
+      <p class="docs-p">CALLSTACK follows HTTP redirects automatically (up to 10 hops). The final response shown is the one from the last redirect destination. The URL bar does not update to reflect the final redirect URL — to see it, check the <strong>Request Log</strong> entry for the actual URL sent at each hop.</p>
+
+      <h3 class="docs-h3">Cookies</h3>
+      <p class="docs-p">CALLSTACK has a built-in cookie jar. Cookies set by <code>Set-Cookie</code> response headers are stored and automatically sent on subsequent requests to the same domain. You can view, edit, and delete stored cookies in <strong>Settings → Cookies</strong>.</p>
     </section>
 
     <!-- ── 4. Response Viewer ─────────────────────────────── -->
@@ -196,371 +314,643 @@ brew install --cask callstack</code></pre>
       <h2 class="docs-h2"><span class="section-num">4</span> Response Viewer</h2>
 
       <h3 class="docs-h3">Metadata Bar</h3>
-      <p class="docs-p">Above the response tabs you'll see:</p>
+      <p class="docs-p">The coloured bar at the top of the response panel shows three key metrics at a glance:</p>
       <ul class="docs-ul">
-        <li><strong>Status</strong> — HTTP status code (200, 404, 500…) with colour coding: green for 2xx, amber for 3xx/4xx, red for 5xx.</li>
-        <li><strong>Time</strong> — Total round-trip time in milliseconds.</li>
-        <li><strong>Size</strong> — Response body size in bytes.</li>
+        <li><strong>Status code</strong> — Colour-coded: green (2xx success), amber (3xx redirect / 4xx client error), red (5xx server error). The status text (e.g. "OK", "Not Found") is shown alongside.</li>
+        <li><strong>Response time</strong> — Total round-trip time in milliseconds, measured from the moment the request is sent to the moment the full response body is received.</li>
+        <li><strong>Body size</strong> — Size of the response body in bytes (or KB/MB for large responses).</li>
       </ul>
 
       <h3 class="docs-h3">Body Tab</h3>
-      <p class="docs-p">Displays the response body with automatic pretty-printing:</p>
+      <p class="docs-p">The Body tab displays the response body with automatic pretty-printing based on the <code>Content-Type</code> header:</p>
       <ul class="docs-ul">
-        <li><strong>JSON</strong> — Syntax highlighted with line numbers, collapsible objects.</li>
-        <li><strong>XML / HTML</strong> — Indented and highlighted.</li>
-        <li><strong>Plain text</strong> — Shown as-is.</li>
+        <li><strong>JSON</strong> — Syntax-highlighted with collapsible objects and arrays, line numbers, and fold indicators. Large JSON responses are virtualised for performance.</li>
+        <li><strong>XML / HTML</strong> — Indented and syntax-highlighted.</li>
+        <li><strong>Plain text</strong> — Monospace font, shown verbatim.</li>
+        <li><strong>Binary</strong> — Hex representation with byte count.</li>
       </ul>
-      <p class="docs-p">Click <strong>Copy</strong> to copy the formatted body to your clipboard. Click <strong>Save</strong> to export the body to a file via the native file dialog.</p>
+      <p class="docs-p"><strong>Copy</strong> copies the formatted (pretty-printed) body to your clipboard — not the raw wire bytes. This is useful for pasting readable JSON into a chat or document. <strong>Save to file</strong> opens the native file dialog and writes the raw response bytes to disk.</p>
 
       <h3 class="docs-h3">Headers Tab</h3>
-      <p class="docs-p">Lists all response headers as key-value pairs. You can pin this tab to keep it visible alongside the body.</p>
+      <p class="docs-p">Lists all response headers as key-value pairs. Common headers to look for:</p>
+      <ul class="docs-ul">
+        <li><code>Content-Type</code> — What format the body is in</li>
+        <li><code>Authorization</code> / <code>WWW-Authenticate</code> — Auth challenges</li>
+        <li><code>X-RateLimit-*</code> — Rate limit information</li>
+        <li><code>Location</code> — Redirect destination</li>
+        <li><code>Set-Cookie</code> — Cookies being set</li>
+      </ul>
 
       <h3 class="docs-h3">Preview Tab</h3>
-      <p class="docs-p">Renders the response visually:</p>
+      <p class="docs-p">The Preview tab renders the response visually rather than as raw text:</p>
       <ul class="docs-ul">
-        <li><strong>HTML</strong> — Renders in an iframe.</li>
-        <li><strong>Images</strong> — Displays PNG, JPEG, GIF, SVG, WebP.</li>
-        <li><strong>Video/Audio</strong> — Plays back base64-encoded media.</li>
+        <li><strong>HTML</strong> — Rendered in a sandboxed iframe. Useful for testing server-rendered pages or email templates.</li>
+        <li><strong>Images</strong> — Displays PNG, JPEG, GIF, SVG, WebP inline. The image is shown at natural size with a scroll container for large images.</li>
+        <li><strong>Video/Audio</strong> — Plays back base64-encoded media returned directly in the response body.</li>
+        <li><strong>PDF</strong> — Renders the PDF inline if supported by your OS WebView.</li>
       </ul>
 
       <h3 class="docs-h3">Test Results Tab</h3>
-      <p class="docs-p">If your post-script includes <code>test()</code> assertions, the results appear here after every request. Each test shows its description, status (PASS / FAIL), and any message.</p>
+      <p class="docs-p">If your post-response script contains <code>test()</code> assertions, results appear here after every request. Each test row shows:</p>
+      <ul class="docs-ul">
+        <li>The test description string (first argument to <code>test()</code>)</li>
+        <li>Status: <strong>PASS</strong> (green) or <strong>FAIL</strong> (red)</li>
+        <li>For failures: the error message thrown inside the test function</li>
+      </ul>
+      <p class="docs-p">The tab label shows a summary count (e.g. "Tests 3/4") so you can see pass rate at a glance without opening the tab.</p>
+
+      <h3 class="docs-h3">Large Responses</h3>
+      <p class="docs-p">Responses over ~1 MB are truncated in the viewer to keep the UI fast. A warning banner shows the actual full size. Use <strong>Save to file</strong> to write the complete response to disk, then open it in a dedicated JSON viewer or text editor.</p>
     </section>
 
-    <!-- ── 5. Environments ────────────────────────────────── -->
-    <section class="docs-section" id="environments">
-      <h2 class="docs-h2"><span class="section-num">5</span> Environments &amp; Variables</h2>
+    <!-- ── 5. Response History ────────────────────────────── -->
+    <section class="docs-section" id="response-history">
+      <h2 class="docs-h2"><span class="section-num">5</span> Response History</h2>
 
-      <h3 class="docs-h3">Creating an Environment</h3>
-      <ol class="steps">
-        <li><div>Open a project and click the <strong>Environments</strong> tab.</div></li>
-        <li><div>Click <strong>+ Environment</strong> and give it a name (e.g. "Development").</div></li>
-        <li><div>Add key-value pairs. Mark sensitive values as <strong>Secret</strong> to mask them in the UI.</div></li>
-        <li><div>Select the environment from the dropdown in the request builder to activate it.</div></li>
-      </ol>
+      <p class="docs-p">CALLSTACK can save a rolling history of responses for each request. This lets you compare the current response against previous runs without any external tooling — useful for tracking API behaviour changes over time, debugging regressions, or just reviewing what a request returned an hour ago.</p>
 
-      <h3 class="docs-h3">Variable Substitution</h3>
-      <p class="docs-p">Use <code>{{variableName}}</code> anywhere in your request — URL, params, headers, or body. CALLSTACK resolves variables at send time against the active environment.</p>
-      <div class="code-block">
-        <div class="code-block-header"><span>URL example</span><button class="copy-btn">Copy</button></div>
-        <pre><code>{{BASE_URL}}/api/v2/users/{{USER_ID}}/profile</code></pre>
-      </div>
-      <div class="code-block">
-        <div class="code-block-header"><span>Header example</span><button class="copy-btn">Copy</button></div>
-        <pre><code>Authorization: Bearer {{ACCESS_TOKEN}}</code></pre>
-      </div>
-      <div class="code-block">
-        <div class="code-block-header"><span>Body example</span><button class="copy-btn">Copy</button></div>
-        <pre><code>{
-  "email": "{{TEST_EMAIL}}",
-  "org_id": {{ORG_ID}}
-}</code></pre>
-      </div>
+      <h3 class="docs-h3">Saving a Response</h3>
+      <p class="docs-p">After a successful request, click <strong>Save Response</strong> in the response toolbar (or press <kbd>⌘</kbd><kbd>S</kbd> / <kbd>Ctrl</kbd><kbd>S</kbd>). A dialog asks for an optional name (e.g. "Before migration", "User with admin role"). If you leave the name blank, CALLSTACK uses a timestamp as the name.</p>
+      <p class="docs-p">Saved responses are stored in the SQLite database against the specific request. They persist across app restarts and are included when you export the project.</p>
 
-      <h3 class="docs-h3">Secrets</h3>
-      <p class="docs-p">Variables marked as <strong>Secret</strong> are shown as masked (●●●●) in the UI. Hold the reveal button to peek at the value. Secrets are stored in plain text in the local SQLite database — they are not encrypted at rest.</p>
+      <h3 class="docs-h3">Viewing History</h3>
+      <p class="docs-p">Click the <strong>History</strong> button in the response toolbar to open the history panel. Each saved response is shown as a row with:</p>
+      <ul class="docs-ul">
+        <li>Name (or timestamp if unnamed)</li>
+        <li>Status code</li>
+        <li>Response time</li>
+        <li>Body size</li>
+        <li>Date and time saved</li>
+      </ul>
+      <p class="docs-p">Click any row to load that saved response into the viewer. The current live response is not affected — switching history items is read-only.</p>
 
-      <h3 class="docs-h3">Runtime Variable Changes</h3>
-      <p class="docs-p">Pre/post scripts can read and write environment variables at runtime using <code>env.get()</code> and <code>env.set()</code>. Runtime changes are not persisted back to the saved environment — they apply only for the current request execution.</p>
+      <h3 class="docs-h3">Diff View</h3>
+      <p class="docs-p">Select two history entries (or one history entry and the current response) and click <strong>Diff</strong> to see a side-by-side or inline diff of the response bodies. Additions are highlighted green, removals red. This makes it easy to spot exactly what changed between two API responses — for example, after a server deployment or schema migration.</p>
 
-      <h3 class="docs-h3">Recursive Variables</h3>
-      <p class="docs-p">Environment variables can reference other variables in the same environment using <code>{{variableName}}</code> syntax. CALLSTACK resolves them recursively at send time:</p>
-      <div class="code-block">
-        <div class="code-block-header"><span>Environment variables</span><button class="copy-btn">Copy</button></div>
-        <pre><code>BASE_URL   = https://api.example.com
-API_V2     = {{BASE_URL}}/v2
-USERS_URL  = {{API_V2}}/users   → resolves to https://api.example.com/v2/users</code></pre>
-      </div>
-      <p class="docs-p">Circular references are detected and left unresolved. Resolved values are cached per send, so each unique key is resolved only once.</p>
-
-      <h3 class="docs-h3">Dynamic Tokens</h3>
-      <p class="docs-p">Use built-in <code>$</code>-prefixed tokens anywhere you use <code>{{…}}</code> — URL, headers, body, params — to inject randomly-generated or time-based values without writing scripts:</p>
-      <div class="docs-table-wrap">
-        <table class="docs-table">
-          <thead><tr><th>Token</th><th>Output</th><th>Example</th></tr></thead>
-          <tbody>
-            <tr><td><code>{{$randomUUID}}</code></td><td>UUID v4</td><td><code>550e8400-e29b-41d4-a716-446655440000</code></td></tr>
-            <tr><td><code>{{$guid}}</code></td><td>Alias for $randomUUID</td><td></td></tr>
-            <tr><td><code>{{$timestamp}}</code></td><td>Unix timestamp (seconds)</td><td><code>1713177600</code></td></tr>
-            <tr><td><code>{{$isoTimestamp}}</code></td><td>ISO 8601 timestamp</td><td><code>2024-04-15T12:00:00Z</code></td></tr>
-            <tr><td><code>{{$randomEmail}}</code></td><td>Email address</td><td><code>john@example.com</code></td></tr>
-            <tr><td><code>{{$randomFullName}}</code></td><td>Full name</td><td><code>John Doe</code></td></tr>
-            <tr><td><code>{{$randomInt}}</code></td><td>Integer (0–1000)</td><td><code>543</code></td></tr>
-            <tr><td><code>{{$randomIP}}</code></td><td>IPv4 address</td><td><code>192.168.1.1</code></td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="docs-p">25+ tokens are available covering names, addresses, network values, colours, and lorem text. All tokens are listed in the autocomplete dropdown when you type <code>{{$</code> in any field.</p>
+      <h3 class="docs-h3">History Limit</h3>
+      <p class="docs-p">CALLSTACK keeps the most recent N responses per request. The default limit is 10. You can change this in <strong>Settings → Response History Limit</strong>. When the limit is reached, the oldest saved response is deleted automatically to make room for the new one. Set the limit to 0 to disable automatic saving entirely.</p>
 
       <div class="callout callout-tip">
         <span class="callout-icon">💡</span>
         <div class="callout-body">
-          <strong>Quick tip</strong>
-          <span>Use the <strong>Variable Inspector</strong> (accessible from the URL bar) to see all variables currently in scope and their resolved values.</span>
+          <strong>Use named saves for milestones</strong>
+          <span>Name your saves descriptively ("pre-migration baseline", "v2 API response") so they're easy to identify later. Unnamed timestamped saves are useful for recent history, but names help when comparing across larger time spans.</span>
+        </div>
+      </div>
+
+      <h3 class="docs-h3">Deleting History</h3>
+      <p class="docs-p">To delete individual saved responses, open the History panel, hover over an entry, and click the delete (×) icon. To wipe all history for a request, click <strong>Clear History</strong> in the panel header. This cannot be undone.</p>
+    </section>
+
+    <!-- ── 6. Environments ────────────────────────────────── -->
+    <section class="docs-section" id="environments">
+      <h2 class="docs-h2"><span class="section-num">6</span> Environments &amp; Variables</h2>
+
+      <h3 class="docs-h3">Creating an Environment</h3>
+      <ol class="steps">
+        <li><div>Open a project and click the <strong>Environments</strong> tab at the top of the main panel.</div></li>
+        <li><div>Click <strong>+ Environment</strong> and give it a name (e.g. "Development", "Staging", "Production").</div></li>
+        <li><div>Add key-value pairs. Use descriptive key names — they appear in autocomplete when you type <code>{{</code> in any field.</div></li>
+        <li><div>Mark sensitive values (passwords, API keys, tokens) as <strong>Secret</strong> to mask them in the UI.</div></li>
+        <li><div>Select the environment from the dropdown in the request builder to make it active for that request.</div></li>
+      </ol>
+
+      <h3 class="docs-h3">Multi-Environment Strategy</h3>
+      <p class="docs-p">A common pattern is to have three environments per project with the same variable keys but different values:</p>
+      <div class="docs-table-wrap">
+        <table class="docs-table">
+          <thead><tr><th>Variable</th><th>Development</th><th>Staging</th><th>Production</th></tr></thead>
+          <tbody>
+            <tr><td><code>BASE_URL</code></td><td><code>http://localhost:3000</code></td><td><code>https://api-staging.example.com</code></td><td><code>https://api.example.com</code></td></tr>
+            <tr><td><code>ACCESS_TOKEN</code></td><td><code>dev-token-123</code></td><td><code>stg-token-456</code></td><td><em>(Secret)</em></td></tr>
+            <tr><td><code>DB_SEED_USER_ID</code></td><td><code>1</code></td><td><code>42</code></td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="docs-p">Switch environments in the dropdown without changing the request itself. This makes it safe to run the same request against any environment without risk of editing the wrong URL.</p>
+
+      <h3 class="docs-h3">Variable Substitution</h3>
+      <p class="docs-p">Use <code>{{variableName}}</code> anywhere in your request — URL, query params, headers, or body. Variable names are <strong>case-sensitive</strong>. Substitution happens at send time; what you see saved in the editor is the template with placeholders.</p>
+      <div class="code-block">
+        <div class="code-block-header"><span>URL</span><button class="copy-btn">Copy</button></div>
+        <pre><code>{{BASE_URL}}/api/v2/users/{{USER_ID}}/profile</code></pre>
+      </div>
+      <div class="code-block">
+        <div class="code-block-header"><span>Header</span><button class="copy-btn">Copy</button></div>
+        <pre><code>Authorization: Bearer {{ACCESS_TOKEN}}</code></pre>
+      </div>
+      <div class="code-block">
+        <div class="code-block-header"><span>Body</span><button class="copy-btn">Copy</button></div>
+        <pre><code>{
+  "email": "{{TEST_EMAIL}}",
+  "org_id": {{ORG_ID}},
+  "role": "{{DEFAULT_ROLE}}"
+}</code></pre>
+      </div>
+
+      <h3 class="docs-h3">Secrets</h3>
+      <p class="docs-p">Variables marked as <strong>Secret</strong> are shown as ●●●●●● in the environment editor. Hold the eye icon to temporarily reveal the value. Secrets substitute into requests exactly like regular variables — the masking is only in the UI, not in the actual request.</p>
+      <div class="callout callout-warn">
+        <span class="callout-icon">⚠️</span>
+        <div class="callout-body">
+          <strong>Not encrypted at rest</strong>
+          <span>Secret values are stored as plain text in the local SQLite database. The "Secret" flag only masks them in the UI. Do not treat the local database as a secure vault — use OS Keychain or a password manager for production credentials.</span>
+        </div>
+      </div>
+
+      <h3 class="docs-h3">Runtime Variable Changes</h3>
+      <p class="docs-p">Pre/post scripts can read and write environment variables at runtime using <code>env.get()</code> and <code>env.set()</code>. Runtime changes persist for the duration of the current request execution but are <strong>not</strong> written back to the saved environment definition. This is intentional — scripts can safely modify values mid-flight without permanently altering your environment.</p>
+      <p class="docs-p">In automations, runtime changes propagate forward through subsequent steps within the same run.</p>
+
+      <h3 class="docs-h3">Recursive Variables</h3>
+      <p class="docs-p">Environment variables can reference other variables in the same environment. CALLSTACK resolves them recursively at send time:</p>
+      <div class="code-block">
+        <div class="code-block-header"><span>Environment variables</span><button class="copy-btn">Copy</button></div>
+        <pre><code>BASE_URL    = https://api.example.com
+API_V2      = {{BASE_URL}}/v2
+USERS_URL   = {{API_V2}}/users        → https://api.example.com/v2/users
+USER_DETAIL = {{USERS_URL}}/{{USER_ID}} → https://api.example.com/v2/users/42</code></pre>
+      </div>
+      <p class="docs-p">Circular references (A → B → A) are detected and left unresolved — the raw <code>{{variableName}}</code> string is sent as-is. Resolved values are cached per send, so each unique key resolves only once regardless of how many times it is referenced.</p>
+
+      <h3 class="docs-h3">Dynamic Tokens</h3>
+      <p class="docs-p">Use built-in <code>$</code>-prefixed tokens anywhere you'd use <code>{{…}}</code> to inject randomly-generated or time-based values without writing scripts. They are regenerated fresh on every request send:</p>
+      <div class="docs-table-wrap">
+        <table class="docs-table">
+          <thead><tr><th>Token</th><th>Output</th><th>Example value</th></tr></thead>
+          <tbody>
+            <tr><td><code>{{$randomUUID}}</code></td><td>UUID v4</td><td><code>550e8400-e29b-41d4-a716-446655440000</code></td></tr>
+            <tr><td><code>{{$guid}}</code></td><td>Alias for <code>$randomUUID</code></td><td><code>6ba7b810-9dad-11d1-80b4-00c04fd430c8</code></td></tr>
+            <tr><td><code>{{$timestamp}}</code></td><td>Unix timestamp (seconds)</td><td><code>1713177600</code></td></tr>
+            <tr><td><code>{{$isoTimestamp}}</code></td><td>ISO 8601 UTC timestamp</td><td><code>2024-04-15T12:00:00.000Z</code></td></tr>
+            <tr><td><code>{{$randomInt}}</code></td><td>Random integer 0–1000</td><td><code>543</code></td></tr>
+            <tr><td><code>{{$randomFloat}}</code></td><td>Random float 0.0–1.0</td><td><code>0.7823</code></td></tr>
+            <tr><td><code>{{$randomBoolean}}</code></td><td><code>true</code> or <code>false</code></td><td><code>true</code></td></tr>
+            <tr><td><code>{{$randomEmail}}</code></td><td>Fake email address</td><td><code>alice.walker@example.com</code></td></tr>
+            <tr><td><code>{{$randomFullName}}</code></td><td>Fake full name</td><td><code>Alice Walker</code></td></tr>
+            <tr><td><code>{{$randomFirstName}}</code></td><td>Fake first name</td><td><code>Alice</code></td></tr>
+            <tr><td><code>{{$randomLastName}}</code></td><td>Fake last name</td><td><code>Walker</code></td></tr>
+            <tr><td><code>{{$randomPhoneNumber}}</code></td><td>Fake phone number</td><td><code>+1-555-867-5309</code></td></tr>
+            <tr><td><code>{{$randomIP}}</code></td><td>Random IPv4 address</td><td><code>203.0.113.42</code></td></tr>
+            <tr><td><code>{{$randomIPv6}}</code></td><td>Random IPv6 address</td><td><code>2001:db8::1</code></td></tr>
+            <tr><td><code>{{$randomUrl}}</code></td><td>Fake HTTPS URL</td><td><code>https://example.com/path</code></td></tr>
+            <tr><td><code>{{$randomDomainName}}</code></td><td>Fake domain</td><td><code>example-corp.io</code></td></tr>
+            <tr><td><code>{{$randomStreetAddress}}</code></td><td>Fake street address</td><td><code>123 Main St</code></td></tr>
+            <tr><td><code>{{$randomCity}}</code></td><td>Fake city name</td><td><code>Springfield</code></td></tr>
+            <tr><td><code>{{$randomCountry}}</code></td><td>Country name</td><td><code>Germany</code></td></tr>
+            <tr><td><code>{{$randomCountryCode}}</code></td><td>ISO 3166-1 alpha-2 code</td><td><code>DE</code></td></tr>
+            <tr><td><code>{{$randomHexColor}}</code></td><td>Hex color string</td><td><code>#a3f0c2</code></td></tr>
+            <tr><td><code>{{$randomAlphaNumeric}}</code></td><td>8-char alphanumeric string</td><td><code>k3mP9xQr</code></td></tr>
+            <tr><td><code>{{$randomLoremWord}}</code></td><td>Single lorem ipsum word</td><td><code>lorem</code></td></tr>
+            <tr><td><code>{{$randomLoremSentence}}</code></td><td>Lorem ipsum sentence</td><td><code>Lorem ipsum dolor sit amet.</code></td></tr>
+            <tr><td><code>{{$randomLoremParagraph}}</code></td><td>Lorem ipsum paragraph</td><td>(multi-sentence)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="docs-p">Autocomplete triggers when you type <code>{{$</code> in any input field — press Tab or click to insert.</p>
+
+      <div class="callout callout-tip">
+        <span class="callout-icon">💡</span>
+        <div class="callout-body">
+          <strong>Variable Inspector</strong>
+          <span>Click the <strong>{ }</strong> icon near the URL bar to open the Variable Inspector. It shows every variable currently in scope (from the active environment plus any emitter values from automation runs) with their resolved values — useful for debugging substitution problems.</span>
         </div>
       </div>
     </section>
 
-    <!-- ── 6. Scripts ─────────────────────────────────────── -->
+    <!-- ── 7. Scripts ─────────────────────────────────────── -->
     <section class="docs-section" id="scripts">
-      <h2 class="docs-h2"><span class="section-num">6</span> Pre/Post Scripts</h2>
+      <h2 class="docs-h2"><span class="section-num">7</span> Pre/Post Scripts</h2>
 
-      <p class="docs-p">Scripts are JavaScript that runs in a sandboxed environment — no filesystem access, no <code>fetch</code>, no Node APIs. Two hooks are available per request: <strong>Pre-request</strong> (before send) and <strong>Post-response</strong> (after response received).</p>
+      <p class="docs-p">Scripts are JavaScript that run in a sandboxed QuickJS environment before and after each request. There is no filesystem access, no network calls (<code>fetch</code> is not available), and no access to Node.js or browser APIs. The sandbox is intentionally minimal — it gives you just enough to manipulate request data, run assertions, and pass values between steps.</p>
+      <p class="docs-p">Two hooks are available per request:</p>
+      <ul class="docs-ul">
+        <li><strong>Pre-request script</strong> — Runs before the request is sent. Use it to generate or inject data, compute headers, or set environment variables that the request body/headers reference.</li>
+        <li><strong>Post-response script</strong> — Runs after the response is received. Use it to extract tokens, run assertions, or pass values to downstream automation steps.</li>
+      </ul>
 
       <h3 class="docs-h3">Available APIs</h3>
       <div class="api-grid">
         <div class="api-card">
           <div class="api-card-name">request</div>
-          <div class="api-card-desc">The outgoing request: <code>request.method</code>, <code>request.url</code>, <code>request.headers</code> (array), <code>request.params</code> (array), <code>request.body</code>, <code>request.json()</code></div>
+          <div class="api-card-desc"><code>request.method</code> — HTTP method string. <code>request.url</code> — fully resolved URL. <code>request.headers</code> — array of <code>{key, value}</code> objects. <code>request.params</code> — array of <code>{key, value}</code> query params. <code>request.body</code> — raw body string. <code>request.json()</code> — parsed body as object (throws if not valid JSON).</div>
         </div>
         <div class="api-card">
           <div class="api-card-name">response</div>
-          <div class="api-card-desc">The incoming response: <code>response.status</code>, <code>response.statusText</code>, <code>response.headers</code> (array), <code>response.body</code>, <code>response.time</code>, <code>response.json()</code></div>
+          <div class="api-card-desc"><code>response.status</code> — HTTP status code (number). <code>response.statusText</code> — status text ("OK", "Not Found"). <code>response.headers</code> — array of <code>{key, value}</code> objects. <code>response.body</code> — raw body string. <code>response.time</code> — response time in ms. <code>response.json()</code> — body parsed as JSON (only in post-script).</div>
         </div>
         <div class="api-card">
           <div class="api-card-name">env</div>
-          <div class="api-card-desc"><code>env.get('KEY')</code> — read a variable. <code>env.set('KEY', value)</code> — write a variable for this execution.</div>
+          <div class="api-card-desc"><code>env.get('KEY')</code> — read a variable from the active environment. Returns <code>undefined</code> if not found. <code>env.set('KEY', value)</code> — write a variable for this execution (not persisted). Works in both pre and post scripts.</div>
         </div>
         <div class="api-card">
           <div class="api-card-name">secrets</div>
-          <div class="api-card-desc"><code>secrets.get('KEY')</code> — read a secret. <code>secrets.set('KEY', value)</code> — write a secret for this execution.</div>
+          <div class="api-card-desc"><code>secrets.get('KEY')</code> — read a secret variable. <code>secrets.set('KEY', value)</code> — write a secret variable for this execution. Identical to <code>env</code> but for secret-marked variables.</div>
         </div>
         <div class="api-card">
           <div class="api-card-name">emitter</div>
-          <div class="api-card-desc"><code>emitter.emit('key', value)</code> — publish a value for downstream automation steps. <code>emitter.get('key')</code> — read a published value.</div>
+          <div class="api-card-desc"><code>emitter.emit('key', value)</code> — publish a value for downstream automation steps. The value is then available as <code>{{emitter.key}}</code> in subsequent step URLs, headers, and body. <code>emitter.get('key')</code> — read a previously emitted value in the same run.</div>
         </div>
         <div class="api-card">
           <div class="api-card-name">faker</div>
-          <div class="api-card-desc"><code>faker.name()</code>, <code>faker.email()</code>, <code>faker.phone()</code>, <code>faker.address()</code>, <code>faker.uuid()</code> and more — generate realistic test data.</div>
+          <div class="api-card-desc"><code>faker.name()</code>, <code>faker.email()</code>, <code>faker.phone()</code>, <code>faker.address()</code>, <code>faker.uuid()</code>, <code>faker.number(min, max)</code>, <code>faker.word()</code>, <code>faker.sentence()</code>, <code>faker.paragraph()</code> — generate realistic test data. New values on every call.</div>
         </div>
         <div class="api-card">
           <div class="api-card-name">test(desc, fn)</div>
-          <div class="api-card-desc">Assert conditions. <code>test('status is 200', () =&gt; { if (response.status !== 200) throw new Error('Expected 200'); })</code></div>
+          <div class="api-card-desc">Define an assertion. <code>test('name', () =&gt; { if (condition) throw new Error('message'); })</code> — results appear in the Test Results tab. Multiple <code>test()</code> calls are allowed; each is independent.</div>
+        </div>
+        <div class="api-card">
+          <div class="api-card-name">console</div>
+          <div class="api-card-desc"><code>console.log(...args)</code> — output appears in the <strong>Request Log</strong> footer next to the request entry. Useful for debugging script logic. <code>console.error()</code> and <code>console.warn()</code> also work.</div>
         </div>
       </div>
 
       <h3 class="docs-h3">Examples</h3>
 
-      <p class="docs-p"><strong>Extract a JWT from a login response:</strong></p>
+      <p class="docs-p"><strong>Extract a JWT from a login response and save it for subsequent requests:</strong></p>
       <div class="code-block">
-        <div class="code-block-header"><span>Post-response script</span><button class="copy-btn">Copy</button></div>
+        <div class="code-block-header"><span>Post-response script — Login request</span><button class="copy-btn">Copy</button></div>
         <pre><code>const body = response.json();
-if (body && body.token) {
-  env.set('ACCESS_TOKEN', body.token);
-  console.log('Token saved:', body.token.substring(0, 20) + '...');
+if (body && body.access_token) {
+  env.set('ACCESS_TOKEN', body.access_token);
+  env.set('REFRESH_TOKEN', body.refresh_token);
+  console.log('Tokens saved. Expires in:', body.expires_in, 'seconds');
+} else {
+  console.error('Login failed:', response.status, body?.message);
 }</code></pre>
       </div>
 
-      <p class="docs-p"><strong>Assert a successful response:</strong></p>
+      <p class="docs-p"><strong>Assert multiple conditions on a response:</strong></p>
       <div class="code-block">
         <div class="code-block-header"><span>Post-response script</span><button class="copy-btn">Copy</button></div>
         <pre><code>test('Status is 200', () => {
-  if (response.status !== 200) throw new Error(`Expected 200, got ${response.status}`);
+  if (response.status !== 200)
+    throw new Error(`Expected 200, got ${response.status}`);
 });
 
-test('Response has user ID', () => {
+test('Response time under 500ms', () => {
+  if (response.time > 500)
+    throw new Error(`Too slow: ${response.time}ms`);
+});
+
+test('Response has users array', () => {
   const body = response.json();
-  if (!body.id) throw new Error('Missing user ID in response');
+  if (!Array.isArray(body.users))
+    throw new Error('Expected body.users to be an array');
+});
+
+test('At least one user returned', () => {
+  const body = response.json();
+  if (body.users.length === 0)
+    throw new Error('Empty users array');
 });</code></pre>
       </div>
 
-      <p class="docs-p"><strong>Generate fake data before sending:</strong></p>
+      <p class="docs-p"><strong>Generate fake user data and inject it into the request body via env variables (pre-request):</strong></p>
       <div class="code-block">
         <div class="code-block-header"><span>Pre-request script</span><button class="copy-btn">Copy</button></div>
-        <pre><code>// Inject a random email into the request body
-const email = faker.email();
-const body = request.json();
-body.email = email;
-// Note: use env.set to pass data to the body via {{variables}}</code></pre>
+        <pre><code>// Generate a unique test user every time
+env.set('RANDOM_EMAIL', faker.email());
+env.set('RANDOM_NAME', faker.name());
+env.set('RANDOM_PHONE', faker.phone());
+// Then reference {{RANDOM_EMAIL}}, {{RANDOM_NAME}} in the body template</code></pre>
       </div>
 
-      <p class="docs-p"><strong>Pass a value to the next automation step:</strong></p>
+      <p class="docs-p"><strong>Refresh an expired access token automatically before sending:</strong></p>
       <div class="code-block">
-        <div class="code-block-header"><span>Post-response script</span><button class="copy-btn">Copy</button></div>
-        <pre><code>const userId = response.json().id;
-emitter.emit('createdUserId', userId);
-// Next step can use {{emitter.createdUserId}} in its URL</code></pre>
+        <div class="code-block-header"><span>Pre-request script</span><button class="copy-btn">Copy</button></div>
+        <pre><code>// Check if token looks expired by inspecting a custom header you set
+// (This is illustrative — scripts can't make HTTP calls directly)
+const token = env.get('ACCESS_TOKEN');
+if (!token) {
+  // Signal that the token is missing so the request will fail with
+  // a meaningful error rather than a cryptic 401
+  throw new Error('ACCESS_TOKEN is not set. Run the Login request first.');
+}</code></pre>
       </div>
+
+      <p class="docs-p"><strong>Pass a created resource ID to the next automation step:</strong></p>
+      <div class="code-block">
+        <div class="code-block-header"><span>Post-response script — "Create User" step</span><button class="copy-btn">Copy</button></div>
+        <pre><code>const body = response.json();
+emitter.emit('newUserId', body.id);
+emitter.emit('newUserEmail', body.email);
+console.log('Created user', body.id, '—', body.email);</code></pre>
+      </div>
+      <div class="code-block">
+        <div class="code-block-header"><span>URL in next step — "Get User"</span><button class="copy-btn">Copy</button></div>
+        <pre><code>{{BASE_URL}}/api/users/{{emitter.newUserId}}</code></pre>
+      </div>
+
+      <p class="docs-p"><strong>Compute an HMAC signature in the pre-request script:</strong></p>
+      <div class="code-block">
+        <div class="code-block-header"><span>Pre-request script</span><button class="copy-btn">Copy</button></div>
+        <pre><code>// Build a timestamp-based nonce and store it for the header
+const ts = Math.floor(Date.now() / 1000).toString();
+env.set('REQUEST_TS', ts);
+// Note: crypto APIs are not available in the sandbox.
+// Use {{$timestamp}} in the header directly for timestamp-only auth.</code></pre>
+      </div>
+
+      <h3 class="docs-h3">Debugging Scripts</h3>
+      <ul class="docs-ul">
+        <li>Use <code>console.log()</code> liberally — output appears in the Request Log footer next to the request entry.</li>
+        <li>The script editor highlights syntax errors inline. Hover a red underline to see the error message.</li>
+        <li>If a script throws an uncaught error (outside a <code>test()</code> block), the error is shown in the log footer and the request is still sent — scripts don't block execution unless explicitly throwing in a pre-request hook.</li>
+        <li>In post-scripts, only call <code>response.json()</code> — it is undefined in pre-request scripts.</li>
+      </ul>
 
       <div class="callout callout-note">
         <span class="callout-icon">ℹ️</span>
         <div class="callout-body">
-          <strong>Script errors</strong>
-          <span>If a script throws an uncaught error, it is shown in the Request Log footer. The request still sends — scripts don't block execution unless they are in a pre-request hook with an explicit <code>throw</code>.</span>
+          <strong>No network in scripts</strong>
+          <span>Scripts cannot make HTTP requests — <code>fetch</code>, <code>XMLHttpRequest</code>, and similar APIs are not available in the sandbox. All data must come from the response or environment variables. This is by design to keep scripts predictable and fast.</span>
         </div>
       </div>
     </section>
 
-    <!-- ── 7. Automations ─────────────────────────────────── -->
+    <!-- ── 8. Automations ─────────────────────────────────── -->
     <section class="docs-section" id="automations">
-      <h2 class="docs-h2"><span class="section-num">7</span> Automations</h2>
+      <h2 class="docs-h2"><span class="section-num">8</span> Automations</h2>
 
-      <p class="docs-p">Automations let you build multi-step request workflows visually. Think of them as a flowchart of API calls — with loops, branching, parallel lanes, and CSV-driven data iteration.</p>
+      <p class="docs-p">Automations let you build multi-step request workflows visually — think of them as a flowchart of API calls with loops, branching, parallel lanes, and CSV-driven data iteration. They are useful for end-to-end scenarios, data seeding, smoke tests, and load testing.</p>
 
       <h3 class="docs-h3">Step Types</h3>
       <div class="step-type-grid">
         <div class="step-type">
           <span class="step-type-icon">📡</span>
-          <div class="step-type-body"><strong>Request</strong><span>Execute a saved request</span></div>
+          <div class="step-type-body"><strong>Request</strong><span>Execute a saved request from this project. The request's pre/post scripts run as normal.</span></div>
         </div>
         <div class="step-type">
           <span class="step-type-icon">⏱️</span>
-          <div class="step-type-body"><strong>Delay</strong><span>Wait N milliseconds</span></div>
+          <div class="step-type-body"><strong>Delay</strong><span>Wait N milliseconds before proceeding. Useful for rate-limit-safe batch operations.</span></div>
         </div>
         <div class="step-type">
           <span class="step-type-icon">🔁</span>
-          <div class="step-type-body"><strong>Repeat</strong><span>Loop N times</span></div>
+          <div class="step-type-body"><strong>Repeat</strong><span>Loop a set of nested steps N times. Loop index is available as <code>{{loop.index}}</code> (0-based).</span></div>
         </div>
         <div class="step-type">
           <span class="step-type-icon">📄</span>
-          <div class="step-type-body"><strong>CSV Iterator</strong><span>Loop over data file rows</span></div>
+          <div class="step-type-body"><strong>CSV Iterator</strong><span>Loop over every row in a data file. Each column value is injected as <code>{{#columnName}}</code> in nested step templates.</span></div>
         </div>
         <div class="step-type">
           <span class="step-type-icon">⊙</span>
-          <div class="step-type-body"><strong>Set Env</strong><span>Switch active environment mid-run</span></div>
+          <div class="step-type-body"><strong>Set Env</strong><span>Switch the active environment from this step forward in the run. Useful for cross-environment workflows.</span></div>
         </div>
         <div class="step-type">
           <span class="step-type-icon">🔀</span>
-          <div class="step-type-body"><strong>Branch</strong><span>Conditional if/else</span></div>
+          <div class="step-type-body"><strong>Branch</strong><span>Conditional if/else — evaluates a condition and takes one of two paths.</span></div>
         </div>
         <div class="step-type">
           <span class="step-type-icon">⚡</span>
-          <div class="step-type-body"><strong>Fanout</strong><span>Parallel execution lanes</span></div>
+          <div class="step-type-body"><strong>Fanout</strong><span>Execute multiple lanes in parallel. Each lane is an independent chain of steps. Joins when all lanes complete.</span></div>
         </div>
         <div class="step-type">
           <span class="step-type-icon">🛑</span>
-          <div class="step-type-body"><strong>Stop</strong><span>Halt the workflow</span></div>
+          <div class="step-type-body"><strong>Stop</strong><span>Immediately halt the automation. Can be placed in a Branch "else" path to abort on failure.</span></div>
         </div>
         <div class="step-type">
           <span class="step-type-icon">📝</span>
-          <div class="step-type-body"><strong>Log</strong><span>Emit a message to the run log</span></div>
+          <div class="step-type-body"><strong>Log</strong><span>Emit a static or variable-substituted message to the run history log. Good for marking milestones.</span></div>
         </div>
       </div>
 
       <h3 class="docs-h3">Building a Workflow</h3>
       <ol class="steps">
-        <li><div>Open a project and click the <strong>Automations</strong> tab. Click <strong>+ Automation</strong>.</div></li>
-        <li><div>Add steps by clicking <strong>+</strong> in the visual builder. Choose a step type and configure it.</div></li>
-        <li><div>For <strong>Request</strong> steps, select a saved request from the dropdown. You can pin an environment to each individual Request step — it overrides the automation's global environment for that step only.</div></li>
-        <li><div>For <strong>CSV Iterator</strong> steps, select a data file from the project. Each row's columns become variables in nested steps.</div></li>
-        <li><div>For <strong>Set Env</strong> steps, choose the environment to activate from that point forward in the run. Useful for workflows that cross environment boundaries (e.g. create in dev, verify in staging).</div></li>
-        <li><div>Click <strong>Run</strong> to execute. Watch the progress indicator and collect test results.</div></li>
+        <li><div>Open a project, click the <strong>Automations</strong> tab, then click <strong>+ Automation</strong> and give it a name.</div></li>
+        <li><div>Add the first step by clicking <strong>+</strong> in the visual builder. Choose a step type and configure it. For <strong>Request</strong> steps, select any saved request from the project dropdown.</div></li>
+        <li><div>Add more steps below. Each step has its own configuration panel on the right when selected.</div></li>
+        <li><div>For <strong>Request</strong> steps, you can pin a specific environment — it overrides the automation's global environment for that step only. This lets you create, for example, in dev and verify in staging.</div></li>
+        <li><div>Select a global environment in the automation settings for all steps that don't have a pinned environment.</div></li>
+        <li><div>Click <strong>Run</strong> to execute. A progress indicator advances through each step. You can watch results in real-time.</div></li>
       </ol>
 
       <h3 class="docs-h3">Branch Conditions</h3>
-      <p class="docs-p">A <strong>Branch</strong> step evaluates a condition and takes the "if" or "else" path:</p>
+      <p class="docs-p">A <strong>Branch</strong> step evaluates a condition and takes the "if" or "else" path. Available conditions:</p>
       <ul class="docs-ul">
-        <li>Last request <strong>passed</strong> / <strong>failed</strong> (test results)</li>
-        <li>Last status code <strong>&gt;=</strong> or <strong>&lt;</strong> a threshold</li>
-        <li>Emitted variable <strong>equals</strong>, <strong>exists</strong>, or <strong>is truthy</strong></li>
+        <li>Last request <strong>passed all tests</strong> / <strong>failed at least one test</strong></li>
+        <li>Last status code <strong>is exactly</strong> N</li>
+        <li>Last status code <strong>is 2xx</strong> / <strong>is not 2xx</strong></li>
+        <li>Emitted variable <code>emitter.key</code> <strong>equals</strong> a value, <strong>is truthy</strong>, or <strong>exists</strong></li>
       </ul>
+      <p class="docs-p">Example: after a "Create Order" request, branch on whether <code>emitter.orderId</code> exists. If yes, proceed to "Confirm Order"; if no, log an error and Stop.</p>
+
+      <h3 class="docs-h3">CSV Iterator Example</h3>
+      <p class="docs-p">A complete example of seeding multiple users from a data file:</p>
+      <ol class="steps">
+        <li><div>Create a data file named "test-users" with columns: <code>email</code>, <code>name</code>, <code>role</code>.</div></li>
+        <li><div>Add rows for each test user.</div></li>
+        <li><div>In the automation, add a <strong>CSV Iterator</strong> step and select "test-users".</div></li>
+        <li><div>Inside the CSV Iterator, add a <strong>Request</strong> step that calls your "Create User" endpoint. In the request's body template, use <code>{{#email}}</code>, <code>{{#name}}</code>, <code>{{#role}}</code> — data file columns use the <code>{{#columnName}}</code> prefix to distinguish them from environment variables.</div></li>
+        <li><div>Run the automation — CALLSTACK executes the nested request once per row.</div></li>
+      </ol>
 
       <h3 class="docs-h3">Passing Data Between Steps</h3>
-      <p class="docs-p">Use the <code>emitter</code> API in post-response scripts to pass values between steps:</p>
       <div class="code-block">
-        <div class="code-block-header"><span>Step 1 post-script</span><button class="copy-btn">Copy</button></div>
-        <pre><code>// After creating a user, capture the ID
-emitter.emit('userId', response.json().id);</code></pre>
+        <div class="code-block-header"><span>Step 1 post-script — Create User</span><button class="copy-btn">Copy</button></div>
+        <pre><code>emitter.emit('userId', response.json().id);
+emitter.emit('userEmail', response.json().email);</code></pre>
       </div>
       <div class="code-block">
-        <div class="code-block-header"><span>Step 2 URL</span><button class="copy-btn">Copy</button></div>
+        <div class="code-block-header"><span>Step 2 URL — Activate User</span><button class="copy-btn">Copy</button></div>
         <pre><code>{{BASE_URL}}/api/users/{{emitter.userId}}/activate</code></pre>
       </div>
+      <div class="code-block">
+        <div class="code-block-header"><span>Step 3 body — Send Welcome Email</span><button class="copy-btn">Copy</button></div>
+        <pre><code>{
+  "to": "{{emitter.userEmail}}",
+  "template": "welcome",
+  "data": { "userId": "{{emitter.userId}}" }
+}</code></pre>
+      </div>
+
+      <h3 class="docs-h3">Fanout (Parallel Lanes)</h3>
+      <p class="docs-p">A <strong>Fanout</strong> step executes multiple independent lanes concurrently. Each lane is a sequence of steps that runs in parallel. All lanes must complete before execution continues past the Fanout. Use fanout for tasks that don't depend on each other — for example, seeding a user, product, and order simultaneously before running integration tests.</p>
 
       <h3 class="docs-h3">Run History</h3>
-      <p class="docs-p">Every automation run is saved with its start time, duration, overall status (PASS / FAIL / PARTIAL / ERROR), and a breakdown of each step's result. Access run history from the <strong>History</strong> tab in the automation editor.</p>
+      <p class="docs-p">Every automation run is saved with its start time, duration, overall status (PASS / FAIL / PARTIAL / ERROR), and a per-step breakdown of results, emitted values, and error messages. Access run history from the <strong>History</strong> tab in the automation editor. Click any run to see step-level detail. Old runs are retained indefinitely — use <strong>Clear Runs</strong> to remove them.</p>
+
+      <h3 class="docs-h3">Aborting a Running Automation</h3>
+      <p class="docs-p">Click <strong>Stop</strong> in the run progress bar to immediately halt execution. Any steps already running (including in-flight HTTP requests) are cancelled. The run is saved with status ERROR and notes which step was active when stopped.</p>
     </section>
 
-    <!-- ── 8. Data Files ──────────────────────────────────── -->
+    <!-- ── 9. Data Files ──────────────────────────────────── -->
     <section class="docs-section" id="data-files">
-      <h2 class="docs-h2"><span class="section-num">8</span> Data Files</h2>
+      <h2 class="docs-h2"><span class="section-num">9</span> Data Files</h2>
 
-      <p class="docs-p">Data Files are CSV tables stored per-project. They power the <strong>CSV Iterator</strong> automation step, letting you run the same request against multiple rows of data.</p>
+      <p class="docs-p">Data Files are CSV tables stored per-project. They power the <strong>CSV Iterator</strong> automation step, letting you run the same request against many rows of data without duplicating requests manually.</p>
 
       <h3 class="docs-h3">Creating a Data File</h3>
       <ol class="steps">
         <li><div>Open a project and click the <strong>Data</strong> tab.</div></li>
-        <li><div>Click <strong>+ Data File</strong> and give it a name.</div></li>
-        <li><div>Add columns (e.g. <code>userId</code>, <code>email</code>, <code>role</code>).</div></li>
-        <li><div>Add rows and fill in values. You can also import an existing CSV file.</div></li>
+        <li><div>Click <strong>+ Data File</strong> and give it a name (e.g. "test-users", "product-catalog").</div></li>
+        <li><div>Add columns by clicking <strong>+ Column</strong>. Column names become variable names in automation steps — use <code>camelCase</code> or <code>snake_case</code> names without spaces.</div></li>
+        <li><div>Add rows by clicking <strong>+ Row</strong>. Fill in values in the grid.</div></li>
+        <li><div>To import an existing CSV file, click <strong>Import CSV</strong> and select the file. The first row is treated as the header and becomes column names.</div></li>
       </ol>
+
+      <h3 class="docs-h3">CSV Format Rules</h3>
+      <ul class="docs-ul">
+        <li>The first row must be column headers.</li>
+        <li>Column names should not contain spaces — use <code>userId</code> not <code>user id</code>. Spaces are replaced with underscores on import.</li>
+        <li>Values can contain commas if the field is quoted: <code>"Smith, John"</code>.</li>
+        <li>Empty cells are treated as empty strings in variable substitution.</li>
+      </ul>
 
       <h3 class="docs-h3">Using in Automations</h3>
-      <p class="docs-p">Add a <strong>CSV Iterator</strong> step to an automation and select the data file. Each row's column values are injected as template variables with the column name as the key:</p>
+      <p class="docs-p">Add a <strong>CSV Iterator</strong> step to your automation and select the data file. Each row's column values are injected as template variables using the <code>{{#columnName}}</code> syntax — the <code>#</code> prefix distinguishes data file columns from environment variables:</p>
       <div class="code-block">
-        <div class="code-block-header"><span>URL in nested Request step</span><button class="copy-btn">Copy</button></div>
-        <pre><code>{{BASE_URL}}/api/users/{{userId}}</code></pre>
+        <div class="code-block-header"><span>Data file with columns: userId, email, role</span></div>
+        <pre><code>userId,email,role
+1,alice@example.com,admin
+2,bob@example.com,viewer
+3,carol@example.com,editor</code></pre>
       </div>
-      <p class="docs-p">This will execute once per row, substituting <code>{{userId}}</code> with each row's <code>userId</code> value.</p>
+      <div class="code-block">
+        <div class="code-block-header"><span>Request URL in nested step</span></div>
+        <pre><code>{{BASE_URL}}/api/users/{{#userId}}</code></pre>
+      </div>
+      <div class="code-block">
+        <div class="code-block-header"><span>Request body in nested step</span></div>
+        <pre><code>{
+  "email": "{{#email}}",
+  "role":  "{{#role}}"
+}</code></pre>
+      </div>
+      <p class="docs-p">The nested steps execute once per row: first with <code>{{#userId}}=1</code>, then <code>{{#userId}}=2</code>, then <code>{{#userId}}=3</code>. Environment variables like <code>{{BASE_URL}}</code> and data file columns like <code>{{#userId}}</code> can be mixed freely in the same template.</p>
 
-      <h3 class="docs-h3">CSV Editor</h3>
-      <p class="docs-p">The built-in grid editor supports:</p>
+      <h3 class="docs-h3">CSV Editor Features</h3>
       <ul class="docs-ul">
-        <li>Adding/removing rows and columns inline</li>
-        <li>Renaming columns by double-clicking the header</li>
-        <li>Filtering rows by column value</li>
-        <li>Sorting ascending/descending per column</li>
-        <li>Importing and exporting CSV files</li>
+        <li><strong>Inline editing</strong> — Click any cell to edit it directly.</li>
+        <li><strong>Add/remove rows</strong> — Buttons in the toolbar or keyboard shortcuts.</li>
+        <li><strong>Rename columns</strong> — Double-click a column header to rename it.</li>
+        <li><strong>Reorder columns</strong> — Drag column headers to rearrange.</li>
+        <li><strong>Delete column</strong> — Right-click a header and choose Delete Column.</li>
+        <li><strong>Filter rows</strong> — Type in the filter box to show only rows matching a value.</li>
+        <li><strong>Sort</strong> — Click a column header to sort ascending/descending.</li>
+        <li><strong>Export CSV</strong> — Click Export to download the table as a standard CSV file.</li>
+        <li><strong>Import CSV</strong> — Click Import to replace or merge with a CSV file from disk.</li>
       </ul>
     </section>
 
-    <!-- ── 9. Organisation ────────────────────────────────── -->
+    <!-- ── 10. Organisation ───────────────────────────────── -->
     <section class="docs-section" id="organisation">
-      <h2 class="docs-h2"><span class="section-num">9</span> Organisation &amp; Navigation</h2>
+      <h2 class="docs-h2"><span class="section-num">10</span> Organisation &amp; Navigation</h2>
 
-      <h3 class="docs-h3">Sidebar</h3>
-      <p class="docs-p">The left sidebar lists all your projects. Click the <strong>▼</strong> chevron to expand a project and see its folders and requests. Click again to collapse. The expansion state is saved across sessions.</p>
+      <h3 class="docs-h3">Sidebar Layout</h3>
+      <p class="docs-p">The left sidebar lists all your projects. Each project is an expandable section — click the <strong>▼</strong> chevron to expand and see its folders and requests. Click again to collapse. Expansion state persists across restarts.</p>
+      <p class="docs-p">At the top of the sidebar there are icon buttons for: theme toggle, accent toggle, new request, import, and settings. At the bottom: help/docs.</p>
 
       <h3 class="docs-h3">Folders</h3>
-      <p class="docs-p">Create folders inside a project to group related requests. Folders can be nested. Drag a folder to a different position or into another project.</p>
+      <p class="docs-p">Folders are purely organisational — they group requests but don't change how requests are sent. You can nest folders to any depth. Typical organisation strategies:</p>
+      <ul class="docs-ul">
+        <li>By resource: <code>/Users</code>, <code>/Products</code>, <code>/Orders</code></li>
+        <li>By feature area: <code>Auth</code>, <code>Search</code>, <code>Checkout</code></li>
+        <li>By test type: <code>Happy Path</code>, <code>Edge Cases</code>, <code>Error Scenarios</code></li>
+      </ul>
+      <p class="docs-p">To create a folder, right-click a project or existing folder and choose <strong>New Folder</strong>, or use the <strong>+</strong> button that appears on hover.</p>
 
       <h3 class="docs-h3">Drag-and-Drop Reordering</h3>
-      <p class="docs-p">Grab any request, folder, or project by its drag handle and drop it to a new position. Reordering is persisted immediately.</p>
-
-      <h3 class="docs-h3">Collapsing the Sidebar</h3>
-      <p class="docs-p">Click the collapse button (at the bottom of the sidebar) to hide it entirely, giving your request and response panels more space. Click again to restore it. You can also resize the sidebar by dragging the border between the sidebar and main content.</p>
-
-      <h3 class="docs-h3">Renaming &amp; Cloning</h3>
+      <p class="docs-p">Grab any request, folder, or project by its drag handle (visible on hover, left side of the row) and drop it to a new position. You can:</p>
       <ul class="docs-ul">
-        <li><strong>Rename</strong> a request: double-click its name in the sidebar, or press <kbd>⌘</kbd><kbd>R</kbd>.</li>
-        <li><strong>Clone</strong> a request: right-click in the sidebar and choose <strong>Duplicate</strong>, or press <kbd>⌘</kbd><kbd>D</kbd>.</li>
+        <li>Reorder requests within the same folder</li>
+        <li>Move a request into a different folder</li>
+        <li>Move a request to the project root</li>
+        <li>Reorder folders within a project</li>
+        <li>Reorder projects</li>
       </ul>
+      <p class="docs-p">Reordering is persisted immediately to the database.</p>
+
+      <h3 class="docs-h3">Collapsing &amp; Resizing the Sidebar</h3>
+      <p class="docs-p">Click the collapse arrow at the bottom of the sidebar to hide it entirely, giving the request/response panels maximum space. Click again to restore. You can also drag the border between the sidebar and the main content area to resize it to your preferred width.</p>
+
+      <h3 class="docs-h3">Renaming</h3>
+      <ul class="docs-ul">
+        <li>Double-click any request or folder name in the sidebar to rename it inline.</li>
+        <li>With a request focused, press <kbd>⌘</kbd><kbd>R</kbd> (Mac) or <kbd>Ctrl</kbd><kbd>R</kbd> (Windows/Linux) to start renaming.</li>
+        <li>Press <kbd>Enter</kbd> to confirm or <kbd>Escape</kbd> to cancel.</li>
+      </ul>
+
+      <h3 class="docs-h3">Cloning Requests</h3>
+      <ul class="docs-ul">
+        <li>Right-click a request and choose <strong>Duplicate</strong>.</li>
+        <li>Or press <kbd>⌘</kbd><kbd>D</kbd> / <kbd>Ctrl</kbd><kbd>D</kbd> with the request focused.</li>
+      </ul>
+      <p class="docs-p">The clone is placed directly below the original and named with a " (copy)" suffix. Everything is duplicated: method, URL, params, headers, body, and scripts.</p>
+
+      <h3 class="docs-h3">Deleting</h3>
+      <p class="docs-p">Hover over a request, folder, or project in the sidebar to reveal the × delete button. Click it and confirm to delete. Deleting a folder deletes all requests inside it. Deleting a project deletes all its contents. Deletions are permanent — there is no undo.</p>
     </section>
 
-    <!-- ── 10. Import/Export ──────────────────────────────── -->
+    <!-- ── 11. Import &amp; Export ──────────────────────────── -->
     <section class="docs-section" id="import-export">
-      <h2 class="docs-h2"><span class="section-num">10</span> Import &amp; Export</h2>
+      <h2 class="docs-h2"><span class="section-num">11</span> Import &amp; Export</h2>
 
       <h3 class="docs-h3">Import from Postman</h3>
-      <p class="docs-p">CALLSTACK can import Postman Collection v2.1 JSON files.</p>
+      <p class="docs-p">CALLSTACK imports Postman Collection v2.1 JSON files.</p>
       <ol class="steps">
-        <li><div>In Postman, export your collection as <strong>Collection v2.1 (recommended)</strong>.</div></li>
-        <li><div>In CALLSTACK, click the <strong>Import</strong> button in the sidebar header.</div></li>
-        <li><div>Select your <code>.json</code> file. A preview shows all importable requests.</div></li>
-        <li><div>Check/uncheck items, then click <strong>Import Selected</strong>.</div></li>
+        <li><div>In Postman, open your collection, click the three-dot menu, and choose <strong>Export</strong>. Select <strong>Collection v2.1 (recommended)</strong>.</div></li>
+        <li><div>In CALLSTACK, click the <strong>Import</strong> button (arrow icon) in the sidebar header.</div></li>
+        <li><div>Select your <code>.json</code> file from the native file picker.</div></li>
+        <li><div>A preview dialog shows the requests and folders to be imported. Check or uncheck items.</div></li>
+        <li><div>Click <strong>Import Selected</strong>. A new project is created with the collection name.</div></li>
       </ol>
-      <p class="docs-p">CALLSTACK preserves folder structure, headers, query params, and body from Postman collections.</p>
+      <p class="docs-p"><strong>What is preserved from Postman:</strong></p>
+      <ul class="docs-ul">
+        <li>Folder structure and request order</li>
+        <li>HTTP method, URL, query parameters</li>
+        <li>Request headers and body (JSON, raw text, form data)</li>
+        <li>Request names and descriptions</li>
+      </ul>
+      <p class="docs-p"><strong>What is not imported:</strong> Postman pre-request and test scripts (they use a different API), Postman environments (import them separately if needed), and collection-level auth (set headers manually).</p>
+
+      <h3 class="docs-h3">Import Callstack Format</h3>
+      <p class="docs-p">To import a <code>.callstack.json</code> file exported from CALLSTACK (from a colleague or a previous backup):</p>
+      <ol class="steps">
+        <li><div>Click the <strong>Import</strong> button in the sidebar header.</div></li>
+        <li><div>Select the <code>.callstack.json</code> file.</div></li>
+        <li><div>A preview shows all projects, folders, requests, and environments in the file.</div></li>
+        <li><div>Click <strong>Import All</strong> or select specific items.</div></li>
+      </ol>
+      <p class="docs-p">Callstack-format imports fully restore scripts, environments, automations, and data files — everything the export contained.</p>
 
       <h3 class="docs-h3">Export to Callstack Format</h3>
-      <p class="docs-p">Export one or more projects with the native Callstack format (JSON with optional response history and file attachments).</p>
+      <p class="docs-p">The native Callstack format (<code>.callstack.json</code>) is the most complete export — it preserves everything. Use it for backups and sharing with teammates who also use CALLSTACK.</p>
       <ol class="steps">
-        <li><div>Click the <strong>Export</strong> button (three dots → Export) on a project.</div></li>
-        <li><div>Choose what to include: response history, environment variables, inline attachments.</div></li>
-        <li><div>Save the <code>.callstack.json</code> file.</div></li>
+        <li><div>Hover over a project in the sidebar, click the three-dot menu, and choose <strong>Export</strong>.</div></li>
+        <li><div>Choose what to include: response history, environment variable values, file attachment contents (inline as base64).</div></li>
+        <li><div>Click <strong>Export</strong>. The native file save dialog opens.</div></li>
+        <li><div>Save the <code>.callstack.json</code> file to your desired location.</div></li>
       </ol>
 
-      <h3 class="docs-h3">Curl Export</h3>
-      <p class="docs-p">Any request in the <strong>Request Log</strong> can be exported as a curl command. Click on a log entry, then click <strong>Copy curl</strong>.</p>
-
       <h3 class="docs-h3">Export to Postman Format</h3>
-      <p class="docs-p">Export your projects back to Postman v2.1 format for sharing with teammates who use Postman. Use <strong>Export → Postman</strong> from the project menu.</p>
+      <p class="docs-p">Export your project as a Postman v2.1 collection for sharing with teammates who use Postman. Use <strong>Export → Postman</strong> from the project menu. Note that CALLSTACK scripts and dynamic tokens are not converted — only the request structure (URL, headers, body) is exported in Postman format.</p>
+
+      <h3 class="docs-h3">Curl Export</h3>
+      <p class="docs-p">Any request in the <strong>Request Log</strong> can be exported as a <code>curl</code> command — useful for reproducing issues in CI/CD, sharing with a backend developer, or testing from a remote server.</p>
+      <div class="code-block">
+        <div class="code-block-header"><span>Example curl export</span></div>
+        <pre><code>curl -X POST https://api.example.com/v1/users \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGci..." \
+  -d '{"email":"user@example.com","role":"admin"}'</code></pre>
+      </div>
+
+      <h3 class="docs-h3">Backup Strategy</h3>
+      <p class="docs-p">For a simple backup, export each project to <code>.callstack.json</code> format periodically. Alternatively, copy the entire database file:</p>
+      <ul class="docs-ul">
+        <li><strong>macOS</strong>: <code>~/Library/Application Support/callstack/callstack.db</code></li>
+        <li><strong>Linux</strong>: <code>~/.local/share/callstack/callstack.db</code></li>
+        <li><strong>Windows</strong>: <code>%APPDATA%\callstack\callstack.db</code></li>
+      </ul>
+      <p class="docs-p">A file copy works while the app is closed. While the app is running, use the export function instead to get a consistent snapshot.</p>
     </section>
 
-    <!-- ── 11. Request Log ────────────────────────────────── -->
+    <!-- ── 12. Request Log ────────────────────────────────── -->
     <section class="docs-section" id="request-log">
-      <h2 class="docs-h2"><span class="section-num">11</span> Request Log</h2>
+      <h2 class="docs-h2"><span class="section-num">12</span> Request Log</h2>
 
-      <p class="docs-p">The <strong>Request Log</strong> is a collapsible footer panel that records every request sent in the current session. It's useful for debugging, auditing, and generating curl commands.</p>
+      <p class="docs-p">The <strong>Request Log</strong> is a collapsible footer panel that records every request sent in the current session. It is session-scoped — the log resets when you quit and reopen CALLSTACK. It's useful for debugging, auditing, reviewing script console output, and generating curl commands.</p>
 
       <h3 class="docs-h3">Log Columns</h3>
       <div class="docs-table-wrap">
@@ -569,107 +959,172 @@ emitter.emit('userId', response.json().id);</code></pre>
             <tr><th>Column</th><th>Description</th></tr>
           </thead>
           <tbody>
-            <tr><td>Timestamp</td><td>Date and time the request was sent (YYYY-MM-DD HH:MM:SS)</td></tr>
+            <tr><td>Timestamp</td><td>Date and time the request was sent (<code>YYYY-MM-DD HH:MM:SS</code>)</td></tr>
             <tr><td>Method</td><td>HTTP method with colour-coded badge</td></tr>
-            <tr><td>URL</td><td>Full resolved URL (variables substituted)</td></tr>
-            <tr><td>Status</td><td>HTTP status code</td></tr>
+            <tr><td>URL</td><td>Full resolved URL (all variables substituted, not the template)</td></tr>
+            <tr><td>Status</td><td>HTTP status code and text</td></tr>
             <tr><td>Time</td><td>Response time in ms</td></tr>
             <tr><td>Size</td><td>Response body size in bytes</td></tr>
           </tbody>
         </table>
       </div>
 
-      <h3 class="docs-h3">Curl Export</h3>
-      <p class="docs-p">Click any log entry to expand it. Click <strong>Copy curl</strong> to copy the equivalent curl command for the request, including all headers and body. Useful for sharing requests with teammates or reproducing issues in CI/CD.</p>
+      <h3 class="docs-h3">Expanding a Log Entry</h3>
+      <p class="docs-p">Click any log row to expand it and see:</p>
+      <ul class="docs-ul">
+        <li><strong>Request headers</strong> — All headers sent, including auto-added <code>Content-Type</code></li>
+        <li><strong>Request body</strong> — The fully-resolved body sent on the wire</li>
+        <li><strong>Console output</strong> — Any <code>console.log()</code> messages from your scripts</li>
+        <li><strong>Script errors</strong> — Uncaught errors from pre/post scripts</li>
+        <li><strong>Copy curl</strong> — Button to copy the equivalent curl command</li>
+      </ul>
 
-      <div class="code-block">
-        <div class="code-block-header"><span>Example curl output</span><button class="copy-btn">Copy</button></div>
-        <pre><code>curl -X POST https://api.example.com/v1/users \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer eyJhbGci..." \
-  -d '{"email":"user@example.com","role":"admin"}'</code></pre>
-      </div>
+      <h3 class="docs-h3">Curl Export</h3>
+      <p class="docs-p">Expand any log entry and click <strong>Copy curl</strong>. The curl command includes all resolved headers and body. This is the actual request that went over the wire — all variables are substituted, so the curl command is self-contained and can be shared directly.</p>
 
       <h3 class="docs-h3">Clear Log</h3>
-      <p class="docs-p">Click <strong>Clear</strong> in the log header to wipe the current session's log. This does not affect saved responses in the database.</p>
+      <p class="docs-p">Click <strong>Clear</strong> in the log panel header to wipe all entries from the current session. This does not affect saved responses in the database or response history.</p>
+
+      <div class="callout callout-note">
+        <span class="callout-icon">ℹ️</span>
+        <div class="callout-body">
+          <strong>Session-scoped</strong>
+          <span>The Request Log only keeps entries from the current app session. Restarting CALLSTACK clears the log. If you need a permanent record of a request, save the response using <kbd>⌘</kbd><kbd>S</kbd> or export the project.</span>
+        </div>
+      </div>
     </section>
 
-    <!-- ── 12. Keyboard Shortcuts ─────────────────────────── -->
+    <!-- ── 13. Keyboard Shortcuts ─────────────────────────── -->
     <section class="docs-section" id="keyboard-shortcuts">
-      <h2 class="docs-h2"><span class="section-num">12</span> Keyboard Shortcuts</h2>
+      <h2 class="docs-h2"><span class="section-num">13</span> Keyboard Shortcuts</h2>
 
       <h3 class="docs-h3">Default Shortcuts</h3>
       <div class="docs-table-wrap">
         <table class="docs-table">
           <thead>
-            <tr><th>Shortcut</th><th>Action</th></tr>
+            <tr><th>Mac</th><th>Windows / Linux</th><th>Action</th></tr>
           </thead>
           <tbody>
-            <tr><td><kbd>⌘</kbd><kbd>↩</kbd></td><td>Send request</td></tr>
-            <tr><td><kbd>⌘</kbd><kbd>N</kbd></td><td>New request</td></tr>
-            <tr><td><kbd>⌘</kbd><kbd>R</kbd></td><td>Rename request</td></tr>
-            <tr><td><kbd>⌘</kbd><kbd>D</kbd></td><td>Duplicate request</td></tr>
-            <tr><td><kbd>⌘</kbd><kbd>S</kbd></td><td>Save response to file</td></tr>
-            <tr><td><kbd>⌘</kbd><kbd>C</kbd></td><td>Copy response body (works globally, even inside editors)</td></tr>
-            <tr><td><kbd>F1</kbd>–<kbd>F12</kbd></td><td>Quick-launch assigned requests</td></tr>
+            <tr><td><kbd>⌘</kbd><kbd>X</kbd></td><td><kbd>Ctrl</kbd><kbd>X</kbd></td><td>Send / execute the current request</td></tr>
+            <tr><td><kbd>⌘</kbd><kbd>N</kbd></td><td><kbd>Ctrl</kbd><kbd>N</kbd></td><td>New request in the current project</td></tr>
+            <tr><td><kbd>⌘</kbd><kbd>R</kbd></td><td><kbd>Ctrl</kbd><kbd>R</kbd></td><td>Rename the selected request</td></tr>
+            <tr><td><kbd>⌘</kbd><kbd>D</kbd></td><td><kbd>Ctrl</kbd><kbd>D</kbd></td><td>Duplicate (clone) the selected request</td></tr>
+            <tr><td><kbd>⌘</kbd><kbd>S</kbd></td><td><kbd>Ctrl</kbd><kbd>S</kbd></td><td>Save the current response to history</td></tr>
+            <tr><td><kbd>⌘</kbd><kbd>C</kbd></td><td><kbd>Ctrl</kbd><kbd>C</kbd></td><td>Copy the response body (formatted) — works globally, even inside editors</td></tr>
+            <tr><td><kbd>⌘</kbd><kbd>=</kbd></td><td><kbd>Ctrl</kbd><kbd>=</kbd></td><td>Zoom in (increase UI scale)</td></tr>
+            <tr><td><kbd>⌘</kbd><kbd>-</kbd></td><td><kbd>Ctrl</kbd><kbd>-</kbd></td><td>Zoom out (decrease UI scale)</td></tr>
+            <tr><td><kbd>F1</kbd>–<kbd>F12</kbd></td><td><kbd>F1</kbd>–<kbd>F12</kbd></td><td>Quick-launch an assigned request</td></tr>
           </tbody>
         </table>
       </div>
 
-      <p class="docs-p">On Windows and Linux, use <kbd>Ctrl</kbd> instead of <kbd>⌘</kbd>.</p>
+      <div class="callout callout-note">
+        <span class="callout-icon">ℹ️</span>
+        <div class="callout-body">
+          <strong>Send shortcut is ⌘X, not ⌘↩</strong>
+          <span><kbd>⌘</kbd><kbd>X</kbd> sends the request. This avoids conflicts with the Enter key inside multiline text editors. On Windows and Linux use <kbd>Ctrl</kbd><kbd>X</kbd>.</span>
+        </div>
+      </div>
 
       <h3 class="docs-h3">F-Key Quick Launch</h3>
-      <p class="docs-p">Assign any request to an F1–F12 key for instant access. Right-click a request in the sidebar and choose <strong>Assign shortcut</strong>. Press that F-key from anywhere in the app to jump directly to that request and trigger a send.</p>
+      <p class="docs-p">Assign any request to an F1–F12 key for one-key instant access — no clicking through the sidebar required:</p>
+      <ol class="steps">
+        <li><div>Right-click any request in the sidebar.</div></li>
+        <li><div>Choose <strong>Assign shortcut</strong> from the context menu.</div></li>
+        <li><div>Press the F-key you want to assign (F1–F12).</div></li>
+        <li><div>From anywhere in the app, press that F-key to jump to that request and immediately send it.</div></li>
+      </ol>
+      <p class="docs-p">F-key assignments are shown next to the request name in the sidebar as a small badge. Reassign at any time by repeating the process. Remove an assignment by choosing <strong>Remove shortcut</strong> from the context menu.</p>
 
       <h3 class="docs-h3">Customising Shortcuts</h3>
       <ol class="steps">
-        <li><div>Open <strong>Settings</strong> (gear icon in the header).</div></li>
+        <li><div>Open <strong>Settings</strong> (gear icon in the sidebar).</div></li>
         <li><div>Click the <strong>Shortcuts</strong> tab.</div></li>
-        <li><div>Click the shortcut you want to change and press the new key combination.</div></li>
-        <li><div>Click <strong>Save</strong>.</div></li>
+        <li><div>Click the key combination displayed next to the action you want to change.</div></li>
+        <li><div>Press your desired new key combination. CALLSTACK records it immediately.</div></li>
+        <li><div>If there's a conflict with another action, a warning is shown.</div></li>
+        <li><div>Click <strong>Reset to defaults</strong> to restore all shortcuts to their original values.</div></li>
       </ol>
+      <p class="docs-p">Custom shortcuts are saved in <code>localStorage</code> and persist across sessions. They are not included in project exports — shortcuts are per-installation, not per-project.</p>
     </section>
 
-    <!-- ── 13. Theming ────────────────────────────────────── -->
+    <!-- ── 14. Theming ────────────────────────────────────── -->
     <section class="docs-section" id="theming">
-      <h2 class="docs-h2"><span class="section-num">13</span> Theming</h2>
+      <h2 class="docs-h2"><span class="section-num">14</span> Theming</h2>
 
-      <p class="docs-p">CALLSTACK supports four appearance modes. Toggle via the icon in the top-right header:</p>
-
+      <h3 class="docs-h3">Appearance Modes</h3>
+      <p class="docs-p">CALLSTACK supports four appearance modes, toggled via the moon/sun icon in the sidebar icon bar:</p>
       <div class="docs-table-wrap">
         <table class="docs-table">
           <thead>
             <tr><th>Mode</th><th>Description</th></tr>
           </thead>
           <tbody>
-            <tr><td><strong>Dark</strong></td><td>Deep navy background, teal accents. Easy on the eyes for long coding sessions.</td></tr>
-            <tr><td><strong>Light</strong></td><td>Clean white background, darker accents. Great for bright environments.</td></tr>
-            <tr><td><strong>Dim</strong></td><td>Softer dark theme with reduced contrast — a middle ground.</td></tr>
-            <tr><td><strong>System</strong></td><td>Automatically follows your OS dark/light preference.</td></tr>
+            <tr><td><strong>Dark</strong></td><td>Deep navy background with teal accents. Default. Easy on the eyes for long coding sessions.</td></tr>
+            <tr><td><strong>Light</strong></td><td>Clean white background with darker accents. Great for bright environments or printed screenshots.</td></tr>
+            <tr><td><strong>Dim</strong></td><td>Softer dark theme with reduced contrast — a middle ground between dark and light.</td></tr>
+            <tr><td><strong>System</strong></td><td>Automatically follows your OS dark/light preference and updates in real-time when you change it.</td></tr>
           </tbody>
         </table>
       </div>
 
-      <p class="docs-p">Your theme preference is saved locally and persists across sessions.</p>
-    </section>
-
-    <!-- ── 14. Settings ───────────────────────────────────── -->
-    <section class="docs-section" id="settings">
-      <h2 class="docs-h2"><span class="section-num">14</span> Settings</h2>
-
-      <p class="docs-p">Open <strong>Settings</strong> via the gear icon in the top-right of the header.</p>
-
+      <h3 class="docs-h3">Accent Colour Modes</h3>
+      <p class="docs-p">In addition to the appearance mode, CALLSTACK has three accent colour schemes. Cycle through them using the accent toggle button (palette icon) in the sidebar icon bar:</p>
       <div class="docs-table-wrap">
         <table class="docs-table">
           <thead>
-            <tr><th>Setting</th><th>Description</th></tr>
+            <tr><th>Mode</th><th>Description</th></tr>
           </thead>
           <tbody>
-            <tr><td>Zoom Level</td><td>Scale the UI from 100% to 150%. Useful on high-DPI or small screens.</td></tr>
-            <tr><td>Theme</td><td>Dark / Light / Dim / System</td></tr>
-            <tr><td>Shortcuts</td><td>Customise key bindings for all actions</td></tr>
-            <tr><td>Reset All Settings</td><td>Restore defaults (shortcuts, zoom, theme)</td></tr>
-            <tr><td>Clear All Data</td><td><strong>Destructive.</strong> Wipes the entire local database. Irreversible.</td></tr>
+            <tr><td><strong>Color</strong></td><td>Default. HTTP methods each have a distinct colour: GET teal, POST blue, PUT amber, DELETE red, PATCH purple. The sidebar and active elements use these colours.</td></tr>
+            <tr><td><strong>Bright</strong></td><td>More vivid, high-saturation version of Color mode. Higher contrast between elements. Good for large monitors or accessibility.</td></tr>
+            <tr><td><strong>Mono</strong></td><td>Monochrome — removes all method-based colour coding. All accents use a single neutral tone. Good for minimal, distraction-free workflows or when projecting on a screen.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="docs-p">Appearance mode and accent mode are independent — you can mix Dark appearance with Mono accents, or Light appearance with Bright accents.</p>
+      <p class="docs-p">Both preferences are saved in <code>localStorage</code> and persist across app restarts.</p>
+    </section>
+
+    <!-- ── 15. Settings ───────────────────────────────────── -->
+    <section class="docs-section" id="settings">
+      <h2 class="docs-h2"><span class="section-num">15</span> Settings</h2>
+
+      <p class="docs-p">Open <strong>Settings</strong> via the gear icon in the sidebar icon bar. Settings are organised into tabs.</p>
+
+      <h3 class="docs-h3">General</h3>
+      <div class="docs-table-wrap">
+        <table class="docs-table">
+          <thead>
+            <tr><th>Setting</th><th>Description</th><th>Default</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Zoom Level</td><td>Scale the entire UI from 50% to 200%. Use <kbd>⌘</kbd><kbd>=</kbd> / <kbd>⌘</kbd><kbd>-</kbd> as quick shortcuts. Useful on high-DPI displays or small laptop screens.</td><td>100%</td></tr>
+            <tr><td>Theme</td><td>Dark / Light / Dim / System appearance mode (same as the sidebar toggle).</td><td>Dark</td></tr>
+            <tr><td>Accent</td><td>Color / Bright / Mono accent scheme (same as the sidebar accent toggle).</td><td>Color</td></tr>
+            <tr><td>Response History Limit</td><td>How many saved responses to keep per request. When the limit is reached, the oldest is deleted. Set to 0 to disable automatic deletion (responses accumulate until manually cleared).</td><td>10</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="docs-h3">Shortcuts</h3>
+      <p class="docs-p">The Shortcuts tab shows all configurable key bindings. Click any binding to change it. The current binding is shown as a clickable chip — press your new key combination to replace it. See <a href="#keyboard-shortcuts">Keyboard Shortcuts</a> for the full list and instructions.</p>
+
+      <h3 class="docs-h3">Account</h3>
+      <p class="docs-p">Sign in or out of Google to scope your data to an email address. When signed in, your email is shown and all projects/requests created are associated with your email. Signing out returns to "anonymous" mode where all data is shared on the local machine.</p>
+
+      <h3 class="docs-h3">About</h3>
+      <p class="docs-p">Shows the current CALLSTACK version number, build date, and links to the GitHub repository and issue tracker. Include this version information when reporting bugs.</p>
+
+      <h3 class="docs-h3">Danger Zone</h3>
+      <div class="docs-table-wrap">
+        <table class="docs-table">
+          <thead>
+            <tr><th>Action</th><th>What it does</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Reset All Settings</td><td>Restores all settings to defaults: zoom 100%, Dark theme, Color accent, default shortcuts, response history limit 10. Does not touch project data.</td></tr>
+            <tr><td>Clear All Data</td><td><strong>Destructive and irreversible.</strong> Deletes all projects, folders, requests, responses, environments, automations, and data files from the database. The app restarts to a clean slate.</td></tr>
           </tbody>
         </table>
       </div>
@@ -677,36 +1132,74 @@ emitter.emit('userId', response.json().id);</code></pre>
       <div class="callout callout-warn">
         <span class="callout-icon">⚠️</span>
         <div class="callout-body">
-          <strong>Backup before clearing data</strong>
-          <span>Use <strong>Export</strong> on each project before using <strong>Clear All Data</strong>. This action cannot be undone.</span>
+          <strong>Export before clearing data</strong>
+          <span>Use <strong>Export</strong> on each project before clicking <strong>Clear All Data</strong>. This action cannot be undone. There is no trash or recovery mechanism.</span>
         </div>
       </div>
     </section>
 
-    <!-- ── 15. Advanced ───────────────────────────────────── -->
+    <!-- ── 16. Advanced Features ─────────────────────────── -->
     <section class="docs-section" id="advanced">
-      <h2 class="docs-h2"><span class="section-num">15</span> Advanced Features</h2>
+      <h2 class="docs-h2"><span class="section-num">16</span> Advanced Features</h2>
 
       <h3 class="docs-h3">JWT Decoder</h3>
-      <p class="docs-p">Quickly inspect any JSON Web Token without leaving CALLSTACK. Click the <strong>JWT</strong> button in the toolbar, paste your token, and the decoded header and payload are displayed as formatted JSON.</p>
+      <p class="docs-p">Inspect any JSON Web Token without leaving CALLSTACK. Click the <strong>JWT</strong> button in the toolbar or paste a token into the JWT decoder panel. The decoded header and payload are displayed as formatted JSON. The decoder also shows:</p>
+      <ul class="docs-ul">
+        <li>The algorithm (<code>alg</code>) and key ID (<code>kid</code>) from the header</li>
+        <li>Standard claims: <code>iss</code> (issuer), <code>sub</code> (subject), <code>aud</code> (audience), <code>exp</code> (expiry), <code>iat</code> (issued at)</li>
+        <li>A human-readable expiry time and whether the token is currently expired</li>
+      </ul>
+      <p class="docs-p">The decoder does not verify the token signature — it only decodes the payload. To verify signatures, use your server's auth library.</p>
 
       <h3 class="docs-h3">Template Variable Inspector</h3>
-      <p class="docs-p">While building a request, click the <strong>{ }</strong> inspector icon near the URL bar to see all <code>{{variables}}</code> currently in scope — from the active environment and emitter — along with their resolved values. Useful for debugging substitution issues.</p>
+      <p class="docs-p">Click the <strong>{ }</strong> icon near the URL bar to open the Variable Inspector. It lists every variable in scope at the moment, including:</p>
+      <ul class="docs-ul">
+        <li>All key-value pairs from the active environment (secrets shown as ●●●●)</li>
+        <li>Emitter values from the current automation run (if applicable)</li>
+        <li>Built-in dynamic tokens (shown with their next-resolved value if previewable)</li>
+      </ul>
+      <p class="docs-p">Use this to debug substitution failures — if a variable is missing here, it won't be substituted in your request.</p>
 
-      <h3 class="docs-h3">Faker in Scripts</h3>
-      <p class="docs-p">The <code>faker</code> object is available in all scripts:</p>
+      <h3 class="docs-h3">Faker API in Scripts</h3>
+      <p class="docs-p">The <code>faker</code> object is available in all pre and post scripts. Full method list:</p>
       <div class="code-block">
-        <div class="code-block-header"><span>Pre-request script</span><button class="copy-btn">Copy</button></div>
-        <pre><code>faker.name()          // "Alice Johnson"
-faker.email()         // "alice.johnson@example.com"
-faker.phone()         // "+1-555-123-4567"
-faker.address()       // "123 Main St, Springfield"
-faker.uuid()          // "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
-faker.number(1, 100)  // 42</code></pre>
+        <div class="code-block-header"><span>faker methods</span><button class="copy-btn">Copy</button></div>
+        <pre><code>faker.name()            // "Alice Johnson"
+faker.firstName()       // "Alice"
+faker.lastName()        // "Johnson"
+faker.email()           // "alice.johnson@example.com"
+faker.phone()           // "+1-555-123-4567"
+faker.address()         // "123 Main St, Springfield"
+faker.city()            // "Springfield"
+faker.country()         // "Germany"
+faker.countryCode()     // "DE"
+faker.uuid()            // "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+faker.number(1, 100)    // 42  (inclusive range)
+faker.float(0, 1)       // 0.7823
+faker.boolean()         // true
+faker.word()            // "lorem"
+faker.sentence()        // "Lorem ipsum dolor sit amet."
+faker.paragraph()       // "Lorem ipsum dolor sit amet..."
+faker.hexColor()        // "#a3f0c2"
+faker.url()             // "https://example.com/path"
+faker.domain()          // "example-corp.io"
+faker.ip()              // "203.0.113.42"
+faker.alphanumeric(8)   // "k3mP9xQr" (length parameter)</code></pre>
       </div>
 
+      <h3 class="docs-h3">Cookies</h3>
+      <p class="docs-p">CALLSTACK maintains a persistent cookie jar. Cookies are stored per-domain and sent automatically on subsequent requests. To manage cookies:</p>
+      <ul class="docs-ul">
+        <li><strong>View cookies</strong>: Settings → Cookies. Shows all stored cookies with domain, name, value, and expiry.</li>
+        <li><strong>Delete a cookie</strong>: Click × next to any cookie row.</li>
+        <li><strong>Clear all cookies</strong>: Settings → Cookies → Clear All.</li>
+      </ul>
+
+      <h3 class="docs-h3">Database Inspector</h3>
+      <p class="docs-p">Settings → About → Database Stats shows the size of each table in your database and the total database file size. Use <strong>Compact Database</strong> to run <code>VACUUM</code> and reclaim space after deleting large amounts of data (e.g. after clearing response history).</p>
+
       <h3 class="docs-h3">Multi-User Support</h3>
-      <p class="docs-p">If multiple developers share one machine, each can sign in with their Google account (optional). Data — projects, requests, responses — is scoped to the signed-in user's email. Sign out to switch users. All data lives in the same local SQLite file but is namespaced by email.</p>
+      <p class="docs-p">If multiple developers share one machine, each can sign in with their Google account. All data — projects, requests, responses — is scoped to the signed-in user's email address. Sign out (Settings → Account → Sign out) to switch users. All data lives in the same local SQLite file but is namespaced by email, so each user sees only their own projects.</p>
 
       <h3 class="docs-h3">Database Location</h3>
       <div class="docs-table-wrap">
@@ -721,63 +1214,97 @@ faker.number(1, 100)  // 42</code></pre>
           </tbody>
         </table>
       </div>
-      <p class="docs-p">You can back up this file at any time with a regular file copy. No special tool required.</p>
+      <p class="docs-p">You can back up this file at any time with a plain file copy. While the app is running, use Settings → Export instead to get a consistent snapshot. The database uses WAL mode — both the <code>.db</code> and <code>.db-wal</code> files should be copied together for a complete backup.</p>
     </section>
 
-    <!-- ── 16. Troubleshooting ────────────────────────────── -->
+    <!-- ── 17. Troubleshooting ────────────────────────────── -->
     <section class="docs-section" id="troubleshooting">
-      <h2 class="docs-h2"><span class="section-num">16</span> Troubleshooting</h2>
+      <h2 class="docs-h2"><span class="section-num">17</span> Troubleshooting</h2>
+
+      <h3 class="docs-h3">App won't open on macOS (Gatekeeper)</h3>
+      <p class="docs-p">If you see "CALLSTACK cannot be opened because it is from an unidentified developer":</p>
+      <ol class="steps">
+        <li><div>Right-click (or Control-click) the CALLSTACK icon in Finder.</div></li>
+        <li><div>Choose <strong>Open</strong> from the context menu.</div></li>
+        <li><div>Click <strong>Open</strong> in the dialog that appears.</div></li>
+      </ol>
+      <p class="docs-p">You only need to do this once. Subsequent launches will open normally. Alternatively, go to <strong>System Preferences → Security &amp; Privacy → General</strong> and click "Open Anyway" after the first failed launch attempt.</p>
 
       <h3 class="docs-h3">Request times out</h3>
-      <p class="docs-p">CALLSTACK enforces a 30-second timeout. If your server is slow to respond:</p>
+      <p class="docs-p">CALLSTACK enforces a 30-second timeout. If your server is slow or unreachable:</p>
       <ul class="docs-ul">
-        <li>Check that the URL is reachable from your machine (try <code>curl</code> in a terminal).</li>
-        <li>Verify there are no OS-level firewall rules blocking outbound connections.</li>
-        <li>If using a VPN, ensure it allows traffic to the target host.</li>
+        <li>Verify the URL is reachable from your machine: <code>curl -v https://your-api.com/endpoint</code> in a terminal.</li>
+        <li>Check OS-level firewall rules or VPN settings that may block outbound connections on specific ports.</li>
+        <li>If you're hitting a localhost server, confirm it's running and listening on the expected port.</li>
+        <li>For long-running operations (file uploads, heavy computation), consider increasing the payload or using async APIs that return immediately with a job ID.</li>
+      </ul>
+
+      <h3 class="docs-h3">SSL/TLS errors</h3>
+      <p class="docs-p">If you see a TLS or certificate error (e.g. "certificate verify failed"):</p>
+      <ul class="docs-ul">
+        <li>For self-signed certificates in development: CALLSTACK uses the system certificate store. Add your self-signed CA to your OS trust store — on macOS, open Keychain Access and import the certificate, marking it as "Always Trust".</li>
+        <li>For expired certificates: the server's certificate has expired and needs to be renewed. This is a server configuration issue.</li>
+        <li>For mismatched hostnames: the certificate's CN or SAN doesn't match the hostname in your URL. Check that you're using the correct URL.</li>
       </ul>
 
       <h3 class="docs-h3">Variables not substituting</h3>
       <ul class="docs-ul">
-        <li>Ensure an environment is selected in the request builder (dropdown near the Send button).</li>
-        <li>Verify the variable key matches exactly — names are case-sensitive.</li>
-        <li>Use the <strong>Variable Inspector</strong> to see the list of available variables and their values.</li>
-        <li>Check there are no extra spaces inside the <code>{{ }}</code> braces.</li>
+        <li>Ensure an environment is selected in the dropdown near the Send button (it can show "No environment" if none is active).</li>
+        <li>Variable names are <strong>case-sensitive</strong>: <code>{{BASE_URL}}</code> and <code>{{base_url}}</code> are different.</li>
+        <li>Open the <strong>Variable Inspector</strong> (the <code>{ }</code> icon) to see all variables in scope and their current values.</li>
+        <li>Check for extra spaces inside the braces: <code>{{ BASE_URL }}</code> does not match <code>BASE_URL</code> — there should be no spaces.</li>
+        <li>For recursive variables, check for circular references (A references B which references A).</li>
       </ul>
 
-      <h3 class="docs-h3">Scripts not running / errors</h3>
+      <h3 class="docs-h3">Scripts not running or errors</h3>
       <ul class="docs-ul">
-        <li>Open the <strong>Request Log</strong> footer and expand the relevant log entry to see script error messages.</li>
-        <li>Ensure your JavaScript syntax is valid — the editor highlights syntax errors.</li>
-        <li>Check that you are reading <code>response.json()</code> only in post-response scripts (it is undefined in pre-request scripts).</li>
+        <li>Open the <strong>Request Log</strong> footer, expand the request entry, and look at the console output and script error sections.</li>
+        <li>Ensure JavaScript syntax is valid — the script editor highlights syntax errors in red. Hover the underline for details.</li>
+        <li>Do not call <code>response.json()</code> in a pre-request script — the response object is only available in post-response scripts.</li>
+        <li>Do not use <code>fetch</code>, <code>XMLHttpRequest</code>, Node.js APIs (<code>require</code>, <code>fs</code>), or browser APIs (<code>window</code>, <code>document</code>) — they are not available in the sandbox.</li>
+        <li>If a pre-request script throws an uncaught error, the request is still sent. To block sending on a script error, use <code>throw new Error('reason')</code> explicitly.</li>
       </ul>
 
       <h3 class="docs-h3">Automation stopped early</h3>
       <ul class="docs-ul">
-        <li>Check branch conditions — a branch that evaluates to the "else" path may hit a Stop step unexpectedly.</li>
-        <li>If using CSV Iterator, verify the data file has rows and the row limit is not set too low.</li>
-        <li>Check the run history panel for the step that failed and its error message.</li>
+        <li>Open the run history and expand the failed run. The step that failed is shown with a red indicator and an error message.</li>
+        <li>Check Branch conditions — a condition evaluating unexpectedly may route to a Stop step.</li>
+        <li>For CSV Iterator, verify the data file has rows and columns named correctly (no spaces).</li>
+        <li>If an individual Request step fails (non-2xx status), it's not automatically a run failure — only uncaught script errors or Stop steps abort the run. Check your Branch conditions for unintended Stop routing.</li>
       </ul>
 
-      <h3 class="docs-h3">Postman import fails</h3>
+      <h3 class="docs-h3">Postman import fails or is incomplete</h3>
       <ul class="docs-ul">
-        <li>CALLSTACK only supports Postman Collection <strong>v2.1</strong> format. Export with "Collection v2.1 (recommended)" in Postman.</li>
-        <li>Very large collections (&gt;1,000 requests) may take a few seconds to parse.</li>
+        <li>CALLSTACK only supports Postman Collection <strong>v2.1</strong>. Export from Postman using "Collection v2.1 (recommended)" — not v1.</li>
+        <li>If requests are missing, check if they were in a collection folder that wasn't selected in the import preview.</li>
+        <li>GraphQL requests from Postman may not import body correctly — paste the body manually after import.</li>
+        <li>Very large collections (&gt;1,000 requests) may take several seconds to parse.</li>
+      </ul>
+
+      <h3 class="docs-h3">App is slow or using excessive memory</h3>
+      <ul class="docs-ul">
+        <li>Large response histories accumulate in the database. Go to Settings → About → Database Stats to see the database size. Clear history for large-response requests.</li>
+        <li>Run <strong>Compact Database</strong> (Settings → About) after deleting data to reclaim disk space and improve performance.</li>
+        <li>Very large response bodies (&gt;10 MB) in the viewer can cause slowness in the editor — use Save to file and open externally instead.</li>
       </ul>
 
       <h3 class="docs-h3">Data recovery</h3>
       <p class="docs-p">If the app crashes or the database becomes corrupted:</p>
       <ol class="steps">
-        <li><div>Locate your database file (see <a href="#advanced">Database Location</a>).</div></li>
-        <li><div>Open it with any SQLite viewer (e.g. <a href="https://sqlitebrowser.org" target="_blank" rel="noopener">DB Browser for SQLite</a>) to inspect or export data manually.</div></li>
-        <li><div>Replace the file with a previous backup if available.</div></li>
+        <li><div>Locate the database file at the platform-specific path (see <a href="#advanced">Database Location</a>).</div></li>
+        <li><div>Open it with <a href="https://sqlitebrowser.org" target="_blank" rel="noopener">DB Browser for SQLite</a> (free, cross-platform) to inspect and export tables manually.</div></li>
+        <li><div>If you have a backup copy of the <code>.db</code> file, close CALLSTACK and replace the current file with the backup.</div></li>
+        <li><div>If the WAL file (<code>.db-wal</code>) exists, the database may be in an incomplete state. Delete the <code>.db-wal</code> and <code>.db-shm</code> files, then reopen CALLSTACK — SQLite will recover what it can.</div></li>
       </ol>
 
-      <h3 class="docs-h3">Reporting bugs</h3>
-      <p class="docs-p">Open an issue on <a href="https://github.com/kinarix/callstack/issues" target="_blank" rel="noopener">GitHub Issues</a> with:</p>
+      <h3 class="docs-h3">Reporting Bugs</h3>
+      <p class="docs-p">Open an issue on <a href="https://github.com/kinarix/callstack/issues" target="_blank" rel="noopener">GitHub Issues</a> and include:</p>
       <ul class="docs-ul">
-        <li>Steps to reproduce</li>
+        <li>Steps to reproduce (exact clicks and inputs)</li>
         <li>Expected vs. actual behaviour</li>
-        <li>Your platform and CALLSTACK version (visible in Settings → About)</li>
+        <li>Your platform (macOS 14.4 / Ubuntu 22.04 / Windows 11) and CALLSTACK version (Settings → About)</li>
+        <li>Any error messages from the Request Log or console</li>
+        <li>A screenshot or screen recording if the issue is visual</li>
       </ul>
     </section>
 

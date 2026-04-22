@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use base64::{engine::general_purpose, Engine as _};
 use rusqlite::Connection;
+use std::io::Read;
 
 #[derive(Debug, Deserialize)]
 pub struct KeyValueParam {
@@ -32,7 +33,33 @@ pub struct SendResponse {
     pub body: String,
     pub time_ms: u128,
     pub size: usize,
+    pub transfer_size: usize,
     pub is_base64: bool,
+}
+
+fn decompress_body(raw: &[u8], encoding: &str) -> Vec<u8> {
+    let enc = encoding.to_lowercase();
+    if enc.contains("br") {
+        let mut out = Vec::new();
+        if brotli::Decompressor::new(raw, 4096).read_to_end(&mut out).is_ok() {
+            return out;
+        }
+    } else if enc.contains("gzip") {
+        let mut out = Vec::new();
+        if flate2::read::GzDecoder::new(raw).read_to_end(&mut out).is_ok() {
+            return out;
+        }
+    } else if enc.contains("deflate") {
+        let mut out = Vec::new();
+        if flate2::read::ZlibDecoder::new(raw).read_to_end(&mut out).is_ok() {
+            return out;
+        }
+        let mut out = Vec::new();
+        if flate2::read::DeflateDecoder::new(raw).read_to_end(&mut out).is_ok() {
+            return out;
+        }
+    }
+    raw.to_vec()
 }
 
 async fn execute_request(
@@ -82,6 +109,12 @@ async fn execute_request(
         .map(|h| h.key.to_lowercase())
         .collect();
 
+    let disabled_header_keys: std::collections::HashSet<String> = headers
+        .iter()
+        .filter(|h| !h.enabled.unwrap_or(true) && !h.key.is_empty())
+        .map(|h| h.key.to_lowercase())
+        .collect();
+
     let start = std::time::Instant::now();
     let max_hops: usize = if follow_redirects { 10 } else { 0 };
     let mut hop_cookies: Vec<ResponseHeader> = vec![];
@@ -98,14 +131,23 @@ async fn execute_request(
                 req = req.header(&h.key, &h.value);
             }
         }
-        if !active_header_keys.contains("user-agent") {
+        if !active_header_keys.contains("user-agent") && !disabled_header_keys.contains("user-agent") {
             req = req.header("User-Agent", "Callstack/1.0");
         }
-        if !active_header_keys.contains("origin") {
+        if !active_header_keys.contains("origin") && !disabled_header_keys.contains("origin") {
             let origin = current_url.origin().ascii_serialization();
             if origin != "null" {
                 req = req.header("Origin", &origin);
             }
+        }
+        if !active_header_keys.contains("accept") && !disabled_header_keys.contains("accept") {
+            req = req.header("Accept", "*/*");
+        }
+        if !active_header_keys.contains("cache-control") && !disabled_header_keys.contains("cache-control") {
+            req = req.header("Cache-Control", "no-cache");
+        }
+        if !active_header_keys.contains("accept-encoding") && !disabled_header_keys.contains("accept-encoding") {
+            req = req.header("Accept-Encoding", "gzip, deflate, br");
         }
 
         // Body only on first hop
@@ -194,18 +236,31 @@ async fn execute_request(
                     .map(|h| h.value.to_lowercase())
                     .unwrap_or_default();
 
+                let content_encoding = final_headers.iter()
+                    .find(|h| h.key.eq_ignore_ascii_case("content-encoding"))
+                    .map(|h| h.value.clone())
+                    .unwrap_or_default();
+
                 let is_binary = content_type.starts_with("image/")
                     || content_type.starts_with("video/")
                     || content_type.starts_with("audio/");
 
-                let (resp_body, is_base64) = if is_binary {
-                    let bytes = resp.bytes().await.unwrap_or_default();
-                    (general_purpose::STANDARD.encode(&bytes), true)
+                let raw_bytes = resp.bytes().await.unwrap_or_default();
+                let transfer_size = raw_bytes.len();
+
+                let decoded_bytes = if content_encoding.is_empty() {
+                    raw_bytes.to_vec()
                 } else {
-                    (resp.text().await.unwrap_or_default(), false)
+                    decompress_body(&raw_bytes, &content_encoding)
                 };
 
-                let size = resp_body.len();
+                let (resp_body, is_base64) = if is_binary {
+                    (general_purpose::STANDARD.encode(&decoded_bytes), true)
+                } else {
+                    (String::from_utf8_lossy(&decoded_bytes).into_owned(), false)
+                };
+
+                let size = decoded_bytes.len();
 
                 return Ok(SendResponse {
                     status: status_code,
@@ -214,6 +269,7 @@ async fn execute_request(
                     body: resp_body,
                     time_ms: elapsed,
                     size,
+                    transfer_size,
                     is_base64,
                 });
             }

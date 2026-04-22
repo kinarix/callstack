@@ -355,6 +355,9 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
           </span>
           <span className={styles.infoItem}>
             Size: <strong>{formatBytes(displayedResponse.size)}</strong>
+            {displayedResponse.transferSize != null && displayedResponse.transferSize !== displayedResponse.size && (
+              <span className={styles.transferSize}> ({formatBytes(displayedResponse.transferSize)} transferred)</span>
+            )}
           </span>
           {displayedResponse.timestamp != null && (
             <span className={styles.infoItem}>

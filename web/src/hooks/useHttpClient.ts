@@ -21,6 +21,7 @@ interface SendResult {
   body: string;
   timeMs: number;
   size: number;
+  transferSize: number;
 }
 
 export function useHttpClient() {
