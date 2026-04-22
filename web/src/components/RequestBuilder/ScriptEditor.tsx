@@ -166,7 +166,7 @@ const ENV_MEMBERS: MemberDef[] = [
   },
   {
     label: 'secret', detail: 'object',
-    info: 'Secret store (localStorage only, never exported). Methods: get(key), set(key, value), unset(key).',
+    info: 'Secret store (local only, never exported). Methods: get(key), set(key, value), unset(key).',
     type: 'property',
   },
 ];
@@ -179,7 +179,7 @@ const SECRET_MEMBERS: MemberDef[] = [
   },
   {
     label: 'set', detail: '(key: string, value: string) → void',
-    info: 'Set a secret value. Stored in localStorage only — never included in exports.',
+    info: 'Set a secret value. Local only — never included in exports.',
     type: 'function', snippet: 'set(${1:key}, ${2:value})',
   },
   {
@@ -243,12 +243,12 @@ const SIGNATURES: Record<string, SigDef> = {
   'env.secret.get': {
     sig: 'env.secret.get(key)',
     params: ['key: string'],
-    doc: 'Get the value of a secret (localStorage only, never exported).',
+    doc: 'Get the value of a secret (local only, never exported).',
   },
   'env.secret.set': {
     sig: 'env.secret.set(key, value)',
     params: ['key: string', 'value: string'],
-    doc: 'Set a secret. Stored in localStorage only — never included in exports.',
+    doc: 'Set a secret. Local only — never included in exports.',
   },
   'env.secret.unset': {
     sig: 'env.secret.unset(key)',

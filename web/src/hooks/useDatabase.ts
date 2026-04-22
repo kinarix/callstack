@@ -309,6 +309,7 @@ export function useDatabase() {
         projectId: number;
         name: string;
         variables: string;
+        secrets: string;
         createdAt: string;
         updatedAt: string;
       }
@@ -318,6 +319,7 @@ export function useDatabase() {
         project_id: r.projectId,
         name: r.name,
         variables: JSON.parse(r.variables || '[]') as KeyValue[],
+        secrets: JSON.parse(r.secrets || '[]') as KeyValue[],
         created_at: r.createdAt,
         updated_at: r.updatedAt,
       }));
@@ -332,6 +334,7 @@ export function useDatabase() {
         projectId: number;
         name: string;
         variables: string;
+        secrets: string;
         createdAt: string;
         updatedAt: string;
       }
@@ -341,6 +344,7 @@ export function useDatabase() {
         project_id: r.projectId,
         name: r.name,
         variables: JSON.parse(r.variables || '[]') as KeyValue[],
+        secrets: JSON.parse(r.secrets || '[]') as KeyValue[],
         created_at: r.createdAt,
         updated_at: r.updatedAt,
       };
@@ -355,6 +359,7 @@ export function useDatabase() {
         projectId: number;
         name: string;
         variables: string;
+        secrets: string;
         createdAt: string;
         updatedAt: string;
       }
@@ -368,9 +373,17 @@ export function useDatabase() {
         project_id: r.projectId,
         name: r.name,
         variables: JSON.parse(r.variables || '[]') as KeyValue[],
+        secrets: JSON.parse(r.secrets || '[]') as KeyValue[],
         created_at: r.createdAt,
         updated_at: r.updatedAt,
       };
+    },
+    []
+  );
+
+  const updateEnvironmentSecrets = useCallback(
+    async (id: number, secrets: KeyValue[]): Promise<void> => {
+      await invoke('update_environment_secrets', { id, secrets: JSON.stringify(secrets) });
     },
     []
   );
@@ -579,6 +592,7 @@ export function useDatabase() {
     listEnvironments,
     createEnvironment,
     updateEnvironment,
+    updateEnvironmentSecrets,
     deleteEnvironment,
     listDataFiles,
     createDataFile,

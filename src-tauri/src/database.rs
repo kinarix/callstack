@@ -276,6 +276,10 @@ impl Database {
             "ALTER TABLE automations ADD COLUMN env_id INTEGER REFERENCES environments(id)",
             [],
         );
+        let _ = conn.execute(
+            "ALTER TABLE environments ADD COLUMN secrets TEXT NOT NULL DEFAULT '[]'",
+            [],
+        );
 
         Ok(Self {
             conn: Mutex::new(conn),
@@ -1122,6 +1126,7 @@ pub struct Environment {
     pub project_id: i64,
     pub name: String,
     pub variables: String,
+    pub secrets: String,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -1134,7 +1139,7 @@ pub fn list_environments(
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
         .prepare(
-            "SELECT id, project_id, name, variables, created_at, updated_at
+            "SELECT id, project_id, name, variables, secrets, created_at, updated_at
              FROM environments WHERE project_id = ?1 ORDER BY created_at ASC",
         )
         .map_err(|e| e.to_string())?;
@@ -1146,8 +1151,9 @@ pub fn list_environments(
                 project_id: row.get(1)?,
                 name: row.get(2)?,
                 variables: row.get(3)?,
-                created_at: row.get(4)?,
-                updated_at: row.get(5)?,
+                secrets: row.get(4)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -1172,15 +1178,16 @@ pub fn create_environment(
     let id = conn.last_insert_rowid();
 
     conn.query_row(
-        "SELECT id, project_id, name, variables, created_at, updated_at FROM environments WHERE id = ?1",
+        "SELECT id, project_id, name, variables, secrets, created_at, updated_at FROM environments WHERE id = ?1",
         params![id],
         |row| Ok(Environment {
             id: row.get(0)?,
             project_id: row.get(1)?,
             name: row.get(2)?,
             variables: row.get(3)?,
-            created_at: row.get(4)?,
-            updated_at: row.get(5)?,
+            secrets: row.get(4)?,
+            created_at: row.get(5)?,
+            updated_at: row.get(6)?,
         }),
     )
     .map_err(|e| e.to_string())
@@ -1202,18 +1209,34 @@ pub fn update_environment(
     .map_err(|e| e.to_string())?;
 
     conn.query_row(
-        "SELECT id, project_id, name, variables, created_at, updated_at FROM environments WHERE id = ?1",
+        "SELECT id, project_id, name, variables, secrets, created_at, updated_at FROM environments WHERE id = ?1",
         params![id],
         |row| Ok(Environment {
             id: row.get(0)?,
             project_id: row.get(1)?,
             name: row.get(2)?,
             variables: row.get(3)?,
-            created_at: row.get(4)?,
-            updated_at: row.get(5)?,
+            secrets: row.get(4)?,
+            created_at: row.get(5)?,
+            updated_at: row.get(6)?,
         }),
     )
     .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn update_environment_secrets(
+    db: tauri::State<Database>,
+    id: i64,
+    secrets: String,
+) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE environments SET secrets = ?1 WHERE id = ?2",
+        params![secrets, id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]

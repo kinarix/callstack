@@ -330,6 +330,7 @@ pub fn run() {
             database::list_environments,
             database::create_environment,
             database::update_environment,
+            database::update_environment_secrets,
             database::delete_environment,
             database::list_automations,
             database::create_automation,

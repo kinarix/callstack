@@ -65,6 +65,7 @@ export interface Response {
   body: string;
   time: number;
   size: number;
+  transferSize?: number;
   timestamp?: number;
   isBase64?: boolean;
   testResults?: TestResult[];
@@ -86,6 +87,7 @@ export interface Environment {
   project_id: number;
   name: string;
   variables: KeyValue[];
+  secrets: KeyValue[];
   created_at: string;
   updated_at: string;
 }

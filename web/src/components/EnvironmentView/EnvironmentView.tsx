@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useDatabase } from '../../hooks/useDatabase';
 import { KeyValueEditor } from '../RequestBuilder/KeyValueEditor';
-import { loadSecrets, saveSecrets } from '../../lib/secrets';
 import type { KeyValue } from '../../lib/types';
 import modalStyles from '../EnvModal/EnvModal.module.css';
 import styles from './EnvironmentView.module.css';
@@ -85,7 +84,7 @@ function SecretRow({
 
 export default function EnvironmentView({ environmentId, showExpandBtn, onExpand }: Props) {
   const { state, dispatch } = useApp();
-  const { updateEnvironment } = useDatabase();
+  const { updateEnvironment, updateEnvironmentSecrets } = useDatabase();
   const env = useMemo(
     () => state.environments.find((e) => e.id === environmentId) ?? null,
     [state.environments, environmentId]
@@ -93,9 +92,7 @@ export default function EnvironmentView({ environmentId, showExpandBtn, onExpand
 
   const [name, setName] = useState(env?.name ?? '');
   const [variables, setVariables] = useState<KeyValue[]>(env?.variables ?? []);
-  const [secrets, setSecrets] = useState<KeyValue[]>(() =>
-    env ? loadSecrets(env.id) : []
-  );
+  const [secrets, setSecrets] = useState<KeyValue[]>(env?.secrets ?? []);
   const [editingName, setEditingName] = useState(false);
   const nameInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -104,7 +101,24 @@ export default function EnvironmentView({ environmentId, showExpandBtn, onExpand
     if (!env) return;
     setName(env.name);
     setVariables(env.variables);
-    setSecrets(loadSecrets(env.id));
+    // Migrate from localStorage if DB has no secrets yet
+    if (env.secrets.length === 0) {
+      try {
+        const lsRaw = localStorage.getItem(`callstack.secrets.${env.id}`);
+        if (lsRaw) {
+          const lsSecrets: KeyValue[] = JSON.parse(lsRaw);
+          if (lsSecrets.length > 0) {
+            setSecrets(lsSecrets);
+            updateEnvironmentSecrets(env.id, lsSecrets).then(() => {
+              dispatch({ type: 'UPDATE_ENVIRONMENT', payload: { ...env, secrets: lsSecrets } });
+              localStorage.removeItem(`callstack.secrets.${env.id}`);
+            });
+            return;
+          }
+        }
+      } catch {}
+    }
+    setSecrets(env.secrets);
   }, [env?.id]);
 
   useEffect(() => {
@@ -132,10 +146,17 @@ export default function EnvironmentView({ environmentId, showExpandBtn, onExpand
     };
   }, [name, variables, env?.id]);
 
-  // Persist secrets to localStorage as user types (filter empty keys)
+  // Persist secrets to DB as user types (filter empty keys)
+  const secretsSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!env) return;
-    saveSecrets(env.id, secrets.filter((s) => s.key));
+    if (secretsSaveTimer.current) clearTimeout(secretsSaveTimer.current);
+    secretsSaveTimer.current = setTimeout(async () => {
+      const filtered = secrets.filter((s) => s.key);
+      await updateEnvironmentSecrets(env.id, filtered);
+      dispatch({ type: 'UPDATE_ENVIRONMENT', payload: { ...env, secrets: filtered } });
+    }, 400);
+    return () => { if (secretsSaveTimer.current) clearTimeout(secretsSaveTimer.current); };
   }, [secrets, env?.id]);
 
   if (!env) {
