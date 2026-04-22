@@ -1,6 +1,6 @@
 [package]
 name = "callstack"
-version = "0.9.2"
+version = "0.9.3"
 description = "A modern REST API testing tool"
 authors = ["Kinarix"]
 edition = "2021"
@@ -25,6 +25,8 @@ tauri-plugin-window-state = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 reqwest = { version = "0.12", features = ["rustls-tls", "multipart", "cookies"], default-features = false }
+flate2 = "1"
+brotli = "3"
 base64 = "0.22"
 rusqlite = { version = "0.39", features = ["bundled"] }
 tokio = { version = "1", features = ["full"] }

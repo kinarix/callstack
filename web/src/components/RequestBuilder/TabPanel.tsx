@@ -5,6 +5,7 @@ import { FileUpload } from './FileUpload';
 import { ScriptEditor } from './ScriptEditor';
 import { ContentTypeSelector } from './ContentTypeSelector';
 import { resolveTemplate, replaceTokensForValidation } from '../../lib/template';
+import { getImplicitDefaults } from '../../lib/utils';
 import { FAKER_TOKENS } from '../../lib/templateTokens';
 import styles from './TabPanel.module.css';
 
@@ -152,6 +153,7 @@ interface TabPanelProps {
 
 export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, secrets, onScriptTest, copyFlash, useCookieJar = true, onUseCookieJarChange, projectId = null }: TabPanelProps) {
   const [pinned, setPinned] = useState<Set<PinnableTab>>(() => request ? loadPinned(request.id) : new Set());
+  const [implicitExpanded, setImplicitExpanded] = useState(true);
   const [activeTab, setActiveTab] = useState<TabName>(() => {
     if (!request) return 'params';
     const p = loadPinned(request.id);
@@ -210,22 +212,112 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
   const currentContentType = getContentType(request.headers);
   const bodySize = useMemo(() => formatBodySize(request.body), [request.body]);
   const bodyValidation = useMemo(() => validateBody(request.body, currentContentType, envVars), [request.body, currentContentType, envVars]);
+  const implicitItems = useMemo(() => {
+    const bodyLen = new TextEncoder().encode(request.body).length || undefined;
+    const defaults = getImplicitDefaults(request.url, bodyLen);
+    return defaults.map(def => {
+      const override = request.headers.find(h => h.key.toLowerCase() === def.key.toLowerCase());
+      return override ? { ...def, value: override.value, enabled: override.enabled ?? true } : def;
+    });
+  }, [request.url, request.headers, request.body]);
+
+  const implicitDisabledKeys = useMemo(
+    () => new Set(request.headers.filter(h => h.key && h.enabled === false).map(h => h.key.toLowerCase())),
+    [request.headers]
+  );
+
+  const implicitChangedKeys = useMemo(() => {
+    const bodyLen = new TextEncoder().encode(request.body).length || undefined;
+    const defaults = getImplicitDefaults(request.url, bodyLen);
+    const defaultMap = new Map(defaults.map(d => [d.key.toLowerCase(), d.value]));
+    return new Set(
+      request.headers
+        .filter(h => h.key && (h.enabled ?? true) && h.value !== defaultMap.get(h.key.toLowerCase()))
+        .map(h => h.key.toLowerCase())
+    );
+  }, [request.headers, request.url, request.body]);
+
+  const implicitKeys = useMemo(() => {
+    const bodyLen = new TextEncoder().encode(request.body).length || undefined;
+    return new Set(getImplicitDefaults(request.url, bodyLen).map(d => d.key.toLowerCase()));
+  }, [request.url, request.body]);
+
+  const userHeaders = useMemo(
+    () => request.headers.filter(h => !implicitKeys.has(h.key.toLowerCase())),
+    [request.headers, implicitKeys]
+  );
+
+  const handleUserHeadersChange = (newHeaders: KeyValue[]) => {
+    const implicitOverrides = request.headers.filter(h => implicitKeys.has(h.key.toLowerCase()));
+    onRequestChange({ headers: [...implicitOverrides, ...newHeaders] });
+  };
+
+  const handleImplicitChange = (newItems: KeyValue[]) => {
+    const bodyLen = new TextEncoder().encode(request.body).length || undefined;
+    const defaults = getImplicitDefaults(request.url, bodyLen);
+    const defaultMap = new Map(defaults.map(d => [d.key.toLowerCase(), d.value]));
+    let updated = [...request.headers];
+    for (const item of newItems) {
+      if (!item.key) continue;
+      const lKey = item.key.toLowerCase();
+      const idx = updated.findIndex(h => h.key.toLowerCase() === lKey);
+      const isDefault = item.value === defaultMap.get(lKey);
+      const isEnabled = item.enabled ?? true;
+      if (isDefault && isEnabled) {
+        // Reverted to default and enabled — remove any stored override
+        if (idx >= 0) updated = updated.filter((_, i) => i !== idx);
+      } else {
+        // Value changed or disabled — store in headers
+        if (idx >= 0) updated[idx] = { ...updated[idx], value: item.value, enabled: isEnabled };
+        else updated.push({ key: item.key, value: item.value, enabled: isEnabled });
+      }
+    }
+    onRequestChange({ headers: updated });
+  };
 
   const hasMissingFiles = files.some(f => f.path === '');
   const TABS: { name: TabName; label: string; count?: number; warn?: boolean }[] = [
     { name: 'params', label: 'Params', count: request.params.filter(p => p.key).length || undefined },
-    { name: 'headers', label: 'Headers', count: request.headers.filter(h => h.key).length || undefined },
+    { name: 'headers', label: 'Headers', count: userHeaders.filter(h => h.key).length || undefined },
     { name: 'files', label: 'Files', count: files.length || undefined, warn: hasMissingFiles || undefined },
     { name: 'body', label: 'Body' },
     { name: 'script', label: 'Scripting' },
   ];
 
+  function renderImplicitSection() {
+    return (
+      <div className={styles.implicitSection}>
+        <button className={styles.implicitToggle} onClick={() => setImplicitExpanded(e => !e)}>
+          <span className={`${styles.implicitChevron} ${implicitExpanded ? styles.implicitChevronOpen : ''}`}>▶</span>
+          Sent automatically
+          <span className={styles.implicitCount}>{implicitItems.length}</span>
+        </button>
+        {implicitExpanded && (
+          <div className={styles.implicitContent}>
+            <KeyValueEditor
+              items={implicitItems}
+              onChange={handleImplicitChange}
+              hideActions
+              markedKeys={implicitChangedKeys}
+              disabledKeys={implicitDisabledKeys}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function renderPinnedContent(p: PinnableTab) {
     if (p === 'params') {
-      return <KeyValueEditor items={request!.params} onChange={(params) => onRequestChange({ params })} envVars={envVars} secrets={secrets} />;
+      return <KeyValueEditor items={request!.params} onChange={(params) => onRequestChange({ params })} envVars={envVars} secrets={secrets} naturalHeight />;
     }
     if (p === 'headers') {
-      return <KeyValueEditor items={request!.headers} onChange={(headers) => onRequestChange({ headers })} envVars={envVars} secrets={secrets} />;
+      return (
+        <div className={styles.headersContent}>
+          {renderImplicitSection()}
+          <KeyValueEditor items={userHeaders} onChange={handleUserHeadersChange} envVars={envVars} secrets={secrets} naturalHeight />
+        </div>
+      );
     }
     return <FileUpload files={files} onChange={onFilesChange} />;
   }
@@ -318,12 +410,15 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
           />
         )}
         {activeTab === 'headers' && (
-          <KeyValueEditor
-            items={request.headers}
-            onChange={(headers) => onRequestChange({ headers })}
-            envVars={envVars}
-            secrets={secrets}
-          />
+          <div className={styles.headersContent}>
+            {renderImplicitSection()}
+            <KeyValueEditor
+              items={userHeaders}
+              onChange={handleUserHeadersChange}
+              envVars={envVars}
+              secrets={secrets}
+            />
+          </div>
         )}
         {activeTab === 'body' && (
           <Suspense fallback={null}>

@@ -243,7 +243,7 @@ console.log('[info] Stored ' + Object.keys(toStore).length + ' values to env');`
     id: 'secrets-read-api-key',
     category: 'Secrets',
     title: 'Read a Secret in a Pre-Request Script',
-    description: 'Retrieve a secret value (stored in localStorage, never exported) and inject it as a request header. Ideal for API keys and tokens you never want to include in exports or share with teammates.',
+    description: 'Retrieve a secret value (local only, never exported) and inject it as a request header. Ideal for API keys and tokens you never want to include in exports or share with teammates.',
     target: 'pre',
     code: `// Inject a secret API key as a header
 const apiKey = env.secret.get('API_KEY');

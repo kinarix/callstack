@@ -6,12 +6,23 @@
   overflow: hidden;
 }
 
+.wrapNatural {
+  display: flex;
+  flex-direction: column;
+}
+
 .editor {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding: var(--space-2);
+}
+
+.editorNatural {
+  display: flex;
+  flex-direction: column;
   padding: var(--space-2);
 }
 
@@ -34,6 +45,26 @@
 .row:hover,
 .row:focus-within {
   background: var(--bg-secondary);
+}
+
+.rowMarked {
+  background: color-mix(in srgb, var(--accent-put) 8%, transparent);
+  border-left: 2px solid var(--accent-put);
+}
+
+.rowMarked:hover,
+.rowMarked:focus-within {
+  background: color-mix(in srgb, var(--accent-put) 14%, transparent);
+}
+
+.rowDisabled {
+  background: color-mix(in srgb, var(--accent-delete) 8%, transparent);
+  border-left: 2px solid var(--accent-delete);
+}
+
+.rowDisabled:hover,
+.rowDisabled:focus-within {
+  background: color-mix(in srgb, var(--accent-delete) 14%, transparent);
 }
 
 .checkbox {

@@ -8,9 +8,9 @@ import { useApp } from '../../context/AppContext';
 import { useHttpClient } from '../../hooks/useHttpClient';
 import { useDatabase } from '../../hooks/useDatabase';
 import { resolveTemplate, replaceTokensForValidation } from '../../lib/template';
+import { getImplicitHeaders } from '../../lib/utils';
 import { runScript } from '../../hooks/useScriptRunner';
 import type { EnvMutations } from '../../hooks/useScriptRunner';
-import { loadSecrets, saveSecrets } from '../../lib/secrets';
 import { useSettings } from '../../hooks/useSettings';
 
 interface RequestBuilderProps {
@@ -106,17 +106,22 @@ let logIdCounter = 0;
 function buildCurl(method: string, url: string, params: KeyValue[], headers: KeyValue[], body: string): string {
   const parts = [`curl -X ${method}`];
   const activeHeaders = headers.filter(h => h.enabled !== false && h.key.trim());
-  for (const h of activeHeaders) {
-    parts.push(`-H ${JSON.stringify(`${h.key}: ${h.value}`)}`);
-  }
   const ct = activeHeaders.find(h => h.key.toLowerCase() === 'content-type')?.value ?? '';
+  let bodyStr = '';
   if (body.trim() && ['POST', 'PUT', 'PATCH'].includes(method)) {
-    let bodyStr = body.trim().replace(/\r/g, '');
+    bodyStr = body.trim().replace(/\r/g, '');
     if (ct.includes('json')) {
       try { bodyStr = JSON.stringify(JSON.parse(bodyStr)); } catch {}
     } else {
       bodyStr = bodyStr.replace(/\n/g, ' ').replace(/\s+/g, ' ');
     }
+  }
+  const bodyLength = bodyStr ? new TextEncoder().encode(bodyStr).length : 0;
+  const allHeaders = [...activeHeaders, ...getImplicitHeaders(url, activeHeaders, bodyLength, headers)];
+  for (const h of allHeaders) {
+    parts.push(`-H ${JSON.stringify(`${h.key}: ${h.value}`)}`);
+  }
+  if (bodyStr) {
     parts.push(`--data ${JSON.stringify(bodyStr)}`);
   }
   const activeParams = params.filter(p => p.enabled !== false && p.key.trim());
@@ -168,7 +173,7 @@ function validateBody(body: string, contentType: string): string | null {
 export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, copyFlashPane, onCopyResponse, onRequestFocus, onResponseFocus }: RequestBuilderProps) {
   const { state, dispatch } = useApp();
   const { send, cancelRequest } = useHttpClient();
-  const { updateRequest, saveResponse, updateEnvironment } = useDatabase();
+  const { updateRequest, saveResponse, updateEnvironment, updateEnvironmentSecrets } = useDatabase();
   const { settings } = useSettings();
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [bodyError, setBodyError] = useState<string | null>(null);
@@ -197,7 +202,8 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
     document.body.style.userSelect = 'none';
     const onMove = (ev: MouseEvent) => {
       const rect = container.getBoundingClientRect();
-      const pct = Math.max(25, Math.min(75, ((ev.clientX - rect.left) / rect.width) * 100));
+      const zoom = parseFloat(getComputedStyle(container).getPropertyValue('--app-zoom')) || 1;
+      const pct = Math.max(25, Math.min(75, ((ev.clientX / zoom - rect.left) / rect.width) * 100));
       setSplitPct(pct);
       localStorage.setItem('callstack.splitPct', pct.toFixed(1));
     };
@@ -381,7 +387,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
 
   const activeEnv = projectEnvironments.find((e) => e.id === activeEnvId) ?? null;
   const envVars = activeEnv?.variables ?? [];
-  const secrets = activeEnv ? loadSecrets(activeEnv.id) : [];
+  const secrets = activeEnv?.secrets ?? [];
 
   const applyEnvMutations = useCallback(async (mutations: { set: Record<string, string>; unset: string[] }) => {
     if (!activeEnv || (Object.keys(mutations.set).length === 0 && mutations.unset.length === 0)) return;
@@ -397,9 +403,9 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
     dispatch({ type: 'UPDATE_ENVIRONMENT', payload: updated });
   }, [activeEnv, updateEnvironment, dispatch]);
 
-  const applySecretMutations = useCallback((mutations: EnvMutations) => {
+  const applySecretMutations = useCallback(async (mutations: EnvMutations) => {
     if (!activeEnv || (Object.keys(mutations.set).length === 0 && mutations.unset.length === 0)) return;
-    let current = loadSecrets(activeEnv.id);
+    let current = [...activeEnv.secrets];
     current = current.filter((s) => !mutations.unset.includes(s.key));
     current = current.map((s) => mutations.set[s.key] !== undefined ? { ...s, value: mutations.set[s.key] } : s);
     for (const [key, value] of Object.entries(mutations.set)) {
@@ -407,8 +413,10 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         current.push({ key, value, enabled: true });
       }
     }
-    saveSecrets(activeEnv.id, current);
-  }, [activeEnv]);
+    const filtered = current.filter((s) => s.key);
+    dispatch({ type: 'UPDATE_ENVIRONMENT', payload: { ...activeEnv, secrets: filtered } });
+    await updateEnvironmentSecrets(activeEnv.id, filtered);
+  }, [activeEnv, updateEnvironmentSecrets, dispatch]);
 
   const handleScriptTest = useCallback((script: string, isPost: boolean) => {
     if (!script.trim()) return;
@@ -600,6 +608,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
           body: result.body,
           time: result.timeMs,
           size: result.size,
+          transferSize: result.transferSize,
           timestamp: sentAt,
           testResults: testResults && testResults.length > 0 ? testResults : undefined,
           testStatus: testStatus || undefined,

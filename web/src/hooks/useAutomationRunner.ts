@@ -4,7 +4,7 @@ import type { Request, KeyValue, AutomationRequestResult, TestStatus, Automation
 import { parseCsv } from '../lib/parseCsv';
 import { resolveTemplate } from '../lib/template';
 import { runScript } from './useScriptRunner';
-import { loadSecrets } from '../lib/secrets';
+import { getImplicitHeaders } from '../lib/utils';
 export type RunnerStatus = 'idle' | 'running' | 'done' | 'cancelled';
 
 export interface AutomationRunState {
@@ -20,15 +20,18 @@ export interface AutomationRunState {
 function buildCurlCmd(method: string, url: string, params: KeyValue[], headers: KeyValue[], body: string): string {
   const parts = [`curl -X ${method}`];
   const activeHeaders = headers.filter((h) => h.enabled !== false && h.key.trim());
-  for (const h of activeHeaders) parts.push(`-H ${JSON.stringify(`${h.key}: ${h.value}`)}`);
+  const bodyStr = body.trim() && ['POST', 'PUT', 'PATCH'].includes(method) ? body.trim() : '';
+  const bodyLength = bodyStr ? new TextEncoder().encode(bodyStr).length : 0;
+  const allHeaders = [...activeHeaders, ...getImplicitHeaders(url, activeHeaders, bodyLength, headers)];
+  for (const h of allHeaders) parts.push(`-H ${JSON.stringify(`${h.key}: ${h.value}`)}`);
   const activeParams = params.filter((p) => p.enabled !== false && p.key.trim());
   if (activeParams.length) {
     const baseUrl = url.includes('?') ? url.slice(0, url.indexOf('?')) : url;
     const qs = activeParams.map((p) => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`).join('&');
     url = `${baseUrl}?${qs}`;
   }
-  if (body.trim() && ['POST', 'PUT', 'PATCH'].includes(method)) {
-    parts.push(`-d ${JSON.stringify(body.trim())}`);
+  if (bodyStr) {
+    parts.push(`-d ${JSON.stringify(bodyStr)}`);
   }
   parts.push(`"${url}"`);
   return parts.join(' \\\n  ');
@@ -111,7 +114,7 @@ export function useAutomationRunner() {
       if (step.type === 'set_env') {
         const env = step.envId != null ? environmentsRef.current.find((e) => e.id === step.envId) : null;
         envVarsRef.current = env?.variables ?? [];
-        secretsRef.current = step.envId != null ? loadSecrets(step.envId) : [];
+        secretsRef.current = step.envId != null ? (environmentsRef.current.find((e) => e.id === step.envId)?.secrets ?? []) : [];
         currentEnvNameRef.current = env?.name ?? null;
         continue;
       }
@@ -436,7 +439,7 @@ export function useAutomationRunner() {
       const collectedResults: AutomationRequestResult[] = [];
       const envVarsRef = { current: [...envVars] };
       const emittedVarsRef = { current: {} as Record<string, string> };
-      secretsRef.current = activeEnvId != null ? loadSecrets(activeEnvId) : [];
+      secretsRef.current = activeEnvId != null ? (environmentsRef.current.find((e) => e.id === activeEnvId)?.secrets ?? []) : [];
 
       const pushResult = (r: AutomationRequestResult) => {
         collectedResults.push(r);

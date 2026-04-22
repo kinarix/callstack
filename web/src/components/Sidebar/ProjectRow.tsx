@@ -344,14 +344,14 @@ export function ProjectRow({
         <button
           className={`${styles.iconBtn} ${styles.importBtn}`}
           onClick={(e) => onProjectImport(e, project.id)}
-          title="Import Postman collection"
+          title="Import"
         >
           <ImportIcon />
         </button>
         <button
           className={`${styles.iconBtn} ${styles.exportBtn}`}
           onClick={(e) => onProjectExport(e, project.id)}
-          title="Export as Postman collection"
+          title="Export"
         >
           <ExportIcon />
         </button>
@@ -446,7 +446,7 @@ export function ProjectRow({
                   <button
                     className={`${styles.iconBtn} ${styles.importBtn}`}
                     onClick={(e) => onFolderImport(e, folder.id, project.id)}
-                    title="Import Postman collection into folder"
+                    title="Import"
                   >
                     <ImportIcon />
                   </button>

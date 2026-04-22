@@ -14,6 +14,7 @@ import styles from './App.module.css';
 import { useDatabase } from './hooks/useDatabase';
 import { useSettings, matchesShortcut } from './hooks/useSettings';
 import { formatBody } from './lib/formatBody';
+import type { KeyValue } from './lib/types';
 
 function clearUIState() {
   Object.keys(localStorage)
@@ -24,7 +25,7 @@ function clearUIState() {
 
 function AppContent() {
   const { state, dispatch } = useApp();
-  const { loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations, listDataFiles, createRequest, duplicateRequest, getLastResponse } = useDatabase();
+  const { loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations, listDataFiles, createRequest, duplicateRequest, getLastResponse, updateEnvironmentSecrets } = useDatabase();
   const { settings, setZoom, setShortcut, setResponseHistoryLimit, resetSettings } = useSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [displayZoom, setDisplayZoom] = useState(settings.zoom);
@@ -70,11 +71,12 @@ function AppContent() {
 
   const startSidebarResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    const startX = e.clientX;
+    const zoom = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--app-zoom')) || 1;
+    const startX = e.clientX / zoom;
     const startW = sidebarWidth;
     document.body.style.userSelect = 'none';
     const onMove = (e: MouseEvent) => {
-      const w = Math.max(180, Math.min(480, startW + e.clientX - startX));
+      const w = Math.max(180, Math.min(480, startW + e.clientX / zoom - startX));
       setSidebarWidth(w);
       localStorage.setItem('callstack.sidebarWidth', String(w));
     };
@@ -132,6 +134,24 @@ function AppContent() {
         const id = parseInt(savedAutoId, 10);
         const auto = allAutomations.find((a) => a.id === id);
         if (auto) initialProjectId = auto.projectId;
+      }
+
+      // One-time migration: move per-env secrets from localStorage → DB
+      for (const env of allEnvs) {
+        if (env.secrets.length === 0) {
+          try {
+            const lsKey = `callstack.secrets.${env.id}`;
+            const lsRaw = localStorage.getItem(lsKey);
+            if (lsRaw) {
+              const lsSecrets = JSON.parse(lsRaw) as KeyValue[];
+              if (lsSecrets.length > 0) {
+                await updateEnvironmentSecrets(env.id, lsSecrets);
+                env.secrets = lsSecrets;
+                localStorage.removeItem(lsKey);
+              }
+            }
+          } catch {}
+        }
       }
 
       // All dispatches together — React 18 batches into a single render

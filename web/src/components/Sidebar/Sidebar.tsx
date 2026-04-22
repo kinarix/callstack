@@ -52,6 +52,16 @@ function GearIcon() {
   );
 }
 
+function HelpIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M10 9.5a2 2 0 1 1 3.5 1.5c-.6.6-1.5 1.1-1.5 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="15.5" r="0.75" fill="currentColor" />
+    </svg>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 function getLogoGradient(): string {
@@ -1121,6 +1131,9 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
         <div className={styles.sidebarIcons}>
           <button className={`${styles.iconAction} ${styles.settingsBtn}`} onClick={onOpenSettings} title="Settings">
             <GearIcon />
+          </button>
+          <button className={styles.iconAction} onClick={() => invoke('open_system_url', { url: 'https://callstack.kinarix.com/docs/' })} title="Help & Docs">
+            <HelpIcon />
           </button>
           <ThemeToggle />
           <AccentToggle />
