@@ -15,6 +15,7 @@ import { formatBody, normalizeLineEndings } from '../../lib/formatBody';
 import { isJwt, findJwtsInBody } from '../../lib/jwt';
 import { JwtBadge } from '../JwtBadge/JwtBadge';
 import { useDatabase } from '../../hooks/useDatabase';
+import { useEditorMemory } from '../../hooks/useEditorMemory';
 import styles from './ResponseViewer.module.css';
 
 function PinIcon({ pinned }: { pinned: boolean }) {
@@ -323,6 +324,9 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
     }
   };
 
+  const responseMemoryKey = requestId != null ? `response:${requestId}` : undefined;
+  const { memoryExtension: responseMemoryExtension, onCreateEditor: onCreateMemoryEditor } = useEditorMemory(responseMemoryKey);
+
   if (!response) {
     return (
       <div className={styles.viewerEmpty}>
@@ -339,7 +343,9 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
   const formattedBody = formatBody(displayedResponse.body, contentType);
   const label = getLabel(contentType);
   const bodyLanguage = getLanguage(contentType);
-  const bodyExtensions = bodyLanguage ? [...responseViewerThemeExtension, bodyLanguage] : responseViewerThemeExtension;
+  const bodyExtensions = bodyLanguage
+    ? [...responseViewerThemeExtension, bodyLanguage, responseMemoryExtension]
+    : [...responseViewerThemeExtension, responseMemoryExtension];
 
   return (
     <div className={styles.viewer}>
@@ -516,6 +522,7 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
             </div>
             <div className={styles.responseEditorWrap}>
               <CodeMirror
+                key={responseMemoryKey}
                 value={formattedBody}
                 extensions={bodyExtensions}
                 theme="none"
@@ -527,7 +534,10 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
                   drawSelection: true,
                 }}
                 style={{ height: '100%' }}
-                onCreateEditor={(view) => { bodyEditorRef.current = view; }}
+                onCreateEditor={(view) => {
+                  bodyEditorRef.current = view;
+                  onCreateMemoryEditor(view);
+                }}
               />
             </div>
             {copyFlash && (

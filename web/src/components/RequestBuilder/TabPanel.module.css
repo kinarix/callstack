@@ -298,6 +298,53 @@
   overflow-y: auto;
 }
 
+.implicitContent :global([class*="editor"]) {
+  padding-top: var(--space-half);
+}
+
+/* ── User-defined headers section ──────────────────────── */
+
+.userHeadersSection {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-height: 0;
+}
+
+.userHeadersSection .implicitToggle {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.userHeadersSection .implicitToggle:hover {
+  background: var(--bg-hover);
+}
+
+.userHeadersSection.userHeadersSectionOpen {
+  flex: 1;
+  overflow: hidden;
+}
+
+.userHeadersContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.userHeadersContent :global([class*="editor"]) {
+  padding-top: var(--space-half);
+}
+
+.pinnedContent .userHeadersSection {
+  flex: none;
+}
+
+.pinnedContent .userHeadersContent {
+  overflow: visible;
+}
+
 /* ── Cookie jar tab ────────────────────────────────────── */
 
 .cookieTab {

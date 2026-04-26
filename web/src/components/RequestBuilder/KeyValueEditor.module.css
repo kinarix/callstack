@@ -26,6 +26,221 @@
   padding: var(--space-2);
 }
 
+/* ── Pill container ── */
+.pills {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* ── Single pill (collapsed view) ── */
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px 5px 6px;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  cursor: pointer;
+  font-size: 12.5px;
+  font-family: 'JetBrains Mono', monospace;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+  min-width: 0;
+}
+
+.pill:hover {
+  border-color: var(--border-primary);
+  background: var(--bg-hover);
+}
+
+.pillOff {
+  opacity: 0.45;
+}
+
+.pillMarked {
+  border-color: color-mix(in srgb, var(--accent-put) 45%, var(--border-secondary));
+  background: color-mix(in srgb, var(--accent-put) 6%, var(--bg-secondary));
+}
+
+.pillDisabled {
+  border-color: color-mix(in srgb, var(--accent-delete) 40%, var(--border-secondary));
+  background: color-mix(in srgb, var(--accent-delete) 5%, var(--bg-secondary));
+}
+
+/* Enabled-state dot toggle */
+.pillToggle {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-primary);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.pillToggle.pillToggleOn {
+  background: var(--accent-get);
+  border-color: var(--accent-get);
+}
+
+.pillToggle.pillToggleReadOnly {
+  cursor: default;
+}
+
+.pillKey {
+  color: var(--text-secondary);
+  font-weight: 500;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.pillSep {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.pillValue {
+  color: var(--text-primary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.pillPlaceholder {
+  color: var(--text-tertiary);
+  font-style: italic;
+  font-weight: 400;
+}
+
+.pillDelete {
+  flex-shrink: 0;
+  margin-left: auto;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0;
+  border-radius: 50%;
+  transition: opacity var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+
+.pill:hover .pillDelete {
+  opacity: 0.6;
+}
+
+.pillDelete:hover {
+  opacity: 1 !important;
+  color: var(--status-error);
+  background: color-mix(in srgb, var(--accent-delete) 12%, transparent);
+}
+
+/* ── Confirm-delete pill ── */
+.pillConfirm {
+  border-color: color-mix(in srgb, var(--accent-delete) 50%, var(--border-secondary));
+  background: color-mix(in srgb, var(--accent-delete) 8%, var(--bg-secondary));
+  cursor: default;
+  gap: 8px;
+}
+
+.pillConfirm:hover {
+  border-color: color-mix(in srgb, var(--accent-delete) 50%, var(--border-secondary));
+  background: color-mix(in srgb, var(--accent-delete) 8%, var(--bg-secondary));
+}
+
+.pillConfirmLabel {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pillConfirmLabel strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.pillConfirmYes,
+.pillConfirmNo {
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: 'Outfit', sans-serif;
+  padding: 2px 10px;
+  transition: background var(--transition-fast);
+}
+
+.pillConfirmYes {
+  background: color-mix(in srgb, var(--accent-delete) 15%, transparent);
+  border-color: var(--accent-delete);
+  color: var(--accent-delete);
+}
+
+.pillConfirmYes:hover {
+  background: color-mix(in srgb, var(--accent-delete) 28%, transparent);
+}
+
+.pillConfirmNo {
+  background: transparent;
+  border-color: var(--border-primary);
+  color: var(--text-secondary);
+}
+
+.pillConfirmNo:hover {
+  background: var(--bg-hover);
+}
+
+/* ── Edit row (pill expanded or rows mode) ── */
+.editRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 12.5px;
+  padding: 3px 0;
+  border-radius: var(--radius-sm);
+}
+
+.editRow > :global(.wrapper) {
+  flex: 1;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  padding: 5px 9px;
+  color: var(--text-primary);
+  word-break: break-all;
+  transition: border-color var(--transition-base), background var(--transition-base), box-shadow var(--transition-base);
+}
+
+.editRow > :global(.wrapper):hover {
+  border-color: var(--border-primary);
+}
+
+.editRow > :global(.wrapper):focus-within {
+  border-color: var(--accent-post);
+  background: var(--bg-secondary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-post) 18%, transparent);
+}
+
+/* ── Rows container (read-only / hideActions mode) ── */
 .rows {
   display: flex;
   flex-direction: column;
@@ -38,33 +253,19 @@
   gap: var(--space-1);
   font-size: 12.5px;
   padding: 3px 0;
-  border-bottom: 1px solid var(--border-secondary);
   transition: background-color var(--transition-base);
 }
 
-.row:hover,
-.row:focus-within {
-  background: var(--bg-secondary);
+.rowMarked .input,
+.rowMarked > :global(.wrapper) {
+  border-color: color-mix(in srgb, var(--accent-put) 50%, var(--border-secondary));
+  background: color-mix(in srgb, var(--accent-put) 6%, var(--bg-primary));
 }
 
-.rowMarked {
-  background: color-mix(in srgb, var(--accent-put) 8%, transparent);
-  border-left: 2px solid var(--accent-put);
-}
-
-.rowMarked:hover,
-.rowMarked:focus-within {
-  background: color-mix(in srgb, var(--accent-put) 14%, transparent);
-}
-
-.rowDisabled {
-  background: color-mix(in srgb, var(--accent-delete) 8%, transparent);
-  border-left: 2px solid var(--accent-delete);
-}
-
-.rowDisabled:hover,
-.rowDisabled:focus-within {
-  background: color-mix(in srgb, var(--accent-delete) 14%, transparent);
+.rowDisabled .input,
+.rowDisabled > :global(.wrapper) {
+  border-color: color-mix(in srgb, var(--accent-delete) 45%, var(--border-secondary));
+  background: color-mix(in srgb, var(--accent-delete) 6%, var(--bg-primary));
 }
 
 .checkbox {
@@ -93,16 +294,26 @@
 }
 
 .input {
-  border: none;
-  background: transparent;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
   font-family: 'JetBrains Mono', monospace;
   font-size: 12.5px;
-  padding: 0;
+  padding: 5px 9px;
   min-width: 0;
+  color: var(--text-primary);
+  transition: border-color var(--transition-base), background var(--transition-base), box-shadow var(--transition-base);
+}
+
+.input:hover:not(:disabled) {
+  border-color: var(--border-primary);
 }
 
 .input:focus {
   outline: none;
+  border-color: var(--accent-post);
+  background: var(--bg-secondary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-post) 18%, transparent);
 }
 
 .input:disabled {
@@ -112,15 +323,36 @@
 
 /* Key column — matches response .headerKey */
 .input.keyCell,
-.row > input.input:nth-of-type(1) {
-  flex: 0 0 200px;
-  min-width: 200px;
+.row > input.input:nth-of-type(1),
+.editRow > input.input:nth-of-type(1) {
+  flex: 0 0 220px;
+  min-width: 220px;
   color: var(--text-secondary);
   font-weight: 500;
 }
 
-/* Value column — matches response .headerValue */
-.row > :global(.wrapper),
+/* Value column — bordered wrapper around TemplateInput */
+.row > :global(.wrapper) {
+  flex: 1;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  padding: 5px 9px;
+  color: var(--text-primary);
+  word-break: break-all;
+  transition: border-color var(--transition-base), background var(--transition-base), box-shadow var(--transition-base);
+}
+
+.row > :global(.wrapper):hover {
+  border-color: var(--border-primary);
+}
+
+.row > :global(.wrapper):focus-within {
+  border-color: var(--accent-post);
+  background: var(--bg-secondary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-post) 18%, transparent);
+}
+
 .input.valueCell {
   flex: 1;
   color: var(--text-primary);
@@ -149,56 +381,15 @@
 }
 
 .row:hover .deleteBtn,
-.row:focus-within .deleteBtn {
+.row:focus-within .deleteBtn,
+.editRow:hover .deleteBtn,
+.editRow:focus-within .deleteBtn {
   opacity: 0.6;
 }
 
 .deleteBtn:hover {
   opacity: 1 !important;
   color: var(--status-error);
-}
-
-.confirm {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  flex-shrink: 0;
-  padding-right: 4px;
-}
-
-.confirmYes,
-.confirmNo {
-  background: none;
-  border: 1px solid var(--border-primary);
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 500;
-  font-family: 'Outfit', sans-serif;
-  padding: 2px 8px;
-  border-radius: 3px;
-  transition: background-color var(--transition-base);
-}
-
-.confirmYes {
-  background: rgba(34, 197, 94, 0.2);
-  border-color: #22c55e;
-  color: #22c55e;
-}
-
-.confirmYes:hover {
-  background: rgba(34, 197, 94, 0.3);
-  border-color: #16a34a;
-}
-
-.confirmNo {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: var(--accent-delete);
-  color: var(--accent-delete);
-}
-
-.confirmNo:hover {
-  background: rgba(239, 68, 68, 0.3);
-  border-color: #dc2626;
 }
 
 .addRow {

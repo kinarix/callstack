@@ -17,6 +17,7 @@ import {
   snippetCompletion,
 } from '@codemirror/autocomplete';
 import { ScriptExamples } from './ScriptExamples';
+import { useEditorMemory } from '../../hooks/useEditorMemory';
 import styles from './ScriptEditor.module.css';
 
 type ScriptTab = 'pre' | 'post' | 'examples';
@@ -710,6 +711,9 @@ export function ScriptEditor({ requestId, preScript, postScript, onChange, conso
     [runFormat],
   );
 
+  const memoryKey = requestId != null ? `script:${requestId}:${activeTab}` : undefined;
+  const { memoryExtension, onCreateEditor: onCreateMemoryEditor } = useEditorMemory(memoryKey);
+
   const extensions = useMemo(() => [
     javascript(),
     editorTheme,
@@ -722,7 +726,8 @@ export function ScriptEditor({ requestId, preScript, postScript, onChange, conso
       maxRenderedOptions: 20,
     }),
     sigHelpField,
-  ], [isPost, envVarKeys, secretKeys, formatKeymap]);
+    memoryExtension,
+  ], [isPost, envVarKeys, secretKeys, formatKeymap, memoryExtension]);
 
   return (
     <div className={styles.scriptEditor}>
@@ -791,7 +796,7 @@ export function ScriptEditor({ requestId, preScript, postScript, onChange, conso
           />
         ) : (
           <CodeMirror
-            key={activeTab}
+            key={memoryKey ?? activeTab}
             value={currentScript}
             onChange={handleChange}
             extensions={extensions}
@@ -808,6 +813,7 @@ export function ScriptEditor({ requestId, preScript, postScript, onChange, conso
             }}
             style={{ height: '100%' }}
             onCreateEditor={(view) => {
+              onCreateMemoryEditor(view);
               if (focusEditorOnMount.current) {
                 focusEditorOnMount.current = false;
                 view.focus();

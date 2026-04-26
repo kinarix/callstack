@@ -7,6 +7,7 @@ import { autocompletion } from '@codemirror/autocomplete';
 import { tags } from '@lezer/highlight';
 import type { KeyValue } from '../../lib/types';
 import { templateCompletion, replaceTokensForValidation } from '../../lib/template';
+import { useEditorMemory } from '../../hooks/useEditorMemory';
 import styles from './BodyEditor.module.css';
 
 interface JsonTemplateState {
@@ -201,6 +202,7 @@ interface BodyEditorProps {
   copyFlash?: boolean;
   envVars?: KeyValue[];
   secrets?: KeyValue[];
+  memoryKey?: string;
 }
 
 export function BodyEditor({
@@ -211,9 +213,11 @@ export function BodyEditor({
   copyFlash = false,
   envVars = [],
   secrets = [],
+  memoryKey,
 }: BodyEditorProps) {
   const [validation, setValidation] = useState<{ valid: boolean; error?: string }>({ valid: true });
   const hasCsvTokens = /\{\{\s*#[\w.-]+\s*\}\}/.test(body);
+  const { memoryExtension, onCreateEditor } = useEditorMemory(memoryKey);
   const extensions = useMemo(() => {
     const lang = getLanguage(contentType);
     const envVarKeys = envVars.filter((v) => v.enabled !== false && v.key).map((v) => v.key);
@@ -222,8 +226,9 @@ export function BodyEditor({
     return [
       ...baseExtensions,
       autocompletion({ override: [templateCompletion(envVarKeys, secretKeys)], activateOnTyping: true }),
+      memoryExtension,
     ];
-  }, [contentType, envVars, secrets]);
+  }, [contentType, envVars, secrets, memoryExtension]);
 
   useEffect(() => {
     setValidation(validateBodyContent(body, contentType));
@@ -233,6 +238,7 @@ export function BodyEditor({
     <div className={styles.editor}>
       <div className={`${styles.editorWrap} ${!validation.valid ? styles.editorWrapInvalid : ''} ${copyFlash ? styles.flashCopy : ''}`}>
         <CodeMirror
+          key={memoryKey}
           value={body}
           onChange={onChange}
           extensions={extensions}
@@ -246,6 +252,7 @@ export function BodyEditor({
             autocompletion: true,
           }}
           style={{ height: '100%' }}
+          onCreateEditor={onCreateEditor}
         />
         {copyFlash && <div className={styles.copyToast}>Copied to clipboard</div>}
       </div>

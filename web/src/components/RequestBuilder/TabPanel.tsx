@@ -154,6 +154,7 @@ interface TabPanelProps {
 export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, secrets, onScriptTest, copyFlash, useCookieJar = true, onUseCookieJarChange, projectId = null }: TabPanelProps) {
   const [pinned, setPinned] = useState<Set<PinnableTab>>(() => request ? loadPinned(request.id) : new Set());
   const [implicitExpanded, setImplicitExpanded] = useState(true);
+  const [userHeadersExpanded, setUserHeadersExpanded] = useState(true);
   const [activeTab, setActiveTab] = useState<TabName>(() => {
     if (!request) return 'params';
     const p = loadPinned(request.id);
@@ -307,6 +308,30 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
     );
   }
 
+  function renderUserHeadersSection({ naturalHeight = false }: { naturalHeight?: boolean } = {}) {
+    const userCount = userHeaders.filter(h => h.key).length;
+    return (
+      <div className={`${styles.userHeadersSection} ${userHeadersExpanded ? styles.userHeadersSectionOpen : ''}`}>
+        <button className={styles.implicitToggle} onClick={() => setUserHeadersExpanded(e => !e)}>
+          <span className={`${styles.implicitChevron} ${userHeadersExpanded ? styles.implicitChevronOpen : ''}`}>▶</span>
+          Request Headers
+          <span className={styles.implicitCount}>{userCount}</span>
+        </button>
+        {userHeadersExpanded && (
+          <div className={styles.userHeadersContent}>
+            <KeyValueEditor
+              items={userHeaders}
+              onChange={handleUserHeadersChange}
+              envVars={envVars}
+              secrets={secrets}
+              naturalHeight={naturalHeight}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function renderPinnedContent(p: PinnableTab) {
     if (p === 'params') {
       return <KeyValueEditor items={request!.params} onChange={(params) => onRequestChange({ params })} envVars={envVars} secrets={secrets} naturalHeight />;
@@ -315,7 +340,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
       return (
         <div className={styles.headersContent}>
           {renderImplicitSection()}
-          <KeyValueEditor items={userHeaders} onChange={handleUserHeadersChange} envVars={envVars} secrets={secrets} naturalHeight />
+          {renderUserHeadersSection({ naturalHeight: true })}
         </div>
       );
     }
@@ -412,12 +437,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
         {activeTab === 'headers' && (
           <div className={styles.headersContent}>
             {renderImplicitSection()}
-            <KeyValueEditor
-              items={userHeaders}
-              onChange={handleUserHeadersChange}
-              envVars={envVars}
-              secrets={secrets}
-            />
+            {renderUserHeadersSection()}
           </div>
         )}
         {activeTab === 'body' && (
@@ -429,6 +449,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
               copyFlash={copyFlash}
               envVars={envVars}
               secrets={secrets}
+              memoryKey={`body:${request.id}`}
             />
           </Suspense>
         )}
