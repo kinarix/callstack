@@ -79,11 +79,10 @@ const responseViewerEditorTheme = EditorView.theme({
     fontFamily: "'JetBrains Mono', monospace",
   },
   '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--accent-get)' },
-  '&.cm-focused .cm-selectionBackground, .cm-selectionBackground': {
-    backgroundColor: 'rgba(59, 130, 246, 0.25)',
-  },
-  '.cm-activeLine': { backgroundColor: 'var(--bg-hover, rgba(255,255,255,0.03))' },
-  '.cm-activeLineGutter': { backgroundColor: 'var(--bg-hover, rgba(255,255,255,0.03))' },
+  '.cm-selectionBackground': { backgroundColor: 'rgba(59, 130, 246, 0.25) !important' },
+  '&.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(59, 130, 246, 0.25) !important' },
+  '.cm-activeLine': { backgroundColor: 'rgba(255,255,255,0.03)' },
+  '.cm-activeLineGutter': { backgroundColor: 'rgba(255,255,255,0.03)' },
   '.cm-foldPlaceholder': {
     backgroundColor: 'transparent',
     border: 'none',
@@ -515,19 +514,22 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
               <button className={styles.floatingBtn} onClick={handleSave} title="Save response to file">Save</button>
               <button className={styles.floatingBtn} onClick={handleClear} title="Clear response">Clear</button>
             </div>
-            <CodeMirror
-              value={formattedBody}
-              extensions={bodyExtensions}
-              theme="none"
-              readOnly={true}
-              basicSetup={{
-                lineNumbers: true,
-                foldGutter: true,
-                highlightSelectionMatches: false,
-              }}
-              className={styles.responseEditor}
-              onCreateEditor={(view) => { bodyEditorRef.current = view; }}
-            />
+            <div className={styles.responseEditorWrap}>
+              <CodeMirror
+                value={formattedBody}
+                extensions={bodyExtensions}
+                theme="none"
+                readOnly={true}
+                basicSetup={{
+                  lineNumbers: true,
+                  foldGutter: true,
+                  highlightSelectionMatches: false,
+                  drawSelection: true,
+                }}
+                style={{ height: '100%' }}
+                onCreateEditor={(view) => { bodyEditorRef.current = view; }}
+              />
+            </div>
             {copyFlash && (
               <div className={styles.copyToast}>Copied to clipboard</div>
             )}

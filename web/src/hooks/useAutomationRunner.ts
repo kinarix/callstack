@@ -5,6 +5,7 @@ import { parseCsv } from '../lib/parseCsv';
 import { resolveTemplate } from '../lib/template';
 import { runScript } from './useScriptRunner';
 import { getImplicitHeaders } from '../lib/utils';
+import { useSettings } from './useSettings';
 export type RunnerStatus = 'idle' | 'running' | 'done' | 'cancelled';
 
 export interface AutomationRunState {
@@ -92,6 +93,9 @@ export function useAutomationRunner() {
   const environmentsRef = useRef<Environment[]>([]);
   const secretsRef = useRef<KeyValue[]>([]);
   const currentEnvNameRef = useRef<string | null>(null);
+  const { settings } = useSettings();
+  const httpTimeoutRef = useRef(settings.httpTimeout);
+  httpTimeoutRef.current = settings.httpTimeout;
 
   // Returns true if execution should stop (stop step hit or cancelled)
   const executeSteps = useCallback(async (
@@ -286,6 +290,7 @@ export function useAutomationRunner() {
             attachments: req.files ?? [],
             projectId: projectIdRef.current,
             useCookieJar: true,
+            timeoutSecs: httpTimeoutRef.current,
           });
 
           let testResults: import('../lib/types').TestResult[] = [];

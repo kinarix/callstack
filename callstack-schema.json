@@ -1,0 +1,285 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://callstack.app/schema/v1/callstack.json",
+  "title": "Callstack Import/Export Schema",
+  "description": "Schema for .callstack.json project export files (schema version 1.x.x).",
+  "type": "object",
+  "required": ["schemaVersion", "exportedAt", "generator", "project", "folders", "requests", "environments"],
+  "additionalProperties": false,
+
+  "definitions": {
+    "keyValue": {
+      "type": "object",
+      "required": ["key", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "key":     { "type": "string" },
+        "value":   { "type": "string" },
+        "enabled": { "type": "boolean", "default": true }
+      }
+    },
+
+    "httpMethod": {
+      "type": "string",
+      "enum": ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]
+    },
+
+    "attachment": {
+      "type": "object",
+      "required": ["name", "size", "mime"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "size": { "type": "integer", "minimum": 0 },
+        "mime": { "type": "string" }
+      }
+    },
+
+    "folder": {
+      "type": "object",
+      "required": ["_ref", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "_ref": { "type": "string", "description": "Stable local reference key (e.g. 'folder-0')." },
+        "name": { "type": "string" }
+      }
+    },
+
+    "request": {
+      "type": "object",
+      "required": ["_ref", "folderRef", "name", "method", "url", "params", "headers", "body", "preScript", "postScript", "position", "attachments"],
+      "additionalProperties": false,
+      "properties": {
+        "_ref":        { "type": "string", "description": "Stable local reference key (e.g. 'req-0')." },
+        "folderRef":   { "type": ["string", "null"], "description": "Matches a folder's _ref, or null for root-level requests." },
+        "name":        { "type": "string" },
+        "method":      { "$ref": "#/definitions/httpMethod" },
+        "url":         { "type": "string" },
+        "params":      { "type": "array", "items": { "$ref": "#/definitions/keyValue" } },
+        "headers":     { "type": "array", "items": { "$ref": "#/definitions/keyValue" } },
+        "body":        { "type": "string" },
+        "preScript":   { "type": "string", "description": "JavaScript run before the request is sent." },
+        "postScript":  { "type": "string", "description": "JavaScript run after a response is received." },
+        "position":    { "type": "integer", "minimum": 0, "description": "Display order within its parent." },
+        "attachments": { "type": "array", "items": { "$ref": "#/definitions/attachment" } }
+      }
+    },
+
+    "environment": {
+      "type": "object",
+      "required": ["name", "variables"],
+      "additionalProperties": false,
+      "properties": {
+        "name":      { "type": "string" },
+        "variables": { "type": "array", "items": { "$ref": "#/definitions/keyValue" } }
+      }
+    },
+
+    "response": {
+      "type": "object",
+      "required": ["requestRef", "status", "statusText", "headers", "body", "timeMs", "size", "timestamp"],
+      "additionalProperties": false,
+      "properties": {
+        "requestRef":  { "type": "string", "description": "Matches a request's _ref." },
+        "status":      { "type": "integer" },
+        "statusText":  { "type": "string" },
+        "headers":     { "type": "array", "items": { "$ref": "#/definitions/keyValue" } },
+        "body":        { "type": "string" },
+        "timeMs":      { "type": "number", "minimum": 0 },
+        "size":        { "type": "number", "minimum": 0 },
+        "timestamp":   { "type": "number", "description": "Unix epoch milliseconds." }
+      }
+    },
+
+    "dataFile": {
+      "type": "object",
+      "required": ["_ref", "name", "content"],
+      "additionalProperties": false,
+      "properties": {
+        "_ref":    { "type": "string", "description": "Stable local reference key (e.g. 'df-0')." },
+        "name":    { "type": "string" },
+        "content": { "type": "string", "description": "Raw CSV (or other text) content." }
+      }
+    },
+
+    "branchCondition": {
+      "oneOf": [
+        {
+          "type": "object", "required": ["type"], "additionalProperties": false,
+          "properties": { "type": { "type": "string", "enum": ["lastRequestPass"] } }
+        },
+        {
+          "type": "object", "required": ["type"], "additionalProperties": false,
+          "properties": { "type": { "type": "string", "enum": ["lastRequestFail"] } }
+        },
+        {
+          "type": "object", "required": ["type", "value"], "additionalProperties": false,
+          "properties": {
+            "type":  { "type": "string", "enum": ["lastStatusGte"] },
+            "value": { "type": "integer" }
+          }
+        },
+        {
+          "type": "object", "required": ["type", "value"], "additionalProperties": false,
+          "properties": {
+            "type":  { "type": "string", "enum": ["lastStatusLt"] },
+            "value": { "type": "integer" }
+          }
+        },
+        {
+          "type": "object", "required": ["type", "key", "value"], "additionalProperties": false,
+          "properties": {
+            "type":  { "type": "string", "enum": ["emittedEquals"] },
+            "key":   { "type": "string" },
+            "value": { "type": "string" }
+          }
+        },
+        {
+          "type": "object", "required": ["type", "key"], "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string", "enum": ["emittedExists"] },
+            "key":  { "type": "string" }
+          }
+        },
+        {
+          "type": "object", "required": ["type", "key"], "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string", "enum": ["emittedTruthy"] },
+            "key":  { "type": "string" }
+          }
+        }
+      ]
+    },
+
+    "automationStep": {
+      "oneOf": [
+        {
+          "type": "object", "required": ["id", "type", "requestRef"], "additionalProperties": false,
+          "properties": {
+            "id":         { "type": "string" },
+            "type":       { "type": "string", "enum": ["request"] },
+            "requestRef": { "type": ["string", "null"], "description": "Matches a request's _ref." }
+          }
+        },
+        {
+          "type": "object", "required": ["id", "type", "delayMs"], "additionalProperties": false,
+          "properties": {
+            "id":      { "type": "string" },
+            "type":    { "type": "string", "enum": ["delay"] },
+            "delayMs": { "type": "number", "minimum": 0 }
+          }
+        },
+        {
+          "type": "object", "required": ["id", "type", "count", "steps"], "additionalProperties": false,
+          "properties": {
+            "id":    { "type": "string" },
+            "type":  { "type": "string", "enum": ["repeat"] },
+            "count": { "type": "integer", "minimum": 1 },
+            "steps": { "type": "array", "items": { "$ref": "#/definitions/automationStep" } }
+          }
+        },
+        {
+          "type": "object", "required": ["id", "type", "condition", "trueSteps", "falseSteps"], "additionalProperties": false,
+          "properties": {
+            "id":         { "type": "string" },
+            "type":       { "type": "string", "enum": ["branch"] },
+            "condition":  { "$ref": "#/definitions/branchCondition" },
+            "trueSteps":  { "type": "array", "items": { "$ref": "#/definitions/automationStep" } },
+            "falseSteps": { "type": "array", "items": { "$ref": "#/definitions/automationStep" } }
+          }
+        },
+        {
+          "type": "object", "required": ["id", "type", "dataFileRef", "steps"], "additionalProperties": false,
+          "properties": {
+            "id":          { "type": "string" },
+            "type":        { "type": "string", "enum": ["csv_iterator"] },
+            "dataFileRef": { "type": ["string", "null"], "description": "Matches a dataFile's _ref." },
+            "limit":       { "type": ["integer", "null"], "minimum": 1 },
+            "steps":       { "type": "array", "items": { "$ref": "#/definitions/automationStep" } }
+          }
+        },
+        {
+          "type": "object", "required": ["id", "type", "lanes"], "additionalProperties": false,
+          "properties": {
+            "id":    { "type": "string" },
+            "type":  { "type": "string", "enum": ["fanout"] },
+            "lanes": {
+              "type": "array",
+              "items": { "type": "array", "items": { "$ref": "#/definitions/automationStep" } }
+            }
+          }
+        },
+        {
+          "type": "object", "required": ["id", "type"], "additionalProperties": false,
+          "properties": {
+            "id":   { "type": "string" },
+            "type": { "type": "string", "enum": ["stop"] }
+          }
+        },
+        {
+          "type": "object", "required": ["id", "type", "scope", "object"], "additionalProperties": false,
+          "properties": {
+            "id":     { "type": "string" },
+            "type":   { "type": "string", "enum": ["log"] },
+            "scope":  { "type": "string" },
+            "object": { "type": "string" }
+          }
+        },
+        {
+          "type": "object", "required": ["id", "type", "envRef"], "additionalProperties": false,
+          "properties": {
+            "id":     { "type": "string" },
+            "type":   { "type": "string", "enum": ["set_env"] },
+            "envRef": { "type": ["string", "null"], "description": "Matches an environment's name." }
+          }
+        }
+      ]
+    },
+
+    "automation": {
+      "type": "object",
+      "required": ["_ref", "name", "steps"],
+      "additionalProperties": false,
+      "properties": {
+        "_ref":    { "type": "string", "description": "Stable local reference key (e.g. 'auto-0')." },
+        "name":    { "type": "string" },
+        "envName": { "type": ["string", "null"], "description": "Active environment name at the time of export." },
+        "steps":   { "type": "array", "items": { "$ref": "#/definitions/automationStep" } }
+      }
+    }
+  },
+
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^1\\.\\d+\\.\\d+$",
+      "description": "Must be 1.x.x. The importer rejects major versions > 1.",
+      "examples": ["1.0.0"]
+    },
+    "exportedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp of when the file was produced."
+    },
+    "generator": {
+      "type": "string",
+      "description": "Producer identifier, e.g. 'callstack/0.9.4'."
+    },
+    "project": {
+      "type": "object",
+      "required": ["name", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "name":                    { "type": "string" },
+        "description":             { "type": ["string", "null"] },
+        "selectedEnvironmentName": { "type": "string", "description": "Name of the environment that was active at export time." }
+      }
+    },
+    "folders":      { "type": "array", "items": { "$ref": "#/definitions/folder" } },
+    "requests":     { "type": "array", "items": { "$ref": "#/definitions/request" } },
+    "environments": { "type": "array", "items": { "$ref": "#/definitions/environment" } },
+    "automations":  { "type": "array", "items": { "$ref": "#/definitions/automation" } },
+    "dataFiles":    { "type": "array", "items": { "$ref": "#/definitions/dataFile" } },
+    "responses":    { "type": "array", "items": { "$ref": "#/definitions/response" } }
+  }
+}
