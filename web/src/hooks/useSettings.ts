@@ -20,6 +20,7 @@ export interface Settings {
   zoom: number;
   shortcuts: ActionShortcuts;
   responseHistoryLimit: number;
+  httpTimeout: number;
 }
 
 export const DEFAULTS: Settings = {
@@ -35,6 +36,7 @@ export const DEFAULTS: Settings = {
     zoomOut:      `${mod}+-`,
   },
   responseHistoryLimit: 10,
+  httpTimeout: 30,
 };
 
 function loadSettings(): Settings {
@@ -56,6 +58,7 @@ function loadSettings(): Settings {
         zoomOut:      s.zoomOut      ?? DEFAULTS.shortcuts.zoomOut,
       },
       responseHistoryLimit: parsed.responseHistoryLimit ?? DEFAULTS.responseHistoryLimit,
+      httpTimeout: parsed.httpTimeout ?? DEFAULTS.httpTimeout,
     };
   } catch {
     return DEFAULTS;
@@ -119,10 +122,18 @@ export function useSettings() {
     });
   }, []);
 
+  const setHttpTimeout = useCallback((httpTimeout: number) => {
+    setSettings((prev) => {
+      const next = { ...prev, httpTimeout };
+      saveSettings(next);
+      return next;
+    });
+  }, []);
+
   const resetSettings = useCallback(() => {
     setSettings(DEFAULTS);
     saveSettings(DEFAULTS);
   }, []);
 
-  return { settings, setZoom, setShortcut, setResponseHistoryLimit, resetSettings };
+  return { settings, setZoom, setShortcut, setResponseHistoryLimit, setHttpTimeout, resetSettings };
 }

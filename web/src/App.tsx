@@ -26,7 +26,7 @@ function clearUIState() {
 function AppContent() {
   const { state, dispatch } = useApp();
   const { loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations, listDataFiles, createRequest, duplicateRequest, getLastResponse, updateEnvironmentSecrets } = useDatabase();
-  const { settings, setZoom, setShortcut, setResponseHistoryLimit, resetSettings } = useSettings();
+  const { settings, setZoom, setShortcut, setResponseHistoryLimit, setHttpTimeout, resetSettings } = useSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [displayZoom, setDisplayZoom] = useState(settings.zoom);
   const displayZoomRef = useRef(settings.zoom);
@@ -411,6 +411,7 @@ function AppContent() {
                 showExpandBtn={sidebarCollapsed}
                 onExpand={() => setSidebarCollapsed(false)}
                 executeRef={executeRef}
+                httpTimeout={settings.httpTimeout}
                 copyFlashPane={copyFlashPane}
                 onCopyResponse={() => {
                   setCopyFlashPane('response');
@@ -445,6 +446,7 @@ function AppContent() {
           onSetZoom={setZoom}
           onSetShortcut={setShortcut}
           onSetResponseHistoryLimit={setResponseHistoryLimit}
+          onSetHttpTimeout={setHttpTimeout}
           onReset={resetSettings}
           onResetAll={() => invoke('reset_all_data')}
           onClose={() => setSettingsOpen(false)}

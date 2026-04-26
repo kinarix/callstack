@@ -93,17 +93,27 @@ const HISTORY_LIMIT_OPTIONS: { label: string; value: number }[] = [
   { label: 'Unlimited', value: 0 },
 ];
 
+const HTTP_TIMEOUT_OPTIONS: { label: string; value: number }[] = [
+  { label: '10 seconds', value: 10 },
+  { label: '30 seconds (default)', value: 30 },
+  { label: '60 seconds', value: 60 },
+  { label: '2 minutes', value: 120 },
+  { label: '5 minutes', value: 300 },
+  { label: 'No timeout', value: 0 },
+];
+
 interface SettingsModalProps {
   settings: Settings;
   onSetZoom: (zoom: number) => void;
   onSetShortcut: (action: keyof ActionShortcuts, value: string) => void;
   onSetResponseHistoryLimit: (limit: number) => void;
+  onSetHttpTimeout: (secs: number) => void;
   onReset?: () => void;
   onResetAll?: () => Promise<void>;
   onClose: () => void;
 }
 
-export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetResponseHistoryLimit, onReset, onResetAll, onClose }: SettingsModalProps) {
+export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetResponseHistoryLimit, onSetHttpTimeout, onReset, onResetAll, onClose }: SettingsModalProps) {
   const [tab, setTab] = useState<Tab>('general');
   const [recording, setRecording] = useState<keyof ActionShortcuts | null>(null);
   const [confirmingReset, setConfirmingReset] = useState(false);
@@ -306,260 +316,285 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetRespons
 
         <div className={styles.body}>
           {tab === 'general' && (
-            <>
-              <section className={styles.section}>
-                <div className={styles.sectionTitle}>Keyboard Shortcuts</div>
-                <div className={styles.sectionDesc}>
-                  Shortcuts for the currently selected request.
-                </div>
-                <div className={styles.shortcutList}>
-                  {ACTION_LABELS.map(({ key, label }) => {
-                    const isRecording = recording === key;
-                    const current = settings.shortcuts[key];
-                    return (
-                      <div key={key} className={styles.shortcutRow}>
-                        <span className={styles.shortcutLabel}>{label}</span>
-                        <button
-                          className={`${styles.shortcutCapture} ${isRecording ? styles.isRecording : ''}`}
-                          onClick={() => setRecording(key)}
-                          title="Click and press a key combination to record"
-                        >
-                          {isRecording ? (
-                            <span className={styles.recordingHint}>Press keys…</span>
-                          ) : (
-                            formatShortcut(current).split('+').map((part, i) => (
-                              <kbd key={i} className={styles.kbdBadge}>{part}</kbd>
-                            ))
-                          )}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-                {onReset && (
-                  <div className={styles.resetRow}>
-                    <button className={styles.resetBtn} onClick={onReset}>
-                      Reset all to defaults
-                    </button>
-                  </div>
-                )}
-              </section>
-
-              <section className={styles.section}>
-                <div className={styles.sectionTitle}>Zoom</div>
-                <div className={styles.sectionDesc}>
-                  Scale the entire UI for better readability.
-                </div>
-                <div className={styles.zoomOptions}>
-                  {ZOOM_OPTIONS.map(({ label, value }) => (
-                    <label key={value} className={`${styles.zoomOption} ${settings.zoom === value ? styles.zoomSelected : ''}`}>
-                      <input
-                        type="radio"
-                        name="zoom"
-                        value={value}
-                        checked={settings.zoom === value}
-                        onChange={() => onSetZoom(value)}
-                        className={styles.zoomRadio}
-                      />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-              </section>
-
-            </>
-          )}
-
-          {tab === 'data' && (
-            <>
-              <section className={styles.section}>
-                <div className={styles.sectionTitle}>Response History</div>
-                <div className={styles.sectionDesc}>
-                  Number of responses to keep per request. Older entries are automatically removed when a new response is saved.
-                </div>
-                <div className={styles.historyLimitRow}>
-                  <select
-                    className={styles.historySelect}
-                    value={settings.responseHistoryLimit}
-                    onChange={(e) => onSetResponseHistoryLimit(Number(e.target.value))}
-                  >
-                    {HISTORY_LIMIT_OPTIONS.map(({ label, value }) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </select>
-                  <div className={styles.resetRow}>
-                    {!confirmClearHistory ? (
-                      <button
-                        className={styles.resetBtn}
-                        onClick={() => setConfirmClearHistory(true)}
-                        disabled={historyCleared}
-                      >
-                        {historyCleared ? 'Cleared ✓' : 'Clear all history'}
-                      </button>
-                    ) : (
-                      <div className={styles.dangerConfirmActions}>
-                        <span className={styles.mutedText}>Deletes all saved responses.</span>
-                        <button className={styles.dangerCancelBtn} onClick={() => setConfirmClearHistory(false)}>Cancel</button>
-                        <button className={styles.dangerConfirmBtn} onClick={handleClearHistory} disabled={clearingHistory}>
-                          {clearingHistory ? 'Clearing…' : 'Yes, clear'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </section>
-
-              <section className={styles.section}>
-                <div className={styles.sectionTitle}>Database</div>
-                <div className={styles.sectionDesc}>
-                  Contents of your local SQLite database.
-                </div>
-                {dbStatsError ? (
-                  <div className={styles.errorText}>Failed to load: {dbStatsError}</div>
-                ) : !dbStats ? (
-                  <div className={styles.mutedText}>Loading…</div>
-                ) : (
-                  <>
-                    <div className={styles.statsGrid}>
-                      <div className={styles.statCell}><span className={styles.statLabel}>Projects</span><span className={styles.statValue}>{dbStats.projects}</span></div>
-                      <div className={styles.statCell}><span className={styles.statLabel}>Folders</span><span className={styles.statValue}>{dbStats.folders}</span></div>
-                      <div className={styles.statCell}><span className={styles.statLabel}>Requests</span><span className={styles.statValue}>{dbStats.requests}</span></div>
-                      <div className={styles.statCell}><span className={styles.statLabel}>Responses</span><span className={styles.statValue}>{dbStats.responses}</span></div>
-                      <div className={styles.statCell}><span className={styles.statLabel}>Environments</span><span className={styles.statValue}>{dbStats.environments}</span></div>
-                      <div className={styles.statCell}><span className={styles.statLabel}>Data files</span><span className={styles.statValue}>{dbStats.data_files}</span></div>
-                      <div className={styles.statCell}><span className={styles.statLabel}>Automations</span><span className={styles.statValue}>{dbStats.automations}</span></div>
-                      <div className={styles.statCell}><span className={styles.statLabel}>Automation runs</span><span className={styles.statValue}>{dbStats.automation_runs}</span></div>
-                      <div className={styles.statCell}><span className={styles.statLabel}>DB size</span><span className={styles.statValue}>{formatBytes(dbStats.dbSizeBytes)}</span></div>
-                    </div>
-                    {dbStats.tableSizes.length > 0 && (
-                      <div className={styles.tableSizes}>
-                        <div className={styles.tableSizesTitle}>Table sizes</div>
-                        {dbStats.tableSizes.map((t) => (
-                          <div key={t.name} className={styles.tableSizeRow}>
-                            <span className={styles.tableSizeName}>{t.name}</span>
-                            <span className={styles.tableSizeVal}>{formatBytes(t.sizeBytes)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div className={styles.compactRow}>
-                      <button className={styles.compactBtn} onClick={handleCompact} disabled={compacting}>
-                        {compacting ? 'Compacting…' : compactDone ? 'Done' : 'Compact database'}
-                      </button>
-                      <span className={styles.compactDesc}>Runs VACUUM to reclaim space from deleted records</span>
-                    </div>
-                    <div className={styles.dbPathRow} title={dbStats.dbPath}>{dbStats.dbPath}</div>
-                  </>
-                )}
-              </section>
-
-              <section className={styles.section}>
-                <div className={styles.sectionTitle}>UI State ({lsInfo.entries.length} keys, {formatBytes(lsInfo.totalBytes)})</div>
-                <div className={styles.sectionDesc}>
-                  Per-user interface state stored in localStorage (tabs, panel sizes, last-selected items, etc.).
-                </div>
-                <div className={styles.lsList}>
-                  {lsInfo.entries.map((e) => (
-                    <div key={e.key} className={styles.lsRow}>
-                      <button
-                        className={styles.lsRowHead}
-                        onClick={() => setExpandedLsKey(expandedLsKey === e.key ? null : e.key)}
-                      >
-                        <span className={styles.lsKey}>{e.key}</span>
-                        <span className={styles.lsSize}>{formatBytes(e.size)}</span>
-                      </button>
-                      {expandedLsKey === e.key && (
-                        <pre className={styles.lsValue}>{e.value.length > 500 ? e.value.slice(0, 500) + '…' : e.value}</pre>
-                      )}
-                    </div>
-                  ))}
-                  {lsInfo.entries.length === 0 && (
-                    <div className={styles.mutedText}>No UI state stored.</div>
-                  )}
-                </div>
-                <div className={styles.resetRow}>
-                  {!confirmClearUi ? (
-                    <button className={styles.resetBtn} onClick={() => setConfirmClearUi(true)}>
-                      Clear UI state
-                    </button>
-                  ) : (
-                    <div className={styles.dangerConfirmActions}>
-                      <span className={styles.mutedText}>Clears all UI state and reloads. Data is not affected.</span>
-                      <button className={styles.dangerCancelBtn} onClick={() => setConfirmClearUi(false)}>Cancel</button>
-                      <button className={styles.dangerConfirmBtn} onClick={handleClearUiState}>Yes, clear</button>
-                    </div>
-                  )}
-                </div>
-              </section>
-
-              <section className={styles.section}>
-                <div className={styles.debugHeader}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden className={styles.debugIcon}>
-                    <path d="M8 1v2M8 13v2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M1 8h2M13 8h2M3.5 12.5l1.4-1.4M11.1 4.9l1.4-1.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-                    <rect x="5" y="5" width="6" height="7" rx="2" stroke="currentColor" strokeWidth="1.2" fill="none"/>
-                    <path d="M7 8h2M7 10h2" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-                  </svg>
-                  <div className={styles.sectionTitle}>Debug</div>
-                </div>
-                <div className={styles.sectionDesc}>
-                  For debugging purposes only. Share the snapshot with support or paste it when reporting state-related issues.
-                </div>
-                <div className={styles.debugBtnRow}>
-                  <button
-                    className={styles.resetBtn}
-                    onClick={handleCopySnapshot}
-                    title="Copy DB stats and all UI state as JSON (small, safe to share)"
-                  >
-                    {copiedSnapshot ? 'Copied ✓' : 'Copy UI snapshot'}
-                  </button>
-                  <button
-                    className={styles.resetBtn}
-                    onClick={handleCopyFullSnapshot}
-                    disabled={copyingFull}
-                    title="Copy everything including full database contents (may be large)"
-                  >
-                    {copiedFullSnapshot ? 'Copied ✓' : copyingFull ? 'Copying…' : 'Copy full snapshot (with DB)'}
-                  </button>
-                </div>
-              </section>
-
-              {onResetAll && (
+            <div className={styles.columns}>
+              <div className={styles.column}>
                 <section className={styles.section}>
-                  <div className={styles.sectionTitle}>Danger Zone</div>
-                  {!confirmingReset ? (
-                    <div className={styles.dangerRow}>
-                      <div className={styles.dangerInfo}>
-                        <span className={styles.dangerLabel}>Reset all data</span>
-                        <span className={styles.dangerDesc}>Permanently deletes all projects, requests, environments, automations and responses. The app will restart.</span>
-                      </div>
-                      <button className={styles.dangerBtn} onClick={handleResetAllClick}>
-                        Reset
+                  <div className={styles.sectionTitle}>Keyboard Shortcuts</div>
+                  <div className={styles.sectionDesc}>
+                    Shortcuts for the currently selected request.
+                  </div>
+                  <div className={styles.shortcutList}>
+                    {ACTION_LABELS.map(({ key, label }) => {
+                      const isRecording = recording === key;
+                      const current = settings.shortcuts[key];
+                      return (
+                        <div key={key} className={styles.shortcutRow}>
+                          <span className={styles.shortcutLabel}>{label}</span>
+                          <button
+                            className={`${styles.shortcutCapture} ${isRecording ? styles.isRecording : ''}`}
+                            onClick={() => setRecording(key)}
+                            title="Click and press a key combination to record"
+                          >
+                            {isRecording ? (
+                              <span className={styles.recordingHint}>Press keys…</span>
+                            ) : (
+                              formatShortcut(current).split('+').map((part, i) => (
+                                <kbd key={i} className={styles.kbdBadge}>{part}</kbd>
+                              ))
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {onReset && (
+                    <div className={styles.resetRow}>
+                      <button className={styles.resetBtn} onClick={onReset}>
+                        Reset all to defaults
                       </button>
-                    </div>
-                  ) : (
-                    <div className={styles.dangerConfirm}>
-                      <span className={styles.dangerConfirmText}>This cannot be undone. Are you sure?</span>
-                      <div className={styles.dangerConfirmActions}>
-                        <button
-                          className={styles.dangerCancelBtn}
-                          onClick={() => setConfirmingReset(false)}
-                          disabled={resetting}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          className={styles.dangerConfirmBtn}
-                          onClick={handleResetAllConfirm}
-                          disabled={resetting}
-                        >
-                          {resetting ? 'Resetting…' : 'Yes, reset everything'}
-                        </button>
-                      </div>
                     </div>
                   )}
                 </section>
-              )}
-            </>
+              </div>
+
+              <div className={styles.column}>
+                <section className={styles.section}>
+                  <div className={styles.sectionTitle}>Zoom</div>
+                  <div className={styles.sectionDesc}>
+                    Scale the entire UI for better readability.
+                  </div>
+                  <div className={styles.zoomOptions}>
+                    {ZOOM_OPTIONS.map(({ label, value }) => (
+                      <label key={value} className={`${styles.zoomOption} ${settings.zoom === value ? styles.zoomSelected : ''}`}>
+                        <input
+                          type="radio"
+                          name="zoom"
+                          value={value}
+                          checked={settings.zoom === value}
+                          onChange={() => onSetZoom(value)}
+                          className={styles.zoomRadio}
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                </section>
+
+                <section className={styles.section}>
+                  <div className={styles.sectionTitle}>HTTP Timeout</div>
+                  <div className={styles.sectionDesc}>
+                    Maximum time to wait for a response before cancelling the request.
+                  </div>
+                  <div className={styles.historyLimitRow}>
+                    <select
+                      className={styles.historySelect}
+                      value={settings.httpTimeout}
+                      onChange={(e) => onSetHttpTimeout(Number(e.target.value))}
+                    >
+                      {HTTP_TIMEOUT_OPTIONS.map(({ label, value }) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </section>
+              </div>
+            </div>
+          )}
+
+          {tab === 'data' && (
+            <div className={styles.columns}>
+              <div className={styles.column}>
+                <section className={styles.section}>
+                  <div className={styles.sectionTitle}>Response History</div>
+                  <div className={styles.sectionDesc}>
+                    Number of responses to keep per request. Older entries are automatically removed when a new response is saved.
+                  </div>
+                  <div className={styles.historyLimitRow}>
+                    <select
+                      className={styles.historySelect}
+                      value={settings.responseHistoryLimit}
+                      onChange={(e) => onSetResponseHistoryLimit(Number(e.target.value))}
+                    >
+                      {HISTORY_LIMIT_OPTIONS.map(({ label, value }) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </select>
+                    <div className={styles.resetRow}>
+                      {!confirmClearHistory ? (
+                        <button
+                          className={styles.resetBtn}
+                          onClick={() => setConfirmClearHistory(true)}
+                          disabled={historyCleared}
+                        >
+                          {historyCleared ? 'Cleared ✓' : 'Clear all history'}
+                        </button>
+                      ) : (
+                        <div className={styles.dangerConfirmActions}>
+                          <span className={styles.mutedText}>Deletes all saved responses.</span>
+                          <button className={styles.dangerCancelBtn} onClick={() => setConfirmClearHistory(false)}>Cancel</button>
+                          <button className={styles.dangerConfirmBtn} onClick={handleClearHistory} disabled={clearingHistory}>
+                            {clearingHistory ? 'Clearing…' : 'Yes, clear'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </section>
+
+                <section className={styles.section}>
+                  <div className={styles.sectionTitle}>Database</div>
+                  <div className={styles.sectionDesc}>
+                    Contents of your local SQLite database.
+                  </div>
+                  {dbStatsError ? (
+                    <div className={styles.errorText}>Failed to load: {dbStatsError}</div>
+                  ) : !dbStats ? (
+                    <div className={styles.mutedText}>Loading…</div>
+                  ) : (
+                    <>
+                      <div className={styles.statsGrid}>
+                        <div className={styles.statCell}><span className={styles.statLabel}>Projects</span><span className={styles.statValue}>{dbStats.projects}</span></div>
+                        <div className={styles.statCell}><span className={styles.statLabel}>Folders</span><span className={styles.statValue}>{dbStats.folders}</span></div>
+                        <div className={styles.statCell}><span className={styles.statLabel}>Requests</span><span className={styles.statValue}>{dbStats.requests}</span></div>
+                        <div className={styles.statCell}><span className={styles.statLabel}>Responses</span><span className={styles.statValue}>{dbStats.responses}</span></div>
+                        <div className={styles.statCell}><span className={styles.statLabel}>Environments</span><span className={styles.statValue}>{dbStats.environments}</span></div>
+                        <div className={styles.statCell}><span className={styles.statLabel}>Data files</span><span className={styles.statValue}>{dbStats.data_files}</span></div>
+                        <div className={styles.statCell}><span className={styles.statLabel}>Automations</span><span className={styles.statValue}>{dbStats.automations}</span></div>
+                        <div className={styles.statCell}><span className={styles.statLabel}>Automation runs</span><span className={styles.statValue}>{dbStats.automation_runs}</span></div>
+                        <div className={styles.statCell}><span className={styles.statLabel}>DB size</span><span className={styles.statValue}>{formatBytes(dbStats.dbSizeBytes)}</span></div>
+                      </div>
+                      {dbStats.tableSizes.length > 0 && (
+                        <div className={styles.tableSizes}>
+                          <div className={styles.tableSizesTitle}>Table sizes</div>
+                          {dbStats.tableSizes.map((t) => (
+                            <div key={t.name} className={styles.tableSizeRow}>
+                              <span className={styles.tableSizeName}>{t.name}</span>
+                              <span className={styles.tableSizeVal}>{formatBytes(t.sizeBytes)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className={styles.compactRow}>
+                        <button className={styles.compactBtn} onClick={handleCompact} disabled={compacting}>
+                          {compacting ? 'Compacting…' : compactDone ? 'Done' : 'Compact database'}
+                        </button>
+                        <span className={styles.compactDesc}>Runs VACUUM to reclaim space from deleted records</span>
+                      </div>
+                      <div className={styles.dbPathRow} title={dbStats.dbPath}>{dbStats.dbPath}</div>
+                    </>
+                  )}
+                </section>
+              </div>
+
+              <div className={styles.column}>
+                <section className={styles.section}>
+                  <div className={styles.sectionTitle}>UI State ({lsInfo.entries.length} keys, {formatBytes(lsInfo.totalBytes)})</div>
+                  <div className={styles.sectionDesc}>
+                    Per-user interface state stored in localStorage (tabs, panel sizes, last-selected items, etc.).
+                  </div>
+                  <div className={styles.lsList}>
+                    {lsInfo.entries.map((e) => (
+                      <div key={e.key} className={styles.lsRow}>
+                        <button
+                          className={styles.lsRowHead}
+                          onClick={() => setExpandedLsKey(expandedLsKey === e.key ? null : e.key)}
+                        >
+                          <span className={styles.lsKey}>{e.key}</span>
+                          <span className={styles.lsSize}>{formatBytes(e.size)}</span>
+                        </button>
+                        {expandedLsKey === e.key && (
+                          <pre className={styles.lsValue}>{e.value.length > 500 ? e.value.slice(0, 500) + '…' : e.value}</pre>
+                        )}
+                      </div>
+                    ))}
+                    {lsInfo.entries.length === 0 && (
+                      <div className={styles.mutedText}>No UI state stored.</div>
+                    )}
+                  </div>
+                  <div className={styles.resetRow}>
+                    {!confirmClearUi ? (
+                      <button className={styles.resetBtn} onClick={() => setConfirmClearUi(true)}>
+                        Clear UI state
+                      </button>
+                    ) : (
+                      <div className={styles.dangerConfirmActions}>
+                        <span className={styles.mutedText}>Clears all UI state and reloads. Data is not affected.</span>
+                        <button className={styles.dangerCancelBtn} onClick={() => setConfirmClearUi(false)}>Cancel</button>
+                        <button className={styles.dangerConfirmBtn} onClick={handleClearUiState}>Yes, clear</button>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                <section className={styles.section}>
+                  <div className={styles.debugHeader}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden className={styles.debugIcon}>
+                      <path d="M8 1v2M8 13v2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M1 8h2M13 8h2M3.5 12.5l1.4-1.4M11.1 4.9l1.4-1.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                      <rect x="5" y="5" width="6" height="7" rx="2" stroke="currentColor" strokeWidth="1.2" fill="none"/>
+                      <path d="M7 8h2M7 10h2" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+                    </svg>
+                    <div className={styles.sectionTitle}>Debug</div>
+                  </div>
+                  <div className={styles.sectionDesc}>
+                    For debugging purposes only. Share the snapshot with support or paste it when reporting state-related issues.
+                  </div>
+                  <div className={styles.debugBtnRow}>
+                    <button
+                      className={styles.resetBtn}
+                      onClick={handleCopySnapshot}
+                      title="Copy DB stats and all UI state as JSON (small, safe to share)"
+                    >
+                      {copiedSnapshot ? 'Copied ✓' : 'Copy UI snapshot'}
+                    </button>
+                    <button
+                      className={styles.resetBtn}
+                      onClick={handleCopyFullSnapshot}
+                      disabled={copyingFull}
+                      title="Copy everything including full database contents (may be large)"
+                    >
+                      {copiedFullSnapshot ? 'Copied ✓' : copyingFull ? 'Copying…' : 'Copy full snapshot (with DB)'}
+                    </button>
+                  </div>
+                </section>
+
+                {onResetAll && (
+                  <section className={styles.section}>
+                    <div className={styles.sectionTitle}>Danger Zone</div>
+                    {!confirmingReset ? (
+                      <div className={styles.dangerRow}>
+                        <div className={styles.dangerInfo}>
+                          <span className={styles.dangerLabel}>Reset all data</span>
+                          <span className={styles.dangerDesc}>Permanently deletes all projects, requests, environments, automations and responses. The app will restart.</span>
+                        </div>
+                        <button className={styles.dangerBtn} onClick={handleResetAllClick}>
+                          Reset
+                        </button>
+                      </div>
+                    ) : (
+                      <div className={styles.dangerConfirm}>
+                        <span className={styles.dangerConfirmText}>This cannot be undone. Are you sure?</span>
+                        <div className={styles.dangerConfirmActions}>
+                          <button
+                            className={styles.dangerCancelBtn}
+                            onClick={() => setConfirmingReset(false)}
+                            disabled={resetting}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            className={styles.dangerConfirmBtn}
+                            onClick={handleResetAllConfirm}
+                            disabled={resetting}
+                          >
+                            {resetting ? 'Resetting…' : 'Yes, reset everything'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </section>
+                )}
+              </div>
+            </div>
           )}
 
         </div>
