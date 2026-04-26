@@ -12,6 +12,7 @@ interface SendOptions {
   attachments: FileAttachment[];
   projectId: number | null;
   useCookieJar: boolean;
+  timeoutSecs: number;
 }
 
 interface SendResult {

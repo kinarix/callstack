@@ -22,6 +22,7 @@ interface RequestBuilderProps {
   onCopyResponse?: () => void;
   onRequestFocus?: () => void;
   onResponseFocus?: () => void;
+  httpTimeout?: number;
 }
 
 interface UrlError {
@@ -170,7 +171,7 @@ function validateBody(body: string, contentType: string): string | null {
 }
 
 
-export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, copyFlashPane, onCopyResponse, onRequestFocus, onResponseFocus }: RequestBuilderProps) {
+export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, copyFlashPane, onCopyResponse, onRequestFocus, onResponseFocus, httpTimeout }: RequestBuilderProps) {
   const { state, dispatch } = useApp();
   const { send, cancelRequest } = useHttpClient();
   const { updateRequest, saveResponse, updateEnvironment, updateEnvironmentSecrets } = useDatabase();
@@ -560,6 +561,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         attachments: files,
         projectId: state.currentProjectId,
         useCookieJar,
+        timeoutSecs: httpTimeout ?? settings.httpTimeout,
       });
 
       // Run post-request script

@@ -70,6 +70,7 @@ async fn execute_request(
     body: String,
     follow_redirects: bool,
     attachments: Vec<FileAttachment>,
+    timeout_secs: u64,
 ) -> Result<SendResponse, String> {
     let normalized = if url.starts_with("http://") || url.starts_with("https://") {
         url.clone()
@@ -92,13 +93,17 @@ async fn execute_request(
     }
 
     // Always use Policy::none() — we follow redirects manually so we can capture Set-Cookie from each hop
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
+    let mut client_builder = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
-        .cookie_store(true)
+        .cookie_store(true);
+    client_builder = if timeout_secs == 0 {
+        client_builder
+    } else {
+        client_builder.timeout(std::time::Duration::from_secs(timeout_secs))
+    };
+    let client = client_builder
         .build()
         .map_err(|e| format!("Failed to create client: {e}"))?;
-
     let reqwest_method = method
         .parse::<reqwest::Method>()
         .map_err(|e| format!("Invalid method: {e}"))?;
@@ -424,6 +429,7 @@ pub async fn send_request(
     attachments: Vec<FileAttachment>,
     project_id: Option<i64>,
     use_cookie_jar: bool,
+    timeout_secs: u64,
 ) -> Result<SendResponse, String> {
     let url_str = url.clone();
 
@@ -446,7 +452,7 @@ pub async fn send_request(
     }
 
     let handle = tokio::spawn(execute_request(
-        method, url, params, headers, body, follow_redirects, attachments,
+        method, url, params, headers, body, follow_redirects, attachments, timeout_secs,
     ));
     {
         let mut g = cancel_state.0.lock().await;
