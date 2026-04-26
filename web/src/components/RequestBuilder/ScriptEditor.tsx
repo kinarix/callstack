@@ -285,6 +285,21 @@ const SIGNATURES: Record<string, SigDef> = {
     params: ['key: string', 'value: any'],
     doc: 'Emit a short-lived run-scoped value for use in automation branch conditions.',
   },
+  Error: {
+    sig: 'Error(message)',
+    params: ['message: string'],
+    doc: 'Standard JS error. Throw inside test() to mark it as failed (severity: error).',
+  },
+  Warn: {
+    sig: 'Warn(message)',
+    params: ['message: string'],
+    doc: 'Callstack warning class. Throw inside test() to mark as failed (severity: warning).',
+  },
+  Success: {
+    sig: 'Success(message)',
+    params: ['message: string'],
+    doc: 'Callstack success class. Throw inside test() to mark as passed (severity: success).',
+  },
 };
 
 // ── Signature help state field ────────────────────────────────────────────────
@@ -460,6 +475,36 @@ function makeCompletionSource(isPost: boolean, envVarKeys: string[] = [], secret
       };
     }
 
+    // Constructor completions after `throw new` or bare `new`
+    const newCtorMatch = ctx.matchBefore(/(?:throw\s+new|new)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)?/);
+    if (newCtorMatch) {
+      const lastSpace = newCtorMatch.text.lastIndexOf(' ');
+      return {
+        from: newCtorMatch.from + lastSpace + 1,
+        options: [
+          snippetCompletion('Error(${1:message})', {
+            label: 'Error',
+            detail: '(message)',
+            info: 'Throw inside test() to mark as failed (severity: error).',
+            type: 'class',
+          }),
+          snippetCompletion('Warn(${1:message})', {
+            label: 'Warn',
+            detail: '(message)',
+            info: 'Throw inside test() to mark as failed (severity: warning).',
+            type: 'class',
+          }),
+          snippetCompletion('Success(${1:message})', {
+            label: 'Success',
+            detail: '(message)',
+            info: 'Throw inside test() to mark as passed (severity: success).',
+            type: 'class',
+          }),
+        ],
+        validFor: /^[a-zA-Z_$][a-zA-Z0-9_$]*$/,
+      };
+    }
+
     // Top-level identifiers
     const word = ctx.matchBefore(/[a-zA-Z_$][a-zA-Z0-9_$]*/);
     if (!word && !ctx.explicit) return null;
@@ -507,6 +552,18 @@ function makeCompletionSource(isPost: boolean, envVarKeys: string[] = [], secret
         detail: '(key, value)',
         info: 'Emit a short-lived run-scoped value for use in automation branch conditions.',
         type: 'function',
+      }),
+      snippetCompletion('Success(${1:message})', {
+        label: 'Success',
+        detail: '(message) extends Error',
+        info: 'Throw inside test() to mark as passed (severity: success).',
+        type: 'class',
+      }),
+      snippetCompletion('Warn(${1:message})', {
+        label: 'Warn',
+        detail: '(message) extends Error',
+        info: 'Throw inside test() to mark as failed (severity: warning).',
+        type: 'class',
       }),
     ];
 

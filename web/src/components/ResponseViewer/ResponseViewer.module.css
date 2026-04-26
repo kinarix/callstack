@@ -286,6 +286,12 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+
+.responseEditorWrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   zoom: calc(1 / var(--app-zoom, 1));
 }
 
@@ -328,17 +334,17 @@
   color: var(--syntax-property);
 }
 
-.responseEditor :global(.cm-editor) {
+.responseEditorWrap :global(.cm-editor) {
   height: 100%;
   border: none;
   background: transparent;
+  font-size: calc(12px * var(--app-zoom, 1));
 }
 
-.responseEditor :global(.cm-scroller) {
+.responseEditorWrap :global(.cm-scroller) {
   overflow: auto;
   height: 100%;
   font-family: 'JetBrains Mono', monospace;
-  font-size: calc(12px * var(--app-zoom, 1));
 }
 
 .flashCopy {
