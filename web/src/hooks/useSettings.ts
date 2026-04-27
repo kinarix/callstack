@@ -26,7 +26,7 @@ export interface Settings {
 export const DEFAULTS: Settings = {
   zoom: 1,
   shortcuts: {
-    execute:      `${mod}+x`,
+    execute:      `${mod}+Enter`,
     rename:       `${mod}+r`,
     newRequest:   `${mod}+n`,
     copyResponse: `${mod}+c`,

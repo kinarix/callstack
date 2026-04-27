@@ -2,16 +2,23 @@ import type { KeyValue, TestResult } from '../lib/types';
 
 // Error classes for test severity levels
 class Warn extends Error {
-  constructor(message: string) {
-    super(message);
+  constructor(...args: unknown[]) {
+    super(args.map(safeStringify).join(' '));
     this.name = 'Warn';
   }
 }
 
 class Success extends Error {
-  constructor(message: string) {
-    super(message);
+  constructor(...args: unknown[]) {
+    super(args.map(safeStringify).join(' '));
     this.name = 'Success';
+  }
+}
+
+class ScriptError extends Error {
+  constructor(...args: unknown[]) {
+    super(args.map(safeStringify).join(' '));
+    this.name = 'Error';
   }
 }
 
@@ -171,8 +178,8 @@ export function runScript(
 
   try {
     // eslint-disable-next-line no-new-func
-    const fn = new Function('request', 'response', 'console', 'test', 'env', 'Warn', 'Success', 'emit', script);
-    fn(requestClone, responseCopy, consoleMock, testFn, envObj, Warn, Success, emitFn);
+    const fn = new Function('request', 'response', 'console', 'test', 'env', 'Warn', 'Success', 'emit', 'Error', script);
+    fn(requestClone, responseCopy, consoleMock, testFn, envObj, Warn, Success, emitFn, ScriptError);
   } catch (e) {
     const errMsg = e instanceof Error ? e.message : String(e);
     logs.push('[error] Script error: ' + errMsg);
