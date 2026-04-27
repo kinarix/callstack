@@ -273,15 +273,15 @@ function AppContent() {
         return;
       }
 
-      // Don't fire when typing in inputs / textareas
-      const tag = (e.target as HTMLElement).tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement).isContentEditable) return;
-
       if (matchesShortcut(e, settings.shortcuts.execute)) {
         e.preventDefault();
         executeRef.current?.();
         return;
       }
+
+      // Don't fire when typing in inputs / textareas
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement).isContentEditable) return;
 
       const currentId = state.currentRequestId;
 
