@@ -78,6 +78,7 @@
   background: transparent;
   cursor: pointer;
   padding: 0;
+  margin-right: 4px;
   transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
@@ -424,4 +425,85 @@
   color: var(--text-tertiary);
   font-size: 12px;
   text-align: center;
+}
+
+/* ── User-Agent preset picker ── */
+.presetWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.presetBtn {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-tertiary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+  white-space: nowrap;
+}
+
+.presetBtn:hover,
+.presetBtnOpen {
+  border-color: var(--accent-post);
+  color: var(--accent-post);
+  background: color-mix(in srgb, var(--accent-post) 8%, var(--bg-secondary));
+}
+
+.presetDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 100;
+  min-width: 320px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.presetOption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px var(--space-2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition-fast);
+}
+
+.presetOption:not(:last-child) {
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.presetOption:hover {
+  background: var(--bg-hover);
+}
+
+.presetLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+}
+
+.presetValue {
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
 }

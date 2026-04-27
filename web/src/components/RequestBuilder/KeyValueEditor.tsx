@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState, useEffect, useMemo } from 'react';
 import type { KeyValue } from '../../lib/types';
 import { BinIcon } from '../Sidebar/SidebarIcons';
 import { TemplateInput } from './TemplateInput';
@@ -7,11 +7,24 @@ import { JwtBadge } from '../JwtBadge/JwtBadge';
 import { resolveTemplate } from '../../lib/template';
 import styles from './KeyValueEditor.module.css';
 
+const USER_AGENT_PRESETS = [
+  { label: 'Callstack', value: 'Callstack/1.0' },
+  { label: 'Chrome (macOS)', value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36' },
+  { label: 'Chrome (Windows)', value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36' },
+  { label: 'Safari (macOS)', value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15' },
+  { label: 'Firefox', value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:125.0) Gecko/20100101 Firefox/125.0' },
+  { label: 'Edge', value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0' },
+  { label: 'curl', value: 'curl/8.7.1' },
+  { label: 'Python requests', value: 'python-requests/2.31.0' },
+  { label: 'Postman', value: 'PostmanRuntime/7.37.0' },
+];
+
 interface KeyValueEditorProps {
   items: KeyValue[];
   onChange: (items: KeyValue[]) => void;
   readOnly?: boolean;
   hideActions?: boolean;
+  hideAdd?: boolean;
   markedKeys?: Set<string>;
   disabledKeys?: Set<string>;
   envVars?: KeyValue[];
@@ -24,6 +37,7 @@ export function KeyValueEditor({
   onChange,
   readOnly = false,
   hideActions = false,
+  hideAdd = false,
   markedKeys,
   disabledKeys,
   envVars = [],
@@ -32,7 +46,10 @@ export function KeyValueEditor({
 }: KeyValueEditorProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [confirmIndex, setConfirmIndex] = useState<number | null>(null);
+  const [uaPresetsOpen, setUaPresetsOpen] = useState(false);
   const editRowRef = useRef<HTMLDivElement>(null);
+  const uaDropdownRef = useRef<HTMLDivElement>(null);
+  const allVars = useMemo(() => [...envVars, ...secrets], [envVars, secrets]);
 
   // Pills for all non-readonly cases; hideActions suppresses edit/delete within pills
   const usePills = !readOnly;
@@ -69,9 +86,21 @@ export function KeyValueEditor({
     setTimeout(() => {
       if (editRowRef.current && !editRowRef.current.contains(document.activeElement)) {
         setEditingIndex(null);
+        setUaPresetsOpen(false);
       }
     }, 0);
   }, []);
+
+  useEffect(() => {
+    if (!uaPresetsOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (uaDropdownRef.current && !uaDropdownRef.current.contains(e.target as Node)) {
+        setUaPresetsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [uaPresetsOpen]);
 
   // For rows mode: auto-focus key input of newly added row
   const newKeyRef = useRef<HTMLInputElement | null>(null);
@@ -128,7 +157,7 @@ export function KeyValueEditor({
               }
 
               // Pill display mode
-              const resolved = resolveTemplate(item.value, [...envVars, ...secrets]);
+              const resolved = resolveTemplate(item.value, allVars);
               const hasJwt = isJwt(resolved);
               return (
                 <div
@@ -170,7 +199,7 @@ export function KeyValueEditor({
             }
 
             // Edit row (rows mode, or pill currently being edited)
-            const resolved = resolveTemplate(item.value, [...envVars, ...secrets]);
+            const resolved = resolveTemplate(item.value, allVars);
             return (
               <div
                 key={index}
@@ -203,10 +232,15 @@ export function KeyValueEditor({
                   autoCorrect="off"
                   autoCapitalize="off"
                   spellCheck={false}
-                  autoFocus={usePills && editingIndex === index}
                   ref={!usePills && index === items.length - 1 ? newKeyRef : null}
                   onKeyDown={(e) => {
-                    if (usePills && e.key === 'Escape') setEditingIndex(null);
+                    if (!usePills) return;
+                    if (e.key === 'Escape' || e.key === 'Enter') {
+                      setEditingIndex(null);
+                    } else if (e.key === 'Tab' && e.shiftKey && index > 0) {
+                      e.preventDefault();
+                      setEditingIndex(index - 1);
+                    }
                   }}
                 />
                 <TemplateInput
@@ -216,7 +250,53 @@ export function KeyValueEditor({
                   envVars={envVars}
                   secrets={secrets}
                   disabled={readOnly}
+                  autoFocus={usePills && editingIndex === index}
+                  onKeyDown={(e) => {
+                    if (!usePills) return;
+                    if (e.key === 'Escape' || e.key === 'Enter') {
+                      setEditingIndex(null);
+                    } else if (e.key === 'Tab' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (index + 1 < items.length) {
+                        setEditingIndex(index + 1);
+                      } else {
+                        handleAdd();
+                      }
+                    }
+                  }}
                 />
+                {usePills && editingIndex === index && item.key.toLowerCase() === 'user-agent' && (
+                  <div className={styles.presetWrap} ref={uaDropdownRef}>
+                    <button
+                      className={`${styles.presetBtn} ${uaPresetsOpen ? styles.presetBtnOpen : ''}`}
+                      onClick={() => setUaPresetsOpen(v => !v)}
+                      title="User-Agent presets"
+                      tabIndex={-1}
+                      type="button"
+                    >
+                      Presets
+                    </button>
+                    {uaPresetsOpen && (
+                      <div className={styles.presetDropdown}>
+                        {USER_AGENT_PRESETS.map((p) => (
+                          <button
+                            key={p.label}
+                            className={styles.presetOption}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleValueChange(index, p.value);
+                              setUaPresetsOpen(false);
+                            }}
+                            type="button"
+                          >
+                            <span className={styles.presetLabel}>{p.label}</span>
+                            <span className={styles.presetValue}>{p.value}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {isJwt(resolved) && <JwtBadge token={resolved} />}
                 {!readOnly && !hideActions && (
                   <button
@@ -232,7 +312,7 @@ export function KeyValueEditor({
             );
           })}
         </div>
-        {!readOnly && !hideActions && (
+        {!readOnly && !hideActions && !hideAdd && (
           <div className={styles.addRow}>
             <button className={styles.addBtn} onClick={handleAdd}>
               + Add

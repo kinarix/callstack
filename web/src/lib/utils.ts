@@ -43,17 +43,13 @@ export function formatBytes(bytes: number): string {
 
 export function getImplicitDefaults(url: string, bodyLength?: number): KeyValue[] {
   const implicit: KeyValue[] = [];
-  try {
-    implicit.push({ key: 'Host', value: new URL(url).host, enabled: true });
-  } catch {}
+  let parsed: URL | null = null;
+  try { parsed = new URL(url); } catch {}
+  implicit.push({ key: 'Host', value: parsed?.host ?? '', enabled: true });
   implicit.push({ key: 'User-Agent', value: 'Callstack/1.0', enabled: true });
   implicit.push({ key: 'Accept', value: '*/*', enabled: true });
   implicit.push({ key: 'Accept-Encoding', value: 'gzip, deflate, br', enabled: true });
-  implicit.push({ key: 'Cache-Control', value: 'no-cache', enabled: true });
-  try {
-    const origin = new URL(url).origin;
-    if (origin && origin !== 'null') implicit.push({ key: 'Origin', value: origin, enabled: true });
-  } catch {}
+  implicit.push({ key: 'Origin', value: (parsed && parsed.origin !== 'null') ? parsed.origin : '', enabled: true });
   if (bodyLength != null && bodyLength > 0) {
     implicit.push({ key: 'Content-Length', value: String(bodyLength), enabled: true });
   }

@@ -154,10 +154,27 @@
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  max-height: 160px;
-  border-bottom: 1px solid var(--border-primary);
   background: var(--bg-secondary);
   overflow: hidden;
+}
+
+.resizer {
+  flex-shrink: 0;
+  height: 5px;
+  cursor: ns-resize;
+  background: transparent;
+  border-top: 1px solid var(--border-primary);
+  transition: background 0.1s;
+  position: relative;
+  z-index: 1;
+}
+
+.resizer:hover {
+  background: color-mix(in srgb, var(--accent-get) 12%, transparent);
+}
+
+.resizerActive {
+  background: color-mix(in srgb, var(--accent-get) 22%, transparent);
 }
 
 .pinnedHeader {
@@ -252,6 +269,7 @@
 /* Body pane */
 .body {
   flex: 1;
+  min-height: 0;
   padding: var(--space-2);
   overflow: hidden;
   display: flex;

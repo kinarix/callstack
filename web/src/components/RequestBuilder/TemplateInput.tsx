@@ -10,6 +10,7 @@ interface TemplateInputProps {
   envVars?: KeyValue[];
   secrets?: KeyValue[];
   disabled?: boolean;
+  autoFocus?: boolean;
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
 }
@@ -28,6 +29,7 @@ export function TemplateInput({
   envVars = [],
   secrets = [],
   disabled = false,
+  autoFocus = false,
   onKeyDown: onKeyDownProp,
   onBlur: onBlurProp,
 }: TemplateInputProps) {
@@ -178,6 +180,7 @@ export function TemplateInput({
         onBlur={onBlurProp}
         placeholder={placeholder}
         disabled={disabled}
+        autoFocus={autoFocus}
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"
