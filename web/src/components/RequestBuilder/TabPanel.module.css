@@ -174,11 +174,30 @@
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  max-height: 180px;
-  border-bottom: 1px solid var(--border-primary);
   background: var(--bg-secondary);
   overflow: hidden;
   --kv-add-bg: var(--bg-secondary);
+}
+
+/* ── Drag resizer between pinned panels and content ── */
+
+.resizer {
+  flex-shrink: 0;
+  height: 5px;
+  cursor: ns-resize;
+  background: transparent;
+  border-top: 1px solid var(--border-primary);
+  transition: background 0.1s;
+  position: relative;
+  z-index: 1;
+}
+
+.resizer:hover {
+  background: color-mix(in srgb, var(--accent-post) 12%, transparent);
+}
+
+.resizerActive {
+  background: color-mix(in srgb, var(--accent-post) 22%, transparent);
 }
 
 .pinnedHeader {
@@ -224,6 +243,10 @@
   background: var(--bg-primary);
   display: flex;
   flex-direction: column;
+}
+
+.contentScroll {
+  overflow-y: auto;
 }
 
 .empty {
@@ -296,6 +319,78 @@
 .implicitContent {
   max-height: 200px;
   overflow-y: auto;
+}
+
+.implicitContent :global([class*="editor"]) {
+  padding-top: var(--space-half);
+}
+
+/* ── Natural-height headers content (active tab, not pinned) ── */
+
+.headersContentNatural {
+  flex: none;
+  overflow: visible;
+  min-height: unset;
+}
+
+.headersContentNatural .implicitContent {
+  max-height: none;
+  overflow: visible;
+}
+
+.headersContentNatural .userHeadersSection,
+.headersContentNatural .userHeadersSectionOpen {
+  flex: none;
+  overflow: visible;
+}
+
+.headersContentNatural .userHeadersContent {
+  flex: none;
+  overflow: visible;
+  min-height: unset;
+}
+
+/* ── User-defined headers section ──────────────────────── */
+
+.userHeadersSection {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-height: 0;
+}
+
+.userHeadersSection .implicitToggle {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.userHeadersSection .implicitToggle:hover {
+  background: var(--bg-hover);
+}
+
+.userHeadersSection.userHeadersSectionOpen {
+  flex: 1;
+  overflow: hidden;
+}
+
+.userHeadersContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.userHeadersContent :global([class*="editor"]) {
+  padding-top: var(--space-half);
+}
+
+.pinnedContent .userHeadersSection {
+  flex: none;
+}
+
+.pinnedContent .userHeadersContent {
+  overflow: visible;
 }
 
 /* ── Cookie jar tab ────────────────────────────────────── */

@@ -45,6 +45,7 @@ export function resolveTemplate(text: string, variables: KeyValue[]): string {
   if (!text) return text;
 
   const activeVars = variables.filter((v) => v.enabled !== false && v.key.trim());
+  const activeVarMap = new Map(activeVars.map((v) => [v.key, v]));
   const resolvedCache = new Map<string, string>();
 
   // Returns null if key is not a known env var (or is a circular ref)
@@ -52,7 +53,7 @@ export function resolveTemplate(text: string, variables: KeyValue[]): string {
     if (resolvedCache.has(key)) return resolvedCache.get(key)!;
     if (visited.has(key)) return null; // circular reference — leave intact
 
-    const found = activeVars.find((v) => v.key === key);
+    const found = activeVarMap.get(key);
     if (!found) return null;
 
     visited.add(key);

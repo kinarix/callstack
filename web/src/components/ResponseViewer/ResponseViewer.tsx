@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useApp } from '../../context/AppContext';
 import CodeMirror from '@uiw/react-codemirror';
@@ -15,6 +15,7 @@ import { formatBody, normalizeLineEndings } from '../../lib/formatBody';
 import { isJwt, findJwtsInBody } from '../../lib/jwt';
 import { JwtBadge } from '../JwtBadge/JwtBadge';
 import { useDatabase } from '../../hooks/useDatabase';
+import { useEditorMemory } from '../../hooks/useEditorMemory';
 import styles from './ResponseViewer.module.css';
 
 function PinIcon({ pinned }: { pinned: boolean }) {
@@ -171,7 +172,7 @@ function formatKV(kvs: import('../../lib/types').KeyValue[] | undefined): string
 }
 
 function DiffSection({ label, textA, textB }: { label: string; textA: string; textB: string }) {
-  const changes = diffLines(textA, textB);
+  const changes = useMemo(() => diffLines(textA, textB), [textA, textB]);
   const hasChanges = changes.some(c => c.added || c.removed);
   return (
     <div className={styles.diffSection}>
@@ -200,8 +201,8 @@ function DiffSection({ label, textA, textB }: { label: string; textA: string; te
 function DiffView({ responseA, responseB, onExit }: DiffViewProps) {
   const ctA = getContentType(responseA.headers ?? []);
   const ctB = getContentType(responseB.headers ?? []);
-  const bodyA = formatBody(responseA.body, ctA);
-  const bodyB = formatBody(responseB.body, ctB);
+  const bodyA = useMemo(() => formatBody(responseA.body, ctA), [responseA.body, ctA]);
+  const bodyB = useMemo(() => formatBody(responseB.body, ctB), [responseB.body, ctB]);
 
   return (
     <div className={styles.diffView}>
@@ -235,13 +236,43 @@ function DiffView({ responseA, responseB, onExit }: DiffViewProps) {
   );
 }
 
+interface ResponsePanelState {
+  headersPinned: boolean;
+  testsPinned: boolean;
+  headersPinnedHeight: number;
+  testsPinnedHeight: number;
+}
+
+function loadResponseState(requestId: number): Partial<ResponsePanelState> {
+  try {
+    const raw = localStorage.getItem(`callstack.responseState.${requestId}`);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveResponseState(requestId: number, patch: Partial<ResponsePanelState>) {
+  try {
+    const existing = loadResponseState(requestId);
+    localStorage.setItem(`callstack.responseState.${requestId}`, JSON.stringify({ ...existing, ...patch }));
+  } catch {}
+}
+
 export function ResponseViewer({ response, requestId, requestName, copyFlash, onClear, onCopy }: ResponseViewerProps) {
   const { dispatch } = useApp();
   const { getResponseHistory } = useDatabase();
   const [tab, setTab] = useState<'body' | 'headers' | 'preview' | 'tests' | 'cookies' | 'history'>('body');
   const [headersPinned, setHeadersPinned] = useState(false);
   const [testsPinned, setTestsPinned] = useState(false);
+  const [headersPinnedHeight, setHeadersPinnedHeight] = useState(160);
+  const [testsPinnedHeight, setTestsPinnedHeight] = useState(160);
+  const [draggingPanel, setDraggingPanel] = useState<'headers' | 'tests' | null>(null);
   const bodyEditorRef = useRef<EditorView | null>(null);
+  const headersPinnedHeightRef = useRef(160);
+  const testsPinnedHeightRef = useRef(160);
+  headersPinnedHeightRef.current = headersPinnedHeight;
+  testsPinnedHeightRef.current = testsPinnedHeight;
 
   // History state
   const [history, setHistory] = useState<Response[]>([]);
@@ -270,6 +301,16 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
   // Load history when requestId changes
   useEffect(() => {
     refreshHistory();
+  }, [requestId]);
+
+  // Restore persisted panel state when requestId changes
+  useEffect(() => {
+    if (requestId == null) return;
+    const saved = loadResponseState(requestId);
+    if (saved.headersPinned != null) setHeadersPinned(saved.headersPinned);
+    if (saved.testsPinned != null) setTestsPinned(saved.testsPinned);
+    if (saved.headersPinnedHeight != null) setHeadersPinnedHeight(saved.headersPinnedHeight);
+    if (saved.testsPinnedHeight != null) setTestsPinnedHeight(saved.testsPinnedHeight);
   }, [requestId]);
 
   useEffect(() => {
@@ -323,6 +364,26 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
     }
   };
 
+  const responseMemoryKey = requestId != null ? `response:${requestId}` : undefined;
+  const { memoryExtension: responseMemoryExtension, onCreateEditor: onCreateMemoryEditor } = useEditorMemory(responseMemoryKey);
+
+  // Hooks must precede the early return; _r/_ct carry the nullable types, displayedResponse is rebound below as Response.
+  const _r = previewResponse ?? response;
+  const _ct = getContentType(_r?.headers ?? []);
+  const formattedBody = useMemo(() => formatBody(_r?.body ?? '', _ct), [_r?.body, _ct]);
+  const bodyLanguage = useMemo(() => getLanguage(_ct), [_ct]);
+  const bodyExtensions = useMemo(() =>
+    bodyLanguage
+      ? [...responseViewerThemeExtension, bodyLanguage, responseMemoryExtension]
+      : [...responseViewerThemeExtension, responseMemoryExtension],
+    [bodyLanguage, responseMemoryExtension]
+  );
+  const bodyJwts = useMemo(() => findJwtsInBody(_r?.body ?? ''), [_r?.body]);
+  const setCookies = useMemo(() => {
+    const headers = _r?.headers?.filter(h => h.key.toLowerCase() === 'set-cookie') ?? [];
+    return headers.map(h => parseSetCookie(h.value));
+  }, [_r?.headers]);
+
   if (!response) {
     return (
       <div className={styles.viewerEmpty}>
@@ -333,13 +394,44 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
   }
 
   const displayedResponse = previewResponse ?? response;
-
+  const contentType = _ct;
   const statusColor = getStatusColor(displayedResponse.status);
-  const contentType = getContentType(displayedResponse.headers ?? []);
-  const formattedBody = formatBody(displayedResponse.body, contentType);
   const label = getLabel(contentType);
-  const bodyLanguage = getLanguage(contentType);
-  const bodyExtensions = bodyLanguage ? [...responseViewerThemeExtension, bodyLanguage] : responseViewerThemeExtension;
+
+  function startPinnedResize(
+    e: React.MouseEvent,
+    startH: number,
+    setH: React.Dispatch<React.SetStateAction<number>>,
+    panel: 'headers' | 'tests',
+  ) {
+    e.preventDefault();
+    const startY = e.clientY;
+    setDraggingPanel(panel);
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'ns-resize';
+
+    const onMove = (me: MouseEvent) => {
+      const newH = Math.max(34, Math.min(window.innerHeight * 0.8, startH + me.clientY - startY));
+      setH(newH);
+    };
+
+    const onUp = () => {
+      setDraggingPanel(null);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      if (requestId != null) {
+        saveResponseState(requestId, {
+          headersPinnedHeight: headersPinnedHeightRef.current,
+          testsPinnedHeight: testsPinnedHeightRef.current,
+        });
+      }
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
 
   return (
     <div className={styles.viewer}>
@@ -385,7 +477,12 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
           </button>
           <button
             className={`${styles.pinBtn} ${headersPinned ? styles.pinActive : ''}`}
-            onClick={() => setHeadersPinned(p => { if (!p) setTab('body'); return !p; })}
+            onClick={() => setHeadersPinned(p => {
+              const next = !p;
+              if (next) setTab('body');
+              if (requestId != null) saveResponseState(requestId, { headersPinned: next });
+              return next;
+            })}
             title={headersPinned ? 'Unpin Headers' : 'Pin Headers (always visible)'}
           >
             <PinIcon pinned={headersPinned} />
@@ -424,7 +521,12 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
               </button>
               <button
                 className={`${styles.pinBtn} ${testsPinned ? styles.pinActive : ''}`}
-                onClick={() => setTestsPinned(p => { if (!p) setTab('body'); return !p; })}
+                onClick={() => setTestsPinned(p => {
+                  const next = !p;
+                  if (next) setTab('body');
+                  if (requestId != null) saveResponseState(requestId, { testsPinned: next });
+                  return next;
+                })}
                 title={testsPinned ? 'Unpin Tests' : 'Pin Tests (always visible)'}
               >
                 <PinIcon pinned={testsPinned} />
@@ -460,50 +562,62 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
 
 
       {headersPinned && tab === 'body' && (
-        <div className={styles.pinnedPanel}>
-          <div className={styles.pinnedHeader}>
-            <span>Headers</span>
+        <>
+          <div className={styles.pinnedPanel} style={{ flex: `0 0 ${headersPinnedHeight}px` }}>
+            <div className={styles.pinnedHeader}>
+              <span>Headers</span>
+            </div>
+            <div className={styles.pinnedContent}>
+              {displayedResponse.headers?.length > 0 ? (
+                <div className={styles.headers}>
+                  {displayedResponse.headers.map((header, i) => (
+                    <div key={i} className={styles.headerRow}>
+                      <span className={styles.headerKey}>{header.key}</span>
+                      <span className={styles.headerValue}>
+                        {header.value}
+                        {isJwt(header.value) && <JwtBadge token={header.value} popoverAlign="right" />}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className={styles.emptyMessage}>No headers</div>
+              )}
+            </div>
           </div>
-          <div className={styles.pinnedContent}>
-            {displayedResponse.headers?.length > 0 ? (
-              <div className={styles.headers}>
-                {displayedResponse.headers.map((header, i) => (
-                  <div key={i} className={styles.headerRow}>
-                    <span className={styles.headerKey}>{header.key}</span>
-                    <span className={styles.headerValue}>
-                      {header.value}
-                      {isJwt(header.value) && <JwtBadge token={header.value} popoverAlign="right" />}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className={styles.emptyMessage}>No headers</div>
-            )}
-          </div>
-        </div>
+          <div
+            className={`${styles.resizer} ${draggingPanel === 'headers' ? styles.resizerActive : ''}`}
+            onMouseDown={(e) => startPinnedResize(e, headersPinnedHeight, setHeadersPinnedHeight, 'headers')}
+          />
+        </>
       )}
 
       {testsPinned && tab === 'body' && response.testResults && (
-        <div className={styles.pinnedPanel}>
-          <div className={styles.pinnedHeader}>
-            <span>Tests</span>
-          </div>
-          <div className={styles.pinnedContent}>
-            <div className={styles.testsTable}>
-              {response.testResults.map((r, i) => (
-                <div key={i} className={`${styles.testsRow} ${r.severity === 'warning' ? styles.testsRowWarn : r.passed ? styles.testsRowPass : styles.testsRowFail}`}>
-                  <span className={styles.testsIcon}>{r.severity === 'warning' ? '⚠' : r.passed ? '✓' : '✗'}</span>
-                  <div className={styles.testsDetail}>
-                    <span className={styles.testsDesc} title={r.description}>{r.description}</span>
-                    {r.passed && r.message && <span className={styles.testsSuccess} title={r.message}>{r.message}</span>}
-                    {!r.passed && r.error && <span className={styles.testsError} title={r.error}>{r.error}</span>}
+        <>
+          <div className={styles.pinnedPanel} style={{ flex: `0 0 ${testsPinnedHeight}px` }}>
+            <div className={styles.pinnedHeader}>
+              <span>Tests</span>
+            </div>
+            <div className={styles.pinnedContent}>
+              <div className={styles.testsTable}>
+                {response.testResults.map((r, i) => (
+                  <div key={i} className={`${styles.testsRow} ${r.severity === 'warning' ? styles.testsRowWarn : r.passed ? styles.testsRowPass : styles.testsRowFail}`}>
+                    <span className={styles.testsIcon}>{r.severity === 'warning' ? '⚠' : r.passed ? '✓' : '✗'}</span>
+                    <div className={styles.testsDetail}>
+                      <span className={styles.testsDesc} title={r.description}>{r.description}</span>
+                      {r.passed && r.message && <span className={styles.testsSuccess} title={r.message}>{r.message}</span>}
+                      {!r.passed && r.error && <span className={styles.testsError} title={r.error}>{r.error}</span>}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+          <div
+            className={`${styles.resizer} ${draggingPanel === 'tests' ? styles.resizerActive : ''}`}
+            onMouseDown={(e) => startPinnedResize(e, testsPinnedHeight, setTestsPinnedHeight, 'tests')}
+          />
+        </>
       )}
 
       {tab === 'body' && (
@@ -516,6 +630,7 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
             </div>
             <div className={styles.responseEditorWrap}>
               <CodeMirror
+                key={responseMemoryKey}
                 value={formattedBody}
                 extensions={bodyExtensions}
                 theme="none"
@@ -527,7 +642,10 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
                   drawSelection: true,
                 }}
                 style={{ height: '100%' }}
-                onCreateEditor={(view) => { bodyEditorRef.current = view; }}
+                onCreateEditor={(view) => {
+                  bodyEditorRef.current = view;
+                  onCreateMemoryEditor(view);
+                }}
               />
             </div>
             {copyFlash && (
@@ -535,13 +653,12 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
             )}
           </div>
           {(() => {
-            const jwts = findJwtsInBody(displayedResponse.body);
-            if (jwts.length === 0) return null;
+            if (bodyJwts.length === 0) return null;
             return (
               <div className={styles.jwtPanel}>
                 <div className={styles.jwtPanelHeader}>JWT tokens in body</div>
                 <div className={styles.jwtPanelContent}>
-                  {jwts.map((found, i) => (
+                  {bodyJwts.map((found, i) => (
                     <div key={i} className={styles.jwtPanelRow}>
                       {found.path && <span className={styles.jwtPanelPath}>{found.path}</span>}
                       <JwtBadge token={found.value} popoverAlign="right" />
@@ -659,39 +776,33 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
 
       {tab === 'cookies' && (
         <div className={styles.cookiesPane}>
-          {(() => {
-            const setCookieHeaders = displayedResponse.headers?.filter(h => h.key.toLowerCase() === 'set-cookie') ?? [];
-            const cookies = setCookieHeaders.map(h => parseSetCookie(h.value));
-            return (
-              <table className={styles.cookiesTable}>
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Value</th>
-                    <th>Domain</th>
-                    <th>Path</th>
-                    <th>Expires</th>
-                    <th>Flags</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cookies.map((c, i) => (
-                    <tr key={i}>
-                      <td className={styles.cookiesCell}>{c.name}</td>
-                      <td className={`${styles.cookiesCell} ${styles.cookiesCellValue}`}>{c.value}</td>
-                      <td className={styles.cookiesCell}>{c.domain ?? '—'}</td>
-                      <td className={styles.cookiesCell}>{c.path ?? '/'}</td>
-                      <td className={styles.cookiesCell}>{c.expires ?? 'Session'}</td>
-                      <td className={styles.cookiesCell}>
-                        {[c.secure && 'Secure', c.httpOnly && 'HttpOnly', c.sameSite && `SameSite=${c.sameSite}`]
-                          .filter(Boolean).join(', ') || '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            );
-          })()}
+          <table className={styles.cookiesTable}>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Value</th>
+                <th>Domain</th>
+                <th>Path</th>
+                <th>Expires</th>
+                <th>Flags</th>
+              </tr>
+            </thead>
+            <tbody>
+              {setCookies.map((c, i) => (
+                <tr key={i}>
+                  <td className={styles.cookiesCell}>{c.name}</td>
+                  <td className={`${styles.cookiesCell} ${styles.cookiesCellValue}`}>{c.value}</td>
+                  <td className={styles.cookiesCell}>{c.domain ?? '—'}</td>
+                  <td className={styles.cookiesCell}>{c.path ?? '/'}</td>
+                  <td className={styles.cookiesCell}>{c.expires ?? 'Session'}</td>
+                  <td className={styles.cookiesCell}>
+                    {[c.secure && 'Secure', c.httpOnly && 'HttpOnly', c.sameSite && `SameSite=${c.sameSite}`]
+                      .filter(Boolean).join(', ') || '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 

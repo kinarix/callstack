@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, useRef, Fragment, lazy, Suspense } from 'react';
 import type { Request, KeyValue, FileAttachment } from '../../lib/types';
 import { KeyValueEditor } from './KeyValueEditor';
 import { FileUpload } from './FileUpload';
@@ -57,7 +57,19 @@ type TabName = 'params' | 'headers' | 'body' | 'files' | 'script';
 type PinnableTab = 'params' | 'headers' | 'files';
 
 const PINNABLE: PinnableTab[] = ['params', 'headers', 'files'];
-const STORAGE_KEY_PREFIX = 'callstack.pinnedTabs.';
+const STORAGE_KEY_PREFIX  = 'callstack.pinnedTabs.';
+const STORAGE_KEY_HEIGHTS = 'callstack.pinnedHeights.';
+
+function loadHeights(requestId: number): Partial<Record<PinnableTab, number>> {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_HEIGHTS + requestId);
+    return stored ? JSON.parse(stored) : {};
+  } catch { return {}; }
+}
+
+function saveHeights(requestId: number, heights: Partial<Record<PinnableTab, number>>) {
+  localStorage.setItem(STORAGE_KEY_HEIGHTS + requestId, JSON.stringify(heights));
+}
 
 function loadPinned(requestId: number): Set<PinnableTab> {
   try {
@@ -77,6 +89,14 @@ function savePinned(requestId: number, pinned: Set<PinnableTab>) {
 }
 
 const VALID_TABS: TabName[] = ['params', 'headers', 'body', 'files', 'script'];
+
+const ROW_H     = 28;
+const TOGGLE_H  = 32;
+const ADD_H     = 36;
+const PIN_HDR_H = 30;
+const MIN_PIN_H = PIN_HDR_H + 4;
+const LINE_H    = 16;
+const MAX_BODY_H = 360;
 
 function loadActiveTab(requestId: number, pinned: Set<PinnableTab>): TabName {
   const stored = localStorage.getItem('callstack.activeTab.' + requestId);
@@ -154,6 +174,7 @@ interface TabPanelProps {
 export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, secrets, onScriptTest, copyFlash, useCookieJar = true, onUseCookieJarChange, projectId = null }: TabPanelProps) {
   const [pinned, setPinned] = useState<Set<PinnableTab>>(() => request ? loadPinned(request.id) : new Set());
   const [implicitExpanded, setImplicitExpanded] = useState(true);
+  const [userHeadersExpanded, setUserHeadersExpanded] = useState(true);
   const [activeTab, setActiveTab] = useState<TabName>(() => {
     if (!request) return 'params';
     const p = loadPinned(request.id);
@@ -173,6 +194,32 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
       localStorage.setItem('callstack.activeTab.' + request.id, activeTab);
     }
   }, [activeTab, request?.id]);
+
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [paneHeight, setPaneHeight] = useState(0);
+  useEffect(() => {
+    const el = panelRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setPaneHeight(e.contentRect.height));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const [overrides, setOverrides] = useState<Partial<Record<PinnableTab, number>>>({});
+  const [isDragging, setIsDragging] = useState<PinnableTab | null>(null);
+  const overridesRef = useRef(overrides);
+
+  useEffect(() => {
+    if (request) setOverrides(loadHeights(request.id));
+  }, [request?.id]);
+
+  const [debouncedBody, setDebouncedBody] = useState(() => request?.body ?? '');
+  useEffect(() => { setDebouncedBody(request?.body ?? ''); }, [request?.id]);
+  useEffect(() => {
+    const body = request?.body ?? '';
+    const id = setTimeout(() => setDebouncedBody(body), 300);
+    return () => clearTimeout(id);
+  }, [request?.body]);
 
   if (!request) {
     return <div className={styles.empty}>Select a request to get started</div>;
@@ -210,16 +257,28 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
   };
 
   const currentContentType = getContentType(request.headers);
-  const bodySize = useMemo(() => formatBodySize(request.body), [request.body]);
-  const bodyValidation = useMemo(() => validateBody(request.body, currentContentType, envVars), [request.body, currentContentType, envVars]);
+  const bodyValidation = useMemo(() => validateBody(debouncedBody, currentContentType, envVars), [debouncedBody, currentContentType, envVars]);
+  const resolvedUrl = useMemo(
+    () => resolveTemplate(request.url, [...(envVars ?? []), ...(secrets ?? [])]),
+    [request.url, envVars, secrets]
+  );
+
+  const bodyMeta = useMemo(() => {
+    const bytes = new TextEncoder().encode(request.body).length;
+    const bodyLen = bytes || undefined;
+    const implicitDefaults = getImplicitDefaults(resolvedUrl, bodyLen);
+    const bodySizeStr = bytes === 0 ? '' : bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    return { bodyLen, implicitDefaults, bodySizeStr };
+  }, [request.body, resolvedUrl]);
+
+  const bodySize = bodyMeta.bodySizeStr;
+
   const implicitItems = useMemo(() => {
-    const bodyLen = new TextEncoder().encode(request.body).length || undefined;
-    const defaults = getImplicitDefaults(request.url, bodyLen);
-    return defaults.map(def => {
+    return bodyMeta.implicitDefaults.map(def => {
       const override = request.headers.find(h => h.key.toLowerCase() === def.key.toLowerCase());
       return override ? { ...def, value: override.value, enabled: override.enabled ?? true } : def;
     });
-  }, [request.url, request.headers, request.body]);
+  }, [bodyMeta.implicitDefaults, request.headers]);
 
   const implicitDisabledKeys = useMemo(
     () => new Set(request.headers.filter(h => h.key && h.enabled === false).map(h => h.key.toLowerCase())),
@@ -227,20 +286,18 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
   );
 
   const implicitChangedKeys = useMemo(() => {
-    const bodyLen = new TextEncoder().encode(request.body).length || undefined;
-    const defaults = getImplicitDefaults(request.url, bodyLen);
-    const defaultMap = new Map(defaults.map(d => [d.key.toLowerCase(), d.value]));
+    const defaultMap = new Map(bodyMeta.implicitDefaults.map(d => [d.key.toLowerCase(), d.value]));
     return new Set(
       request.headers
         .filter(h => h.key && (h.enabled ?? true) && h.value !== defaultMap.get(h.key.toLowerCase()))
         .map(h => h.key.toLowerCase())
     );
-  }, [request.headers, request.url, request.body]);
+  }, [request.headers, bodyMeta.implicitDefaults]);
 
-  const implicitKeys = useMemo(() => {
-    const bodyLen = new TextEncoder().encode(request.body).length || undefined;
-    return new Set(getImplicitDefaults(request.url, bodyLen).map(d => d.key.toLowerCase()));
-  }, [request.url, request.body]);
+  const implicitKeys = useMemo(
+    () => new Set(bodyMeta.implicitDefaults.map(d => d.key.toLowerCase())),
+    [bodyMeta.implicitDefaults]
+  );
 
   const userHeaders = useMemo(
     () => request.headers.filter(h => !implicitKeys.has(h.key.toLowerCase())),
@@ -253,9 +310,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
   };
 
   const handleImplicitChange = (newItems: KeyValue[]) => {
-    const bodyLen = new TextEncoder().encode(request.body).length || undefined;
-    const defaults = getImplicitDefaults(request.url, bodyLen);
-    const defaultMap = new Map(defaults.map(d => [d.key.toLowerCase(), d.value]));
+    const defaultMap = new Map(bodyMeta.implicitDefaults.map(d => [d.key.toLowerCase(), d.value]));
     let updated = [...request.headers];
     for (const item of newItems) {
       if (!item.key) continue;
@@ -276,6 +331,61 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
   };
 
   const hasMissingFiles = files.some(f => f.path === '');
+
+  const bodyLines = request.body?.split('\n').length ?? 1;
+  const bodyReserve = Math.min(MAX_BODY_H, bodyLines * LINE_H);
+
+  const pinnedHeights = useMemo(() => {
+    const visiblePinned = PINNABLE.filter(p => pinned.has(p) && activeTab !== p);
+    if (!visiblePinned.length || !paneHeight) return {} as Record<string, number>;
+    const ideal = (tab: PinnableTab): number => {
+      if (tab === 'params') return PIN_HDR_H + request.params.length * ROW_H + ADD_H;
+      if (tab === 'headers') {
+        return PIN_HDR_H
+          + TOGGLE_H
+          + (implicitExpanded ? implicitItems.length * ROW_H : 0)
+          + TOGGLE_H
+          + (userHeadersExpanded ? userHeaders.length * ROW_H + ADD_H : 0);
+      }
+      return PIN_HDR_H + 80;
+    };
+    const budget = Math.max(0, paneHeight - bodyReserve);
+    const estimates = Object.fromEntries(visiblePinned.map(p => [p, ideal(p)]));
+    const totalEstimated = Object.values(estimates).reduce((a, b) => a + b, 0);
+    if (totalEstimated <= budget) return estimates;
+    const scale = budget / totalEstimated;
+    return Object.fromEntries(visiblePinned.map(p => [p, Math.max(MIN_PIN_H, estimates[p] * scale)]));
+  }, [pinned, activeTab, paneHeight, bodyReserve, request.params, implicitExpanded, implicitItems, userHeadersExpanded, userHeaders]);
+
+  overridesRef.current = overrides;
+  const effectiveHeights = { ...pinnedHeights, ...overrides };
+
+  function startResize(e: React.MouseEvent, panel: PinnableTab) {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = effectiveHeights[panel] ?? 180;
+    setIsDragging(panel);
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'ns-resize';
+
+    const onMove = (me: MouseEvent) => {
+      const newH = Math.max(MIN_PIN_H, Math.min(paneHeight - MIN_PIN_H, startH + me.clientY - startY));
+      setOverrides(prev => ({ ...prev, [panel]: newH }));
+    };
+
+    const onUp = () => {
+      setIsDragging(null);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      if (request) saveHeights(request.id, overridesRef.current);
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
+
   const TABS: { name: TabName; label: string; count?: number; warn?: boolean }[] = [
     { name: 'params', label: 'Params', count: request.params.filter(p => p.key).length || undefined },
     { name: 'headers', label: 'Headers', count: userHeaders.filter(h => h.key).length || undefined },
@@ -297,9 +407,33 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
             <KeyValueEditor
               items={implicitItems}
               onChange={handleImplicitChange}
-              hideActions
+              hideAdd
               markedKeys={implicitChangedKeys}
               disabledKeys={implicitDisabledKeys}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderUserHeadersSection({ naturalHeight = false }: { naturalHeight?: boolean } = {}) {
+    const userCount = userHeaders.filter(h => h.key).length;
+    return (
+      <div className={`${styles.userHeadersSection} ${userHeadersExpanded ? styles.userHeadersSectionOpen : ''}`}>
+        <button className={styles.implicitToggle} onClick={() => setUserHeadersExpanded(e => !e)}>
+          <span className={`${styles.implicitChevron} ${userHeadersExpanded ? styles.implicitChevronOpen : ''}`}>▶</span>
+          Request Headers
+          <span className={styles.implicitCount}>{userCount}</span>
+        </button>
+        {userHeadersExpanded && (
+          <div className={styles.userHeadersContent}>
+            <KeyValueEditor
+              items={userHeaders}
+              onChange={handleUserHeadersChange}
+              envVars={envVars}
+              secrets={secrets}
+              naturalHeight={naturalHeight}
             />
           </div>
         )}
@@ -315,7 +449,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
       return (
         <div className={styles.headersContent}>
           {renderImplicitSection()}
-          <KeyValueEditor items={userHeaders} onChange={handleUserHeadersChange} envVars={envVars} secrets={secrets} naturalHeight />
+          {renderUserHeadersSection({ naturalHeight: true })}
         </div>
       );
     }
@@ -329,7 +463,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
   }
 
   return (
-    <div className={styles.tabPanel}>
+    <div className={styles.tabPanel} ref={panelRef}>
       <div className={styles.header}>
         <span className={styles.sectionLabel}>Request</span>
         <ContentTypeSelector value={currentContentType} onChange={handleContentTypeChange} />
@@ -389,18 +523,24 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
       {PINNABLE
         .filter(p => pinned.has(p) && activeTab !== p)
         .map(p => (
-          <div key={p} className={styles.pinnedPanel}>
-            <div className={styles.pinnedHeader}>
-              <span>{renderTabLabel(p)}</span>
+          <Fragment key={p}>
+            <div className={styles.pinnedPanel} style={{ flex: `0 0 ${effectiveHeights[p] ?? 180}px` }}>
+              <div className={styles.pinnedHeader}>
+                <span>{renderTabLabel(p)}</span>
+              </div>
+              <div className={styles.pinnedContent}>
+                {renderPinnedContent(p)}
+              </div>
             </div>
-            <div className={styles.pinnedContent}>
-              {renderPinnedContent(p)}
-            </div>
-          </div>
+            <div
+              className={`${styles.resizer} ${isDragging === p ? styles.resizerActive : ''}`}
+              onMouseDown={(e) => startResize(e, p)}
+            />
+          </Fragment>
         ))}
 
       {/* Active tab content */}
-      <div className={styles.content}>
+      <div className={`${styles.content} ${activeTab === 'headers' ? styles.contentScroll : ''}`}>
         {activeTab === 'params' && (
           <KeyValueEditor
             items={request.params}
@@ -410,14 +550,9 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
           />
         )}
         {activeTab === 'headers' && (
-          <div className={styles.headersContent}>
+          <div className={`${styles.headersContent} ${styles.headersContentNatural}`}>
             {renderImplicitSection()}
-            <KeyValueEditor
-              items={userHeaders}
-              onChange={handleUserHeadersChange}
-              envVars={envVars}
-              secrets={secrets}
-            />
+            {renderUserHeadersSection({ naturalHeight: true })}
           </div>
         )}
         {activeTab === 'body' && (
@@ -429,6 +564,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
               copyFlash={copyFlash}
               envVars={envVars}
               secrets={secrets}
+              memoryKey={`body:${request.id}`}
             />
           </Suspense>
         )}
