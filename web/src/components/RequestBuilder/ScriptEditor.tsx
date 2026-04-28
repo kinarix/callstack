@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import type { KeyValue } from '../../lib/types';
 import CodeMirror from '@uiw/react-codemirror';
-import { javascript, localCompletionSource } from '@codemirror/lang-javascript';
+import { javascript, javascriptLanguage } from '@codemirror/lang-javascript';
 import { EditorView, keymap, showTooltip, type Tooltip } from '@codemirror/view';
 import { indentWithTab } from '@codemirror/commands';
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
@@ -205,11 +205,82 @@ const CONSOLE_MEMBERS: MemberDef[] = [
   },
 ];
 
+const JSON_MEMBERS: MemberDef[] = [
+  { label: 'parse',     detail: '(text: string) → any',                     info: 'Parse a JSON string.',                            type: 'function', snippet: 'parse(${1:text})' },
+  { label: 'stringify', detail: '(value, replacer?, space?) → string',       info: 'Serialize a value to a JSON string.',              type: 'function', snippet: 'stringify(${1:value})' },
+];
+
+const ARRAY_MEMBERS: MemberDef[] = [
+  { label: 'isArray', detail: '(value) → boolean', info: 'Returns true if value is an array.', type: 'function', snippet: 'isArray(${1:value})' },
+  { label: 'from',    detail: '(arrayLike, mapFn?) → any[]',                info: 'Create an array from an iterable or array-like.',  type: 'function', snippet: 'from(${1:arrayLike})' },
+  { label: 'of',      detail: '(...items) → any[]',                         info: 'Create an array from the given arguments.',        type: 'function', snippet: 'of(${1})' },
+];
+
+const OBJECT_MEMBERS: MemberDef[] = [
+  { label: 'keys',        detail: '(obj) → string[]',              info: 'Own enumerable property names.',          type: 'function', snippet: 'keys(${1:obj})' },
+  { label: 'values',      detail: '(obj) → any[]',                 info: 'Own enumerable property values.',         type: 'function', snippet: 'values(${1:obj})' },
+  { label: 'entries',     detail: '(obj) → [string, any][]',       info: 'Own enumerable [key, value] pairs.',      type: 'function', snippet: 'entries(${1:obj})' },
+  { label: 'assign',      detail: '(target, ...sources) → object', info: 'Copy properties from sources to target.', type: 'function', snippet: 'assign(${1:target}, ${2:source})' },
+  { label: 'fromEntries', detail: '(entries) → object',            info: 'Build an object from [key, value] pairs.',type: 'function', snippet: 'fromEntries(${1:entries})' },
+  { label: 'freeze',      detail: '(obj) → obj',                   info: 'Prevent mutations on an object.',         type: 'function', snippet: 'freeze(${1:obj})' },
+  { label: 'create',      detail: '(proto, props?) → object',      info: 'Create object with given prototype.',     type: 'function', snippet: 'create(${1:proto})' },
+  { label: 'hasOwn',      detail: '(obj, key) → boolean',          info: 'True if obj has own property key.',       type: 'function', snippet: 'hasOwn(${1:obj}, ${2:key})' },
+];
+
+const MATH_MEMBERS: MemberDef[] = [
+  { label: 'floor',  detail: '(x) → number',           info: 'Round down.',                             type: 'function', snippet: 'floor(${1:x})' },
+  { label: 'ceil',   detail: '(x) → number',           info: 'Round up.',                               type: 'function', snippet: 'ceil(${1:x})' },
+  { label: 'round',  detail: '(x) → number',           info: 'Round to nearest integer.',               type: 'function', snippet: 'round(${1:x})' },
+  { label: 'abs',    detail: '(x) → number',           info: 'Absolute value.',                         type: 'function', snippet: 'abs(${1:x})' },
+  { label: 'max',    detail: '(...values) → number',                                                    type: 'function', snippet: 'max(${1:a}, ${2:b})' },
+  { label: 'min',    detail: '(...values) → number',                                                    type: 'function', snippet: 'min(${1:a}, ${2:b})' },
+  { label: 'random', detail: '() → number',            info: 'Random float in [0, 1).',                 type: 'function', snippet: 'random()' },
+  { label: 'pow',    detail: '(base, exp) → number',                                                    type: 'function', snippet: 'pow(${1:base}, ${2:exp})' },
+  { label: 'sqrt',   detail: '(x) → number',                                                            type: 'function', snippet: 'sqrt(${1:x})' },
+  { label: 'sign',   detail: '(x) → -1 | 0 | 1',                                                       type: 'function', snippet: 'sign(${1:x})' },
+  { label: 'trunc',  detail: '(x) → number',           info: 'Integer part, truncating toward zero.',   type: 'function', snippet: 'trunc(${1:x})' },
+  { label: 'log',    detail: '(x) → number',           info: 'Natural logarithm.',                      type: 'function', snippet: 'log(${1:x})' },
+  { label: 'PI',     detail: 'number (≈ 3.14159)',                                                      type: 'property' },
+  { label: 'E',      detail: 'number (≈ 2.71828)',                                                      type: 'property' },
+];
+
+const DATE_MEMBERS: MemberDef[] = [
+  { label: 'now',   detail: '() → number',            info: 'Current time as Unix milliseconds.',       type: 'function', snippet: 'now()' },
+  { label: 'parse', detail: '(dateString) → number',  info: 'Parse date string to Unix milliseconds.',  type: 'function', snippet: 'parse(${1:dateString})' },
+];
+
+const PROMISE_MEMBERS: MemberDef[] = [
+  { label: 'all',        detail: '(promises) → Promise', info: 'Resolve when all resolve; reject on first failure.', type: 'function', snippet: 'all(${1:promises})' },
+  { label: 'allSettled', detail: '(promises) → Promise', info: 'Resolve when all settle (resolve or reject).',       type: 'function', snippet: 'allSettled(${1:promises})' },
+  { label: 'race',       detail: '(promises) → Promise', info: 'Settle as soon as the first promise settles.',       type: 'function', snippet: 'race(${1:promises})' },
+  { label: 'resolve',    detail: '(value) → Promise',                                                                type: 'function', snippet: 'resolve(${1:value})' },
+  { label: 'reject',     detail: '(reason) → Promise',                                                               type: 'function', snippet: 'reject(${1:reason})' },
+];
+
+const NUMBER_MEMBERS: MemberDef[] = [
+  { label: 'isInteger',          detail: '(value) → boolean',       type: 'function', snippet: 'isInteger(${1:value})' },
+  { label: 'isFinite',           detail: '(value) → boolean',       type: 'function', snippet: 'isFinite(${1:value})' },
+  { label: 'isNaN',              detail: '(value) → boolean',       type: 'function', snippet: 'isNaN(${1:value})' },
+  { label: 'parseInt',           detail: '(str, radix?) → number',  type: 'function', snippet: 'parseInt(${1:str})' },
+  { label: 'parseFloat',         detail: '(str) → number',          type: 'function', snippet: 'parseFloat(${1:str})' },
+  { label: 'MAX_SAFE_INTEGER',   detail: 'number (2^53 − 1)',        type: 'property' },
+  { label: 'MIN_SAFE_INTEGER',   detail: 'number (−(2^53 − 1))',    type: 'property' },
+  { label: 'POSITIVE_INFINITY',  detail: 'number',                  type: 'property' },
+  { label: 'NEGATIVE_INFINITY',  detail: 'number',                  type: 'property' },
+];
+
 const MEMBER_MAP: Record<string, MemberDef[]> = {
   request: REQUEST_MEMBERS,
   response: RESPONSE_MEMBERS,
   env: ENV_MEMBERS,
   console: CONSOLE_MEMBERS,
+  JSON: JSON_MEMBERS,
+  Array: ARRAY_MEMBERS,
+  Object: OBJECT_MEMBERS,
+  Math: MATH_MEMBERS,
+  Date: DATE_MEMBERS,
+  Promise: PROMISE_MEMBERS,
+  Number: NUMBER_MEMBERS,
 };
 
 // ── Signature help data ──────────────────────────────────────────────────────
@@ -287,18 +358,18 @@ const SIGNATURES: Record<string, SigDef> = {
     doc: 'Emit a short-lived run-scoped value for use in automation branch conditions.',
   },
   Error: {
-    sig: 'Error(message)',
-    params: ['message: string'],
+    sig: 'Error(...args)',
+    params: ['...args: any[]'],
     doc: 'Standard JS error. Throw inside test() to mark it as failed (severity: error).',
   },
   Warn: {
-    sig: 'Warn(message)',
-    params: ['message: string'],
+    sig: 'Warn(...args)',
+    params: ['...args: any[]'],
     doc: 'Callstack warning class. Throw inside test() to mark as failed (severity: warning).',
   },
   Success: {
-    sig: 'Success(message)',
-    params: ['message: string'],
+    sig: 'Success(...args)',
+    params: ['...args: any[]'],
     doc: 'Callstack success class. Throw inside test() to mark as passed (severity: success).',
   },
 };
@@ -483,21 +554,21 @@ function makeCompletionSource(isPost: boolean, envVarKeys: string[] = [], secret
       return {
         from: newCtorMatch.from + lastSpace + 1,
         options: [
-          snippetCompletion('Error(${1:message})', {
+          snippetCompletion('Error(${1:...args})', {
             label: 'Error',
-            detail: '(message)',
+            detail: '(...args)',
             info: 'Throw inside test() to mark as failed (severity: error).',
             type: 'class',
           }),
-          snippetCompletion('Warn(${1:message})', {
+          snippetCompletion('Warn(${1:...args})', {
             label: 'Warn',
-            detail: '(message)',
+            detail: '(...args)',
             info: 'Throw inside test() to mark as failed (severity: warning).',
             type: 'class',
           }),
-          snippetCompletion('Success(${1:message})', {
+          snippetCompletion('Success(${1:...args})', {
             label: 'Success',
-            detail: '(message)',
+            detail: '(...args)',
             info: 'Throw inside test() to mark as passed (severity: success).',
             type: 'class',
           }),
@@ -554,18 +625,38 @@ function makeCompletionSource(isPost: boolean, envVarKeys: string[] = [], secret
         info: 'Emit a short-lived run-scoped value for use in automation branch conditions.',
         type: 'function',
       }),
-      snippetCompletion('Success(${1:message})', {
+      snippetCompletion('Success(${1:...args})', {
         label: 'Success',
-        detail: '(message) extends Error',
+        detail: '(...args) extends Error',
         info: 'Throw inside test() to mark as passed (severity: success).',
         type: 'class',
       }),
-      snippetCompletion('Warn(${1:message})', {
+      snippetCompletion('Warn(${1:...args})', {
         label: 'Warn',
-        detail: '(message) extends Error',
+        detail: '(...args) extends Error',
         info: 'Throw inside test() to mark as failed (severity: warning).',
         type: 'class',
       }),
+      // JS globals
+      { label: 'Array',              type: 'class',    detail: 'global' },
+      { label: 'Object',             type: 'class',    detail: 'global' },
+      { label: 'Math',               type: 'namespace', detail: 'global' },
+      { label: 'Date',               type: 'class',    detail: 'global' },
+      { label: 'Promise',            type: 'class',    detail: 'global' },
+      { label: 'Number',             type: 'class',    detail: 'global' },
+      { label: 'String',             type: 'class',    detail: 'global' },
+      { label: 'Boolean',            type: 'class',    detail: 'global' },
+      { label: 'Map',                type: 'class',    detail: 'global' },
+      { label: 'Set',                type: 'class',    detail: 'global' },
+      { label: 'RegExp',             type: 'class',    detail: 'global' },
+      { label: 'parseInt',           type: 'function', detail: '(string, radix?) → number' },
+      { label: 'parseFloat',         type: 'function', detail: '(string) → number' },
+      { label: 'isNaN',              type: 'function', detail: '(value) → boolean' },
+      { label: 'isFinite',           type: 'function', detail: '(value) → boolean' },
+      { label: 'encodeURIComponent', type: 'function', detail: '(str) → string' },
+      { label: 'decodeURIComponent', type: 'function', detail: '(str) → string' },
+      { label: 'atob',               type: 'function', detail: '(data) → string' },
+      { label: 'btoa',               type: 'function', detail: '(data) → string' },
     ];
 
     if (isPost) {
@@ -714,20 +805,25 @@ export function ScriptEditor({ requestId, preScript, postScript, onChange, conso
   const memoryKey = requestId != null ? `script:${requestId}:${activeTab}` : undefined;
   const { memoryExtension, onCreateEditor: onCreateMemoryEditor } = useEditorMemory(memoryKey);
 
+  const customCompletionExt = useMemo(
+    () => javascriptLanguage.data.of({ autocomplete: makeCompletionSource(isPost, envVarKeys, secretKeys) }),
+    [isPost, envVarKeys, secretKeys],
+  );
+
   const extensions = useMemo(() => [
     javascript(),
     editorTheme,
     syntaxHighlighting(jsHighlight),
     formatKeymap,
     keymap.of([indentWithTab]),
+    customCompletionExt,
     autocompletion({
-      override: [makeCompletionSource(isPost, envVarKeys, secretKeys), localCompletionSource],
       activateOnTyping: true,
       maxRenderedOptions: 20,
     }),
     sigHelpField,
     memoryExtension,
-  ], [isPost, envVarKeys, secretKeys, formatKeymap, memoryExtension]);
+  ], [customCompletionExt, formatKeymap, memoryExtension]);
 
   return (
     <div className={styles.scriptEditor}>
