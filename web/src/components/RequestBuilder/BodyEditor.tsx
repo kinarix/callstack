@@ -16,6 +16,10 @@ interface JsonTemplateState {
 }
 
 const jsonTemplateMode: StreamLanguage<JsonTemplateState> = StreamLanguage.define({
+  name: 'json-template',
+  languageData: {
+    indentOnInput: /^\s*[}\]]$/,
+  },
   startState: () => ({ inTemplateString: false, depth: 0 }),
   token(stream: StringStream, state: JsonTemplateState): string | null {
     if (stream.eatSpace()) return null;
@@ -194,6 +198,7 @@ const appHighlight = HighlightStyle.define([
 
 const appThemeExtension = [appEditorTheme, syntaxHighlighting(appHighlight)];
 
+
 interface BodyEditorProps {
   body: string;
   contentType?: string;
@@ -216,6 +221,7 @@ export function BodyEditor({
   memoryKey,
 }: BodyEditorProps) {
   const [validation, setValidation] = useState<{ valid: boolean; error?: string }>({ valid: true });
+
   const hasCsvTokens = /\{\{\s*#[\w.-]+\s*\}\}/.test(body);
   const { memoryExtension, onCreateEditor } = useEditorMemory(memoryKey);
   const extensions = useMemo(() => {

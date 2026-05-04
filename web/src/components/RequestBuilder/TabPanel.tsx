@@ -6,6 +6,7 @@ import { ScriptEditor } from './ScriptEditor';
 import { ContentTypeSelector } from './ContentTypeSelector';
 import { resolveTemplate, replaceTokensForValidation } from '../../lib/template';
 import { getImplicitDefaults } from '../../lib/utils';
+import { formatBody } from '../../lib/formatBody';
 import { FAKER_TOKENS } from '../../lib/templateTokens';
 import styles from './TabPanel.module.css';
 
@@ -240,6 +241,12 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
     });
   };
 
+  const handleFormat = () => {
+    if (!request.body.trim() || !isFormattableType) return;
+    const formatted = formatBody(request.body, currentContentType);
+    if (formatted !== request.body) handleBodyChange(formatted);
+  };
+
   const handleBodyChange = (body: string) => {
     const changes: Partial<Request> = { body };
     const currentCt = getContentType(request.headers);
@@ -257,6 +264,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
   };
 
   const currentContentType = getContentType(request.headers);
+  const isFormattableType = currentContentType.includes('json') || currentContentType.includes('xml') || currentContentType.includes('html');
   const bodyValidation = useMemo(() => validateBody(debouncedBody, currentContentType, envVars), [debouncedBody, currentContentType, envVars]);
   const resolvedUrl = useMemo(
     () => resolveTemplate(request.url, [...(envVars ?? []), ...(secrets ?? [])]),
@@ -556,17 +564,24 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
           </div>
         )}
         {activeTab === 'body' && (
-          <Suspense fallback={null}>
-            <BodyEditor
-              body={request.body}
-              contentType={currentContentType}
-              onChange={handleBodyChange}
-              copyFlash={copyFlash}
-              envVars={envVars}
-              secrets={secrets}
-              memoryKey={`body:${request.id}`}
-            />
-          </Suspense>
+          <>
+            {isFormattableType && request.body.trim() && (
+              <div className={styles.bodyToolbar}>
+                <button className={styles.formatBtn} onClick={handleFormat}>Format</button>
+              </div>
+            )}
+            <Suspense fallback={null}>
+              <BodyEditor
+                body={request.body}
+                contentType={currentContentType}
+                onChange={handleBodyChange}
+                copyFlash={copyFlash}
+                envVars={envVars}
+                secrets={secrets}
+                memoryKey={`body:${request.id}`}
+              />
+            </Suspense>
+          </>
         )}
         {activeTab === 'files' && (
           <FileUpload files={files} onChange={onFilesChange} />

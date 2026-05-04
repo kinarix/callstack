@@ -27,18 +27,53 @@ export function normalizeLineEndings(s: string): string {
   return s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 }
 
-export function formatBody(body: string, contentType: string): string {
-  const text = normalizeLineEndings(body);
-  if (contentType.includes('json')) {
+function formatJson(text: string): string {
+  // Fast path: no template tokens — try direct parse
+  try {
+    return JSON.stringify(JSON.parse(text), null, 2);
+  } catch {
+    // Slow path: body has bare template tokens outside strings.
+    // Walk the text character-by-character, preserving JSON strings verbatim
+    // and replacing bare {{tokens}} with unique placeholders so JSON.parse succeeds.
+    const tokenMap: string[] = [];
+    let replaced = '';
+    let i = 0;
+    while (i < text.length) {
+      if (text[i] === '"') {
+        // Consume entire JSON string (handles escape sequences)
+        let j = i + 1;
+        while (j < text.length) {
+          if (text[j] === '\\') { j += 2; continue; }
+          if (text[j] === '"') { j++; break; }
+          j++;
+        }
+        replaced += text.slice(i, j);
+        i = j;
+      } else {
+        const tokenMatch = text.slice(i).match(/^\{\{[\w.\s$#-]+\}\}/);
+        if (tokenMatch) {
+          const idx = tokenMap.length;
+          tokenMap.push(tokenMatch[0]);
+          replaced += `"__TMPL_${idx}__"`;
+          i += tokenMatch[0].length;
+        } else {
+          replaced += text[i++];
+        }
+      }
+    }
     try {
-      const parsed = JSON.parse(text);
-      return JSON.stringify(parsed, null, 2);
+      let formatted = JSON.stringify(JSON.parse(replaced), null, 2);
+      formatted = formatted.replace(/"__TMPL_(\d+)__"/g, (_, n) => tokenMap[parseInt(n, 10)]);
+      return formatted;
     } catch {
       return text;
     }
   }
-  if (contentType.includes('xml') || contentType.includes('html')) {
-    return formatXml(text);
-  }
+}
+
+export function formatBody(body: string, contentType: string): string {
+  const text = normalizeLineEndings(body);
+  if (contentType.includes('json')) return formatJson(text);
+  if (contentType.includes('xml') || contentType.includes('html')) return formatXml(text);
   return text;
 }

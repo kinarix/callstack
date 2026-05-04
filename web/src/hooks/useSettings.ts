@@ -21,6 +21,7 @@ export interface Settings {
   shortcuts: ActionShortcuts;
   responseHistoryLimit: number;
   httpTimeout: number;
+  formatOnSend: boolean;
 }
 
 export const DEFAULTS: Settings = {
@@ -37,6 +38,7 @@ export const DEFAULTS: Settings = {
   },
   responseHistoryLimit: 10,
   httpTimeout: 30,
+  formatOnSend: true,
 };
 
 function loadSettings(): Settings {
@@ -59,6 +61,7 @@ function loadSettings(): Settings {
       },
       responseHistoryLimit: parsed.responseHistoryLimit ?? DEFAULTS.responseHistoryLimit,
       httpTimeout: parsed.httpTimeout ?? DEFAULTS.httpTimeout,
+      formatOnSend: parsed.formatOnSend ?? DEFAULTS.formatOnSend,
     };
   } catch {
     return DEFAULTS;
@@ -130,10 +133,18 @@ export function useSettings() {
     });
   }, []);
 
+  const setFormatOnSend = useCallback((formatOnSend: boolean) => {
+    setSettings((prev) => {
+      const next = { ...prev, formatOnSend };
+      saveSettings(next);
+      return next;
+    });
+  }, []);
+
   const resetSettings = useCallback(() => {
     setSettings(DEFAULTS);
     saveSettings(DEFAULTS);
   }, []);
 
-  return { settings, setZoom, setShortcut, setResponseHistoryLimit, setHttpTimeout, resetSettings };
+  return { settings, setZoom, setShortcut, setResponseHistoryLimit, setHttpTimeout, setFormatOnSend, resetSettings };
 }

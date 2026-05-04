@@ -30,6 +30,34 @@
   font-family: 'JetBrains Mono', monospace;
 }
 
+.bodyToolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 4px var(--space-2);
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+}
+
+.formatBtn {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-secondary);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.formatBtn:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-primary);
+}
+
 .validationTag {
   font-size: 11px;
   font-weight: 500;
