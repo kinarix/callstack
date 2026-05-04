@@ -8,6 +8,7 @@ import { useApp } from '../../context/AppContext';
 import { useHttpClient } from '../../hooks/useHttpClient';
 import { useDatabase } from '../../hooks/useDatabase';
 import { resolveTemplate, replaceTokensForValidation } from '../../lib/template';
+import { formatBody } from '../../lib/formatBody';
 import { getImplicitHeaders } from '../../lib/utils';
 import { runScript } from '../../hooks/useScriptRunner';
 import type { EnvMutations } from '../../hooks/useScriptRunner';
@@ -475,10 +476,23 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
     // Clear console on each send
     setConsoleLogs([]);
 
+    // Format body before sending if the setting is enabled
+    const sendContentType = getContentType(request.headers);
+    const isFormattable = sendContentType.includes('json') || sendContentType.includes('xml') || sendContentType.includes('html');
+    let rawBody = request.body;
+    if (settings.formatOnSend && isFormattable && rawBody.trim()) {
+      const formatted = formatBody(rawBody, sendContentType);
+      if (formatted !== rawBody) {
+        rawBody = formatted;
+        dispatch({ type: 'UPDATE_REQUEST', payload: { ...request, body: formatted } });
+        saveToDb(request.id, { body: formatted });
+      }
+    }
+
     // Apply template resolution using active env variables + secrets
     const allVars = [...envVars, ...secrets];
     let resolvedUrl = resolveTemplate(request.url, allVars);
-    let resolvedBody = resolveTemplate(request.body, allVars);
+    let resolvedBody = resolveTemplate(rawBody, allVars);
     // Quote any unresolved {{#...}} data-file vars so the JSON body stays valid
     resolvedBody = resolvedBody.replace(/(?<!")\{\{#[\w.$-]+\}\}(?!")/g, '"$&"');
     let resolvedParams = request.params.map((p) => ({

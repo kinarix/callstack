@@ -13,7 +13,7 @@
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
   width: 900px;
-  max-height: 88vh;
+  height: min(88vh, 680px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -344,6 +344,25 @@
   font-size: 12px;
   color: var(--text-secondary);
   margin-bottom: var(--space-half);
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.toggleRow input[type='checkbox'] {
+  accent-color: var(--accent-get);
+  cursor: pointer;
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .historyLimitRow {

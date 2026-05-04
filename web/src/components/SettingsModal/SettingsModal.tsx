@@ -108,12 +108,13 @@ interface SettingsModalProps {
   onSetShortcut: (action: keyof ActionShortcuts, value: string) => void;
   onSetResponseHistoryLimit: (limit: number) => void;
   onSetHttpTimeout: (secs: number) => void;
+  onSetFormatOnSend: (v: boolean) => void;
   onReset?: () => void;
   onResetAll?: () => Promise<void>;
   onClose: () => void;
 }
 
-export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetResponseHistoryLimit, onSetHttpTimeout, onReset, onResetAll, onClose }: SettingsModalProps) {
+export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetResponseHistoryLimit, onSetHttpTimeout, onSetFormatOnSend, onReset, onResetAll, onClose }: SettingsModalProps) {
   const [tab, setTab] = useState<Tab>('general');
   const [recording, setRecording] = useState<keyof ActionShortcuts | null>(null);
   const [confirmingReset, setConfirmingReset] = useState(false);
@@ -396,6 +397,20 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetRespons
                       ))}
                     </select>
                   </div>
+                </section>
+                <section className={styles.section}>
+                  <div className={styles.sectionTitle}>Format on Send</div>
+                  <div className={styles.sectionDesc}>
+                    Automatically format JSON/XML body before sending a request.
+                  </div>
+                  <label className={styles.toggleRow}>
+                    <input
+                      type="checkbox"
+                      checked={settings.formatOnSend}
+                      onChange={(e) => onSetFormatOnSend(e.target.checked)}
+                    />
+                    <span>Format body before send</span>
+                  </label>
                 </section>
               </div>
             </div>

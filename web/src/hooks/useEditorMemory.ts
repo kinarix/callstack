@@ -87,5 +87,5 @@ export function useEditorMemory(memoryKey: string | undefined) {
 
   useEffect(() => () => { save(); }, [save]);
 
-  return { memoryExtension, onCreateEditor };
+  return { memoryExtension, onCreateEditor, viewRef };
 }
