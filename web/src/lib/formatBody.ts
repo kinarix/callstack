@@ -33,37 +33,22 @@ function formatJson(text: string): string {
     return JSON.stringify(JSON.parse(text), null, 2);
   } catch {
     // Slow path: body has bare template tokens outside strings.
-    // Walk the text character-by-character, preserving JSON strings verbatim
-    // and replacing bare {{tokens}} with unique placeholders so JSON.parse succeeds.
+    // Single regex pass: match JSON strings (preserve) or {{tokens}} (replace with placeholders).
     const tokenMap: string[] = [];
-    let replaced = '';
-    let i = 0;
-    while (i < text.length) {
-      if (text[i] === '"') {
-        // Consume entire JSON string (handles escape sequences)
-        let j = i + 1;
-        while (j < text.length) {
-          if (text[j] === '\\') { j += 2; continue; }
-          if (text[j] === '"') { j++; break; }
-          j++;
-        }
-        replaced += text.slice(i, j);
-        i = j;
-      } else {
-        const tokenMatch = text.slice(i).match(/^\{\{[\w.\s$#-]+\}\}/);
-        if (tokenMatch) {
-          const idx = tokenMap.length;
-          tokenMap.push(tokenMatch[0]);
-          replaced += `"__TMPL_${idx}__"`;
-          i += tokenMatch[0].length;
-        } else {
-          replaced += text[i++];
-        }
-      }
-    }
+    const replaced = text.replace(
+      /"(?:[^"\\]|\\.)*"|\{\{[\w.\s$#-]+\}\}/g,
+      (match) => {
+        if (match[0] === '"') return match;
+        const i = tokenMap.length;
+        tokenMap.push(match);
+        return `"__TMPL_${i}__"`;
+      },
+    );
     try {
       let formatted = JSON.stringify(JSON.parse(replaced), null, 2);
-      formatted = formatted.replace(/"__TMPL_(\d+)__"/g, (_, n) => tokenMap[parseInt(n, 10)]);
+      if (tokenMap.length > 0) {
+        formatted = formatted.replace(/"__TMPL_(\d+)__"/g, (_, n) => tokenMap[parseInt(n, 10)]);
+      }
       return formatted;
     } catch {
       return text;

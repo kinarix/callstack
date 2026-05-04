@@ -1,4 +1,6 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
+import type { EditorView } from '@codemirror/view';
+import { ExternalChange } from '@uiw/react-codemirror';
 import type { Request, KeyValue, LogEntry, FileAttachment, Environment } from '../../lib/types';
 import { UrlBar } from './UrlBar';
 import { TabPanel } from './TabPanel';
@@ -8,11 +10,20 @@ import { useApp } from '../../context/AppContext';
 import { useHttpClient } from '../../hooks/useHttpClient';
 import { useDatabase } from '../../hooks/useDatabase';
 import { resolveTemplate, replaceTokensForValidation } from '../../lib/template';
-import { formatBody } from '../../lib/formatBody';
+import FormatWorker from '../../workers/formatBody.worker.ts?worker';
+
+function formatBodyAsync(body: string, contentType: string): Promise<string> {
+  return new Promise((resolve) => {
+    const worker = new FormatWorker();
+    worker.onmessage = (e: MessageEvent<string>) => { resolve(e.data); worker.terminate(); };
+    worker.onerror = () => { resolve(body); worker.terminate(); };
+    worker.postMessage({ body, contentType });
+  });
+}
 import { getImplicitHeaders } from '../../lib/utils';
 import { runScript } from '../../hooks/useScriptRunner';
 import type { EnvMutations } from '../../hooks/useScriptRunner';
-import { useSettings } from '../../hooks/useSettings';
+import type { Settings } from '../../hooks/useSettings';
 
 interface RequestBuilderProps {
   request: Request | null;
@@ -24,6 +35,7 @@ interface RequestBuilderProps {
   onRequestFocus?: () => void;
   onResponseFocus?: () => void;
   httpTimeout?: number;
+  settings: Settings;
 }
 
 interface UrlError {
@@ -172,12 +184,12 @@ function validateBody(body: string, contentType: string): string | null {
 }
 
 
-export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, copyFlashPane, onCopyResponse, onRequestFocus, onResponseFocus, httpTimeout }: RequestBuilderProps) {
+export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, copyFlashPane, onCopyResponse, onRequestFocus, onResponseFocus, httpTimeout, settings }: RequestBuilderProps) {
   const { state, dispatch } = useApp();
   const { send, cancelRequest } = useHttpClient();
   const { updateRequest, saveResponse, updateEnvironment, updateEnvironmentSecrets } = useDatabase();
-  const { settings } = useSettings();
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const bodyEditorViewRef = useRef<EditorView | null>(null);
   const [bodyError, setBodyError] = useState<string | null>(null);
   const [urlError, setUrlError] = useState<UrlError | null>(null);
   const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
@@ -476,16 +488,28 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
     // Clear console on each send
     setConsoleLogs([]);
 
+    dispatch({ type: 'SET_LOADING', payload: true });
+    dispatch({ type: 'SET_EXECUTING_REQUEST', payload: request.id });
+
     // Format body before sending if the setting is enabled
     const sendContentType = getContentType(request.headers);
     const isFormattable = sendContentType.includes('json') || sendContentType.includes('xml') || sendContentType.includes('html');
     let rawBody = request.body;
     if (settings.formatOnSend && isFormattable && rawBody.trim()) {
-      const formatted = formatBody(rawBody, sendContentType);
+      const formatted = await formatBodyAsync(rawBody, sendContentType);
       if (formatted !== rawBody) {
         rawBody = formatted;
         dispatch({ type: 'UPDATE_REQUEST', payload: { ...request, body: formatted } });
         saveToDb(request.id, { body: formatted });
+        // Bypass the typing latch — update the CodeMirror view directly so the
+        // formatted body renders before the response arrives.
+        const view = bodyEditorViewRef.current;
+        if (view) {
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: formatted },
+            annotations: [ExternalChange.of(true)],
+          });
+        }
       }
     }
 
@@ -546,6 +570,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
     const urlErr = validateUrl(normalizedUrl);
     if (urlErr) {
       setUrlError(urlErr);
+      dispatch({ type: 'SET_LOADING', payload: false });
       return;
     }
     setUrlError(null);
@@ -555,12 +580,11 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
     const error = validateBody(replaceTokensForValidation(resolvedBody, contentType), contentType);
     if (error) {
       setBodyError(error);
+      dispatch({ type: 'SET_LOADING', payload: false });
       return;
     }
     setBodyError(null);
 
-    dispatch({ type: 'SET_LOADING', payload: true });
-    dispatch({ type: 'SET_EXECUTING_REQUEST', payload: request.id });
     const sentAt = Date.now();
     const curl = buildCurl(request.method, normalizedUrl, resolvedParams, resolvedHeaders, resolvedBody);
 
@@ -598,21 +622,6 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         testStatus = passed === testResults.length ? 'PASS' : passed === 0 ? 'FAIL' : 'PARTIAL';
       }
 
-      await saveResponse(
-        request.id,
-        result.status,
-        result.statusText,
-        result.headers,
-        result.body,
-        result.timeMs,
-        result.size,
-        sentAt,
-        settings.responseHistoryLimit,
-        resolvedHeaders,
-        resolvedParams,
-        resolvedBody,
-      ).catch(console.error);
-
       dispatch({
         type: 'SET_RESPONSE',
         payload: {
@@ -630,6 +639,21 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
           testStatus: testStatus || undefined,
         },
       });
+
+      saveResponse(
+        request.id,
+        result.status,
+        result.statusText,
+        result.headers,
+        result.body,
+        result.timeMs,
+        result.size,
+        sentAt,
+        settings.responseHistoryLimit,
+        resolvedHeaders,
+        resolvedParams,
+        resolvedBody,
+      ).catch(console.error);
 
       const log: LogEntry = {
         id: ++logIdCounter,
@@ -732,6 +756,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
             useCookieJar={useCookieJar}
             onUseCookieJarChange={setUseCookieJar}
             projectId={state.currentProjectId}
+            bodyEditorViewRef={bodyEditorViewRef}
           />
         </div>
         <div className={styles.splitHandle} onMouseDown={startPanelResize} />

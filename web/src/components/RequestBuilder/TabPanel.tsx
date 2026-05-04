@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useRef, Fragment, lazy, Suspense } from 'react';
+import type React from 'react';
+import type { EditorView } from '@codemirror/view';
 import type { Request, KeyValue, FileAttachment } from '../../lib/types';
 import { KeyValueEditor } from './KeyValueEditor';
 import { FileUpload } from './FileUpload';
@@ -170,9 +172,10 @@ interface TabPanelProps {
   useCookieJar?: boolean;
   onUseCookieJarChange?: (value: boolean) => void;
   projectId?: number | null;
+  bodyEditorViewRef?: React.MutableRefObject<EditorView | null>;
 }
 
-export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, secrets, onScriptTest, copyFlash, useCookieJar = true, onUseCookieJarChange, projectId = null }: TabPanelProps) {
+export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, secrets, onScriptTest, copyFlash, useCookieJar = true, onUseCookieJarChange, projectId = null, bodyEditorViewRef }: TabPanelProps) {
   const [pinned, setPinned] = useState<Set<PinnableTab>>(() => request ? loadPinned(request.id) : new Set());
   const [implicitExpanded, setImplicitExpanded] = useState(true);
   const [userHeadersExpanded, setUserHeadersExpanded] = useState(true);
@@ -579,6 +582,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
                 envVars={envVars}
                 secrets={secrets}
                 memoryKey={`body:${request.id}`}
+                viewRef={bodyEditorViewRef}
               />
             </Suspense>
           </>
