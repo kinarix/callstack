@@ -412,6 +412,7 @@ function AppContent() {
                 onExpand={() => setSidebarCollapsed(false)}
                 executeRef={executeRef}
                 httpTimeout={settings.httpTimeout}
+                settings={settings}
                 copyFlashPane={copyFlashPane}
                 onCopyResponse={() => {
                   setCopyFlashPane('response');

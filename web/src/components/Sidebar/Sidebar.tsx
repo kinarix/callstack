@@ -400,25 +400,19 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
   const handleConfirmDelete = useCallback(async () => {
     if (!pendingDelete) return;
     const pd = pendingDelete;
-    console.log('Starting delete:', pd);
     setPendingDelete(null);
     try {
       if (pd.type === 'project') {
-        console.log('Deleting project:', pd.id);
         await deleteProject(pd.id);
         dispatch({ type: 'DELETE_PROJECT', payload: pd.id });
       } else if (pd.type === 'folder') {
-        console.log('Deleting folder:', pd.id);
         await deleteFolder(pd.id);
         dispatch({ type: 'DELETE_FOLDER', payload: pd.id });
       } else if (pd.type === 'request') {
-        console.log('Deleting request:', pd.id);
         await deleteRequest(pd.id);
-        console.log('Request deleted successfully');
         removeShortcut(pd.id);
         dispatch({ type: 'DELETE_REQUEST', payload: pd.id });
       } else if (pd.type === 'env') {
-        console.log('Deleting environment:', pd.id);
         await deleteEnvironment(pd.id);
         dispatch({ type: 'DELETE_ENVIRONMENT', payload: pd.id });
       } else if (pd.type === 'automation') {

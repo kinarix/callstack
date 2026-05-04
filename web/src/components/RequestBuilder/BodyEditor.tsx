@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import React from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { xml } from '@codemirror/lang-xml';
 import { EditorView } from '@codemirror/view';
@@ -208,6 +209,7 @@ interface BodyEditorProps {
   envVars?: KeyValue[];
   secrets?: KeyValue[];
   memoryKey?: string;
+  viewRef?: React.MutableRefObject<EditorView | null>;
 }
 
 export function BodyEditor({
@@ -219,11 +221,17 @@ export function BodyEditor({
   envVars = [],
   secrets = [],
   memoryKey,
+  viewRef,
 }: BodyEditorProps) {
   const [validation, setValidation] = useState<{ valid: boolean; error?: string }>({ valid: true });
 
   const hasCsvTokens = /\{\{\s*#[\w.-]+\s*\}\}/.test(body);
-  const { memoryExtension, onCreateEditor } = useEditorMemory(memoryKey);
+  const { memoryExtension, onCreateEditor: onCreateEditorFromMemory } = useEditorMemory(memoryKey);
+
+  const handleCreateEditor = useCallback((view: EditorView) => {
+    if (viewRef) viewRef.current = view;
+    onCreateEditorFromMemory?.(view);
+  }, [viewRef, onCreateEditorFromMemory]);
   const extensions = useMemo(() => {
     const lang = getLanguage(contentType);
     const envVarKeys = envVars.filter((v) => v.enabled !== false && v.key).map((v) => v.key);
@@ -258,7 +266,7 @@ export function BodyEditor({
             autocompletion: true,
           }}
           style={{ height: '100%' }}
-          onCreateEditor={onCreateEditor}
+          onCreateEditor={handleCreateEditor}
         />
         {copyFlash && <div className={styles.copyToast}>Copied to clipboard</div>}
       </div>
