@@ -155,6 +155,7 @@ export interface ProjectRowProps {
   onClearAllCookies: (projectId: number, e: React.MouseEvent) => void;
   onClearDomainCookies: (projectId: number, domain: string, e: React.MouseEvent) => void;
   activeCookieDomain: string | null;
+  searchQuery?: string;
   onToggleProject: () => void;
   onToggleFolder: (id: number) => void;
   onDropOnProject: (e: React.DragEvent, projectId: number) => void;
@@ -239,6 +240,7 @@ export function ProjectRow({
   onClearAllCookies,
   onClearDomainCookies,
   activeCookieDomain,
+  searchQuery,
   onToggleProject,
   onToggleFolder,
   onDropOnProject,
@@ -251,11 +253,26 @@ export function ProjectRow({
     .filter((r) => !r.folder_id)
     .sort((a, b) => a.position - b.position);
 
+  // ─── Search filtering ────────────────────────────────────────────────────────
+  const sq = (searchQuery ?? '').trim().toLowerCase();
+  const filtering = sq.length > 0;
+  const hit = (text: string) => text.toLowerCase().includes(sq);
+  const projectHit = filtering && hit(project.name);
+
+  const visibleRootRequests = !filtering || projectHit ? rootRequests : rootRequests.filter((r) => hit(r.name));
+  const visibleFolders = !filtering || projectHit
+    ? folders
+    : folders.filter((f) => hit(f.name) || projectRequests.some((r) => r.folder_id === f.id && hit(r.name)));
+  const visibleEnvs = !filtering || projectHit ? projectEnvs : projectEnvs.filter((e) => hit(e.name));
+  const visibleAutomations = !filtering || projectHit ? projectAutomations : projectAutomations.filter((a) => hit(a.name));
+  const visibleDataFiles = !filtering || projectHit ? projectDataFiles : projectDataFiles.filter((d) => hit(d.name));
+  const visibleCookieDomains = !filtering || projectHit ? cookieDomains : cookieDomains.filter((d) => hit(d));
+
   const isProjectDragOver = dragOver?.type === 'project' && dragOver.id === project.id;
-  const envsExpanded = expandedEnvSections.has(project.id);
-  const cookiesExpanded = expandedCookieSections.has(project.id);
-  const automationsExpanded = expandedAutomationSections.has(project.id);
-  const dataFilesExpanded = expandedDataFileSections.has(project.id);
+  const envsExpanded = expandedEnvSections.has(project.id) || (filtering && visibleEnvs.length > 0);
+  const cookiesExpanded = expandedCookieSections.has(project.id) || (filtering && visibleCookieDomains.length > 0);
+  const automationsExpanded = expandedAutomationSections.has(project.id) || (filtering && visibleAutomations.length > 0);
+  const dataFilesExpanded = expandedDataFileSections.has(project.id) || (filtering && visibleDataFiles.length > 0);
 
   function renderRequestRow(request: Request) {
     return (
@@ -383,11 +400,14 @@ export function ProjectRow({
       {isExpanded && (
         <div className={styles.children}>
           {/* Folders */}
-          {folders.map((folder) => {
-            const isFolderExpanded = expandedFolders.has(folder.id);
-            const folderRequests = projectRequests
+          {visibleFolders.map((folder) => {
+            const allFolderRequests = projectRequests
               .filter((r) => r.folder_id === folder.id)
               .sort((a, b) => a.position - b.position);
+            const folderRequests = !filtering || projectHit || hit(folder.name)
+              ? allFolderRequests
+              : allFolderRequests.filter((r) => hit(r.name));
+            const isFolderExpanded = expandedFolders.has(folder.id) || (filtering && folderRequests.length > 0);
             const isFolderDragOver = dragOver?.type === 'folder' && dragOver.id === folder.id;
 
             return (
@@ -487,7 +507,7 @@ export function ProjectRow({
                 {isFolderExpanded && (
                   <div className={styles.folderChildren}>
                     {folderRequests.length === 0 ? (
-                      <div className={`${styles.treeRow} ${styles.emptyRow}`}>No requests</div>
+                      filtering ? null : <div className={`${styles.treeRow} ${styles.emptyRow}`}>No requests</div>
                     ) : (
                       folderRequests.map(renderRequestRow)
                     )}
@@ -499,15 +519,15 @@ export function ProjectRow({
 
           {/* Root-level requests */}
           <div>
-            {rootRequests.length === 0 && folders.length === 0 ? (
-              <div className={`${styles.treeRow} ${styles.emptyRow}`}>No requests</div>
+            {visibleRootRequests.length === 0 && visibleFolders.length === 0 ? (
+              filtering ? null : <div className={`${styles.treeRow} ${styles.emptyRow}`}>No requests</div>
             ) : (
-              rootRequests.map(renderRequestRow)
+              visibleRootRequests.map(renderRequestRow)
             )}
           </div>
 
           {/* Environments group */}
-          <div className={styles.folder}>
+          {(!filtering || visibleEnvs.length > 0) && <div className={styles.folder}>
             <div
               className={styles.folderRow}
               onClick={() => setExpandedEnvSections((prev) => {
@@ -533,10 +553,10 @@ export function ProjectRow({
             </div>
             {envsExpanded && (
               <div className={styles.folderChildren}>
-                {projectEnvs.length === 0 ? (
-                  <div className={`${styles.treeRow} ${styles.emptyRow}`}>No environments</div>
+                {visibleEnvs.length === 0 ? (
+                  filtering ? null : <div className={`${styles.treeRow} ${styles.emptyRow}`}>No environments</div>
                 ) : (
-                  projectEnvs.map((env) => (
+                  visibleEnvs.map((env) => (
                     <div
                       key={env.id}
                       className={`${styles.treeRow} ${styles.envRow} ${activeView === 'environment' && activeEnvironmentId === env.id ? styles.selected : ''}`}
@@ -572,10 +592,10 @@ export function ProjectRow({
                 )}
               </div>
             )}
-          </div>
+          </div>}
 
           {/* Cookies group */}
-          <div className={styles.folder}>
+          {(!filtering || visibleCookieDomains.length > 0) && <div className={styles.folder}>
             <div
               className={styles.folderRow}
               onClick={() => onCookieSectionToggle(project.id)}
@@ -598,10 +618,10 @@ export function ProjectRow({
             </div>
             {cookiesExpanded && (
               <div className={styles.folderChildren}>
-                {cookieDomains.length === 0 ? (
-                  <div className={`${styles.treeRow} ${styles.emptyRow}`}>No cookies stored</div>
+                {visibleCookieDomains.length === 0 ? (
+                  filtering ? null : <div className={`${styles.treeRow} ${styles.emptyRow}`}>No cookies stored</div>
                 ) : (
-                  cookieDomains.map((domain) => (
+                  visibleCookieDomains.map((domain) => (
                     <div
                       key={domain}
                       className={`${styles.treeRow} ${styles.envRow} ${activeView === 'cookies' && activeCookieDomain === domain ? styles.selected : ''}`}
@@ -621,10 +641,10 @@ export function ProjectRow({
                 )}
               </div>
             )}
-          </div>
+          </div>}
 
           {/* Automations group */}
-          <div className={styles.folder}>
+          {(!filtering || visibleAutomations.length > 0) && <div className={styles.folder}>
             <div
               className={styles.folderRow}
               onClick={() => setExpandedAutomationSections((prev) => {
@@ -650,10 +670,10 @@ export function ProjectRow({
             </div>
             {automationsExpanded && (
               <div className={styles.folderChildren}>
-                {projectAutomations.length === 0 ? (
-                  <div className={`${styles.treeRow} ${styles.emptyRow}`}>No automations</div>
+                {visibleAutomations.length === 0 ? (
+                  filtering ? null : <div className={`${styles.treeRow} ${styles.emptyRow}`}>No automations</div>
                 ) : (
-                  projectAutomations.map((automation) => (
+                  visibleAutomations.map((automation) => (
                     <div
                       key={automation.id}
                       className={`${styles.treeRow} ${styles.automationRow} ${activeView === 'automation' && activeAutomationId === automation.id ? styles.selected : ''}`}
@@ -689,10 +709,10 @@ export function ProjectRow({
                 )}
               </div>
             )}
-          </div>
+          </div>}
 
           {/* Data Files group */}
-          <div className={styles.folder}>
+          {(!filtering || visibleDataFiles.length > 0) && <div className={styles.folder}>
             <div
               className={styles.folderRow}
               onClick={() => setExpandedDataFileSections((prev) => {
@@ -718,10 +738,10 @@ export function ProjectRow({
             </div>
             {dataFilesExpanded && (
               <div className={styles.folderChildren}>
-                {projectDataFiles.length === 0 ? (
-                  <div className={`${styles.treeRow} ${styles.emptyRow}`}>No data files</div>
+                {visibleDataFiles.length === 0 ? (
+                  filtering ? null : <div className={`${styles.treeRow} ${styles.emptyRow}`}>No data files</div>
                 ) : (
-                  projectDataFiles.map((dataFile) => (
+                  visibleDataFiles.map((dataFile) => (
                     <div
                       key={dataFile.id}
                       className={`${styles.treeRow} ${styles.envRow} ${activeView === 'dataFile' && activeDataFileId === dataFile.id ? styles.selected : ''}`}
@@ -757,7 +777,7 @@ export function ProjectRow({
                 )}
               </div>
             )}
-          </div>
+          </div>}
         </div>
       )}
     </div>

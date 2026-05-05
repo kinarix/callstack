@@ -22,6 +22,29 @@ import { ProjectRow } from './ProjectRow';
 import type { DragOver } from './ProjectRow';
 import styles from './Sidebar.module.css';
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function projectHasMatch(
+  project: import('../../lib/types').Project,
+  requests: Request[],
+  folders: import('../../lib/types').Folder[],
+  environments: Environment[],
+  automations: Automation[],
+  dataFiles: DataFile[],
+  cookieDomains: string[],
+  q: string,
+): boolean {
+  const hit = (t: string) => t.toLowerCase().includes(q);
+  if (hit(project.name)) return true;
+  if (requests.filter((r) => r.project_id === project.id).some((r) => hit(r.name))) return true;
+  if (folders.filter((f) => f.project_id === project.id).some((f) => hit(f.name))) return true;
+  if (environments.filter((e) => e.project_id === project.id).some((e) => hit(e.name))) return true;
+  if (automations.filter((a) => a.projectId === project.id).some((a) => hit(a.name))) return true;
+  if (dataFiles.filter((d) => d.project_id === project.id).some((d) => hit(d.name))) return true;
+  if (cookieDomains.some((d) => hit(d))) return true;
+  return false;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type PendingDelete =
@@ -154,6 +177,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
   useEffect(() => {
     localStorage.setItem('callstack.expandedCookieSections', JSON.stringify([...expandedCookieSections]));
   }, [expandedCookieSections]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [shortcutModalRequestId, setShortcutModalRequestId] = useState<number | null>(null);
   const { shortcuts, assignShortcut, removeShortcut, getShortcutForRequest } = useShortcuts();
@@ -1158,18 +1182,55 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
 
         <div className={styles.treeDivider} />
 
+        <div className={styles.searchWrap}>
+          <svg className={styles.searchIcon} width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden>
+            <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          <input
+            className={styles.searchInput}
+            placeholder="Search…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button className={styles.searchClear} onClick={() => setSearchQuery('')} title="Clear search">
+              ×
+            </button>
+          )}
+        </div>
+
         <div className={styles.tree}>
-          {projects.length === 0 ? (
-            <div className={styles.empty}>No projects yet. Click + to create one.</div>
-          ) : (
-            projects.map((project) => (
+          {(() => {
+            const q = searchQuery.trim().toLowerCase();
+            const visibleProjects = q
+              ? projects.filter((project) =>
+                  projectHasMatch(
+                    project,
+                    requests,
+                    folders,
+                    environments,
+                    automations,
+                    dataFiles,
+                    cookieDomainsByProject[project.id] ?? [],
+                    q,
+                  ),
+                )
+              : projects;
+            return visibleProjects.length === 0 ? (
+              <div className={styles.empty}>
+                {q ? 'No matches.' : 'No projects yet. Click + to create one.'}
+              </div>
+            ) : (
+              visibleProjects.map((project) => (
               <ProjectRow
                 key={project.id}
                 project={project}
                 folders={folders.filter((f) => f.project_id === project.id)}
                 projectRequests={requests.filter((r) => r.project_id === project.id)}
                 projectEnvs={environments.filter((e) => e.project_id === project.id)}
-                isExpanded={expandedProjects.has(project.id)}
+                searchQuery={searchQuery}
+                isExpanded={q ? true : expandedProjects.has(project.id)}
                 expandedFolders={expandedFolders}
                 expandedEnvSections={expandedEnvSections}
                 setExpandedEnvSections={setExpandedEnvSections}
@@ -1246,7 +1307,8 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
                 clearDragOverIfLeaving={clearDragOverIfLeaving}
               />
             ))
-          )}
+          );
+        })()}
         </div>
 
       </div>
