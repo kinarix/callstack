@@ -20,6 +20,7 @@ import type { Automation, Cookie, DataFile, Environment, Request } from '../../l
 import { FilePickerModal } from '../FilePickerModal/FilePickerModal';
 import { ProjectRow } from './ProjectRow';
 import type { DragOver } from './ProjectRow';
+import { HistoryPanel } from './HistoryPanel';
 import styles from './Sidebar.module.css';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -1311,6 +1312,14 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
         })()}
         </div>
 
+        <HistoryPanel
+          onSelectRequest={(requestId, responseId) => {
+            dispatch({ type: 'SET_CURRENT_REQUEST', payload: requestId });
+            dispatch({ type: 'SET_VIEW', payload: 'request' });
+            dispatch({ type: 'SET_PENDING_HISTORY_RESPONSE', payload: responseId });
+          }}
+          refreshSignal={state.currentResponse?.id}
+        />
       </div>
     </>
   );

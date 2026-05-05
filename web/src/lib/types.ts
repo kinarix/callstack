@@ -155,6 +155,8 @@ export interface AppState {
   error: { message: string; showReset: boolean } | null;
   requestNavHistory: number[];
   navHistoryIndex: number;
+  pendingHistoryResponseId: number | null;
+  requestSelectSignal: number;
 }
 
 export interface AppContextType {
@@ -208,7 +210,8 @@ export type AppAction =
   | { type: 'CLEAR_ERROR' }
   | { type: 'HISTORY_BACK' }
   | { type: 'HISTORY_FORWARD' }
-  | { type: 'CLEAR_NAV_HISTORY' };
+  | { type: 'CLEAR_NAV_HISTORY' }
+  | { type: 'SET_PENDING_HISTORY_RESPONSE'; payload: number | null };
 
 export type BranchCondition =
   | { type: 'lastRequestPass' }

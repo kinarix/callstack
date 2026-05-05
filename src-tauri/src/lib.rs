@@ -328,6 +328,7 @@ pub fn run() {
             database::get_response_history,
             database::clear_response_history,
             database::clear_request_history,
+            database::get_all_response_history,
             database::list_environments,
             database::create_environment,
             database::update_environment,

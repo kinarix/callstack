@@ -260,7 +260,7 @@ function saveResponseState(requestId: number, patch: Partial<ResponsePanelState>
 }
 
 export function ResponseViewer({ response, requestId, requestName, copyFlash, onClear, onCopy }: ResponseViewerProps) {
-  const { dispatch } = useApp();
+  const { state, dispatch } = useApp();
   const { getResponseHistory, clearRequestHistory } = useDatabase();
   const [tab, setTab] = useState<'body' | 'headers' | 'preview' | 'tests' | 'cookies' | 'history'>('body');
   const [headersPinned, setHeadersPinned] = useState(false);
@@ -303,6 +303,25 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
   useEffect(() => {
     refreshHistory();
   }, [requestId]);
+
+  // When a sidebar history entry is clicked, preview that specific response
+  useEffect(() => {
+    const pending = state.pendingHistoryResponseId;
+    if (!pending) return;
+    const found = history.find((h) => h.id === pending);
+    if (found) {
+      setPreviewResponse(found);
+      setTab('body');
+      dispatch({ type: 'SET_PENDING_HISTORY_RESPONSE', payload: null });
+    }
+  }, [state.pendingHistoryResponseId, history]);
+
+  // Clear preview when user navigates to any request without a pending history preview
+  useEffect(() => {
+    if (!state.pendingHistoryResponseId) {
+      setPreviewResponse(null);
+    }
+  }, [state.requestSelectSignal]);
 
   // Restore persisted panel state when requestId changes
   useEffect(() => {
