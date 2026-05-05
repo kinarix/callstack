@@ -7,8 +7,19 @@ function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'SET_CURRENT_PROJECT':
       return { ...state, currentProjectId: action.payload };
-    case 'SET_CURRENT_REQUEST':
-      return { ...state, currentRequestId: action.payload, currentResponse: action.payload === state.currentRequestId ? state.currentResponse : null };
+    case 'SET_CURRENT_REQUEST': {
+      const newId = action.payload;
+      if (newId === state.currentRequestId) {
+        return state;
+      }
+      if (newId === null) {
+        return { ...state, currentRequestId: null, currentResponse: null };
+      }
+      const truncated = state.requestNavHistory.slice(0, state.navHistoryIndex + 1);
+      const next = [...truncated, newId].slice(-50);
+      return { ...state, currentRequestId: newId, currentResponse: null,
+               requestNavHistory: next, navHistoryIndex: next.length - 1 };
+    }
     case 'SET_PROJECTS':
       return { ...state, projects: action.payload };
     case 'ADD_PROJECT':
@@ -61,12 +72,17 @@ function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         requests: state.requests.map((r) => (r.id === action.payload.id ? action.payload : r)),
       };
-    case 'DELETE_REQUEST':
+    case 'DELETE_REQUEST': {
+      const newHist = state.requestNavHistory.filter(id => id !== action.payload);
+      const newIdx = Math.min(state.navHistoryIndex, newHist.length - 1);
       return {
         ...state,
         requests: state.requests.filter((r) => r.id !== action.payload),
         currentRequestId: state.currentRequestId === action.payload ? null : state.currentRequestId,
+        requestNavHistory: newHist,
+        navHistoryIndex: newIdx,
       };
+    }
     case 'MOVE_REQUEST': {
       const { ids, requestId, projectId, folderId } = action.payload;
       const idMap = new Map(ids.map((id, i) => [id, i]));
@@ -88,6 +104,9 @@ function appReducer(state: AppState, action: AppAction): AppState {
       };
     }
     case 'SET_RESPONSE':
+      if (action.payload !== null && action.payload.request_id !== state.currentRequestId) {
+        return state;
+      }
       return { ...state, currentResponse: action.payload };
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
@@ -218,6 +237,20 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, activeCookieDomain: action.payload };
     case 'BUMP_COOKIE_JAR_VERSION':
       return { ...state, cookieJarVersion: state.cookieJarVersion + 1 };
+    case 'HISTORY_BACK': {
+      if (state.navHistoryIndex <= 0) return state;
+      const idx = state.navHistoryIndex - 1;
+      return { ...state, navHistoryIndex: idx,
+               currentRequestId: state.requestNavHistory[idx], currentResponse: null };
+    }
+    case 'HISTORY_FORWARD': {
+      if (state.navHistoryIndex >= state.requestNavHistory.length - 1) return state;
+      const idx = state.navHistoryIndex + 1;
+      return { ...state, navHistoryIndex: idx,
+               currentRequestId: state.requestNavHistory[idx], currentResponse: null };
+    }
+    case 'CLEAR_NAV_HISTORY':
+      return { ...state, requestNavHistory: [], navHistoryIndex: -1 };
     case 'SHOW_ERROR':
       return { ...state, error: action.payload };
     case 'CLEAR_ERROR':
@@ -285,6 +318,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       activeCookieDomain: null,
       cookieJarVersion: 0,
       error: null,
+      requestNavHistory: [],
+      navHistoryIndex: -1,
     };
   });
 

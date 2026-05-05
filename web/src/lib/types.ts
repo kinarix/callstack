@@ -153,6 +153,8 @@ export interface AppState {
   activeCookieDomain: string | null;
   cookieJarVersion: number;
   error: { message: string; showReset: boolean } | null;
+  requestNavHistory: number[];
+  navHistoryIndex: number;
 }
 
 export interface AppContextType {
@@ -203,7 +205,10 @@ export type AppAction =
   | { type: 'SET_ACTIVE_AUTOMATION'; payload: number | null }
   | { type: 'SET_ACTIVE_ENVIRONMENT'; payload: number | null }
   | { type: 'SHOW_ERROR'; payload: { message: string; showReset: boolean } }
-  | { type: 'CLEAR_ERROR' };
+  | { type: 'CLEAR_ERROR' }
+  | { type: 'HISTORY_BACK' }
+  | { type: 'HISTORY_FORWARD' }
+  | { type: 'CLEAR_NAV_HISTORY' };
 
 export type BranchCondition =
   | { type: 'lastRequestPass' }

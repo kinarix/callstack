@@ -14,6 +14,8 @@ export interface ActionShortcuts {
   saveResponse: string;
   zoomIn: string;
   zoomOut: string;
+  historyBack: string;
+  historyForward: string;
 }
 
 export interface Settings {
@@ -35,6 +37,8 @@ export const DEFAULTS: Settings = {
     saveResponse: `${mod}+s`,
     zoomIn:       `${mod}+=`,
     zoomOut:      `${mod}+-`,
+    historyBack:    'Meta+[',
+    historyForward: 'Meta+]',
   },
   responseHistoryLimit: 10,
   httpTimeout: 30,
@@ -58,6 +62,8 @@ function loadSettings(): Settings {
         saveResponse: s.saveResponse ?? DEFAULTS.shortcuts.saveResponse,
         zoomIn:       s.zoomIn       ?? DEFAULTS.shortcuts.zoomIn,
         zoomOut:      s.zoomOut      ?? DEFAULTS.shortcuts.zoomOut,
+        historyBack:    s.historyBack    ?? DEFAULTS.shortcuts.historyBack,
+        historyForward: s.historyForward ?? DEFAULTS.shortcuts.historyForward,
       },
       responseHistoryLimit: parsed.responseHistoryLimit ?? DEFAULTS.responseHistoryLimit,
       httpTimeout: parsed.httpTimeout ?? DEFAULTS.httpTimeout,

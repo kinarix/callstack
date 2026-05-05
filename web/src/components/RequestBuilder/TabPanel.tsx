@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, Fragment, lazy, Suspense } from 'react';
 import type React from 'react';
 import type { EditorView } from '@codemirror/view';
+import { ExternalChange } from '@uiw/react-codemirror';
 import type { Request, KeyValue, FileAttachment } from '../../lib/types';
 import { KeyValueEditor } from './KeyValueEditor';
 import { FileUpload } from './FileUpload';
@@ -247,7 +248,17 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
   const handleFormat = () => {
     if (!request.body.trim() || !isFormattableType) return;
     const formatted = formatBody(request.body, currentContentType);
-    if (formatted !== request.body) handleBodyChange(formatted);
+    if (formatted === request.body) return;
+    const view = bodyEditorViewRef?.current;
+    if (view) {
+      const cursorPos = view.state.selection.main.head;
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: formatted },
+        selection: { anchor: Math.min(cursorPos, formatted.length) },
+        annotations: [ExternalChange.of(true)],
+      });
+    }
+    handleBodyChange(formatted);
   };
 
   const handleBodyChange = (body: string) => {
@@ -568,9 +579,9 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
         )}
         {activeTab === 'body' && (
           <>
-            {isFormattableType && request.body.trim() && (
+            {isFormattableType && (
               <div className={styles.bodyToolbar}>
-                <button className={styles.formatBtn} onClick={handleFormat}>Format</button>
+                <button className={styles.formatBtn} onClick={handleFormat} disabled={!request.body.trim()}>Format</button>
               </div>
             )}
             <Suspense fallback={null}>

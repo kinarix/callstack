@@ -54,10 +54,12 @@
   gap: var(--space-2);
   background: var(--bg-secondary);
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .spacer {
   flex: 1;
+  min-width: 0;
 }
 
 .status {
@@ -67,6 +69,8 @@
   font-size: 13px;
   color: #fff;
   min-width: 50px;
+  white-space: nowrap;
+  flex-shrink: 0;
   text-align: center;
 }
 
@@ -75,12 +79,23 @@
   gap: var(--space-2);
   font-size: 12px;
   color: var(--text-secondary);
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .infoItem {
-  display: flex;
-  gap: 4px;
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+  min-width: 0;
 }
+
+.infoTime { width: 100px; }
+.infoSize { width: 155px; }
+.infoAt   { width: 175px; }
 
 .infoItem strong {
   color: var(--text-primary);

@@ -484,6 +484,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
 
   const handleSend = async () => {
     if (!request || !request.url) return;
+    if (state.isLoading) return;
 
     // Clear console on each send
     setConsoleLogs([]);
@@ -505,8 +506,10 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         // formatted body renders before the response arrives.
         const view = bodyEditorViewRef.current;
         if (view) {
+          const cursorPos = view.state.selection.main.head;
           view.dispatch({
             changes: { from: 0, to: view.state.doc.length, insert: formatted },
+            selection: { anchor: Math.min(cursorPos, formatted.length) },
             annotations: [ExternalChange.of(true)],
           });
         }
@@ -724,6 +727,10 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         onEnvSelect={handleEnvSelect}
         envVars={envVars}
         secrets={secrets}
+        canNavigateBack={state.navHistoryIndex > 0}
+        canNavigateForward={state.navHistoryIndex < state.requestNavHistory.length - 1}
+        onNavigateBack={() => dispatch({ type: 'HISTORY_BACK' })}
+        onNavigateForward={() => dispatch({ type: 'HISTORY_FORWARD' })}
       />
       {urlError && (
         <div className={styles.bodyError}>

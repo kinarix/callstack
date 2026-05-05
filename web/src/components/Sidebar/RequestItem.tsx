@@ -117,6 +117,7 @@ export function RequestItem({
 
   return (
     <div
+      id={`request-row-${request.id}`}
       className={`${styles.item} ${isSelected ? styles.selected : ''}`}
       onClick={() => !isEditing && onSelect(request.id)}
     >
@@ -139,7 +140,7 @@ export function RequestItem({
             spellCheck={false}
           />
         ) : (
-          <div className={styles.name}>
+          <div className={`${styles.name} ${isExecuting ? styles.nameExecuting : ''}`}>
             <span className={styles.nameText}>{request.name}</span>
             {request.imported && <ImportedIcon />}
             {request.files?.some(f => f.path === '') && (

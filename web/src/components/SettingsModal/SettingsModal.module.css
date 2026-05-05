@@ -13,7 +13,7 @@
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
   width: 900px;
-  height: min(88vh, 680px);
+  height: min(92vh, 780px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
