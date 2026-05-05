@@ -399,7 +399,7 @@ dependencies = [
 
 [[package]]
 name = "callstack"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "arboard",
  "base64 0.22.1",
