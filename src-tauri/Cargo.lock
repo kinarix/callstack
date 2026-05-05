@@ -399,7 +399,7 @@ dependencies = [
 
 [[package]]
 name = "callstack"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "arboard",
  "base64 0.22.1",
@@ -2935,9 +2935,9 @@ dependencies = [
 
 [[package]]
 name = "quick-xml"
-version = "0.39.2"
+version = "0.39.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "958f21e8e7ceb5a1aa7fa87fab28e7c75976e0bfe7e23ff069e0a260f894067d"
+checksum = "721da970c312655cde9b4ffe0547f20a8494866a4af5ff51f18b7c633d0c870b"
 dependencies = [
  "memchr",
 ]
@@ -3886,9 +3886,9 @@ dependencies = [
 
 [[package]]
 name = "tao"
-version = "0.35.1"
+version = "0.35.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77f8fffb688e7653a5b9e9332ff15c87130a5ddde4d8cebd35abc49d411a8fce"
+checksum = "a33f7f9e486ade65fcf1e45c440f9236c904f5c1002cdc7fc6ae582777345ce4"
 dependencies = [
  "bitflags 2.11.1",
  "block2",
