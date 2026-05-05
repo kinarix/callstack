@@ -269,6 +269,7 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
   const [testsPinnedHeight, setTestsPinnedHeight] = useState(160);
   const [draggingPanel, setDraggingPanel] = useState<'headers' | 'tests' | null>(null);
   const bodyEditorRef = useRef<EditorView | null>(null);
+  const previewIframeRef = useRef<HTMLIFrameElement | null>(null);
   const headersPinnedHeightRef = useRef(160);
   const testsPinnedHeightRef = useRef(160);
   headersPinnedHeightRef.current = headersPinnedHeight;
@@ -700,9 +701,18 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
             if (ct.includes('html')) {
               return (
                 <iframe
+                  ref={previewIframeRef}
                   srcDoc={displayedResponse.body}
                   sandbox="allow-same-origin allow-scripts"
                   className={styles.previewFrame}
+                  onLoad={() => {
+                    const doc = previewIframeRef.current?.contentDocument;
+                    if (!doc) return;
+                    doc.addEventListener('click', (e) => {
+                      const a = (e.target as Element).closest('a');
+                      if (a) e.preventDefault();
+                    }, true);
+                  }}
                 />
               );
             }
