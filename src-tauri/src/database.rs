@@ -1085,6 +1085,58 @@ pub fn clear_response_history(db: tauri::State<Database>) -> Result<(), String> 
 }
 
 #[tauri::command]
+pub fn clear_request_history(db: tauri::State<Database>, request_id: i64) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM responses WHERE request_id = ?1", params![request_id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryEntry {
+    pub id: i64,
+    pub request_id: i64,
+    pub status: i64,
+    pub status_text: String,
+    pub time_ms: i64,
+    pub timestamp_ms: i64,
+    pub request_method: String,
+    pub request_name: String,
+    pub request_url: String,
+}
+
+#[tauri::command]
+pub fn get_all_response_history(db: tauri::State<Database>) -> Result<Vec<HistoryEntry>, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT resp.id, resp.request_id, resp.status, resp.status_text, resp.time_ms, resp.timestamp_ms, \
+             req.method, req.name, req.url \
+             FROM responses resp \
+             JOIN requests req ON resp.request_id = req.id \
+             ORDER BY resp.id DESC LIMIT 200",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(HistoryEntry {
+                id: row.get(0)?,
+                request_id: row.get(1)?,
+                status: row.get(2)?,
+                status_text: row.get(3)?,
+                time_ms: row.get(4)?,
+                timestamp_ms: row.get(5)?,
+                request_method: row.get(6)?,
+                request_name: row.get(7)?,
+                request_url: row.get(8)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn get_last_response(
     db: tauri::State<Database>,
     request_id: i64,

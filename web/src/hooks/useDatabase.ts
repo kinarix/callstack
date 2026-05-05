@@ -2,6 +2,18 @@ import { useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import type { Project, Request, Folder, Response, Environment, DataFile, KeyValue, Automation, AutomationRun, AutomationRequestResult, AutomationStep, Cookie } from '../lib/types';
 
+export interface HistoryEntry {
+  id: number;
+  requestId: number;
+  status: number;
+  statusText: string;
+  timeMs: number;
+  timestampMs: number;
+  requestMethod: string;
+  requestName: string;
+  requestUrl: string;
+}
+
 /** Ensure every nested step type has its required arrays, guarding against old DB data. */
 function normalizeSteps(steps: AutomationStep[]): AutomationStep[] {
   if (!Array.isArray(steps)) return [];
@@ -554,6 +566,14 @@ export function useDatabase() {
     await invoke('delete_data_file', { id });
   }, []);
 
+  const clearRequestHistory = useCallback(async (requestId: number): Promise<void> => {
+    await invoke('clear_request_history', { requestId });
+  }, []);
+
+  const getAllResponseHistory = useCallback(async (): Promise<HistoryEntry[]> => {
+    return invoke<HistoryEntry[]>('get_all_response_history');
+  }, []);
+
   const listCookies = useCallback(async (projectId: number): Promise<Cookie[]> => {
     return invoke<Cookie[]>('list_cookies', { projectId });
   }, []);
@@ -589,6 +609,8 @@ export function useDatabase() {
     saveResponse,
     getLastResponse,
     getResponseHistory,
+    clearRequestHistory,
+    getAllResponseHistory,
     listEnvironments,
     createEnvironment,
     updateEnvironment,

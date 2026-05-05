@@ -84,7 +84,49 @@ function readCallstackLocalStorage(): { entries: LsEntry[]; totalBytes: number }
   return { entries, totalBytes };
 }
 
-type Tab = 'general' | 'data';
+type Tab = 'general' | 'data' | 'system';
+
+interface SystemStats {
+  cpu_usage: number;
+  mem_bytes: number;
+  db_size_bytes: number;
+  proc_uptime_secs: number;
+}
+
+function formatUptime(secs: number): string {
+  const d = Math.floor(secs / 86400);
+  const h = Math.floor((secs % 86400) / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+function Sparkline({ data, gradId, color }: { data: number[]; gradId: string; color: string }) {
+  const W = 200, H = 44;
+  if (data.length < 2) return <div className={styles.sparklinePH} />;
+  const max = Math.max(...data, 1);
+  const pts = data.map((v, i) => [
+    (i / (data.length - 1)) * W,
+    H - (v / max) * H * 0.85 - H * 0.08,
+  ]);
+  const line = pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const area = `M${pts[0][0].toFixed(1)},${H} ` +
+    pts.map(([x, y]) => `L${x.toFixed(1)},${y.toFixed(1)}`).join(' ') +
+    ` L${pts[pts.length - 1][0].toFixed(1)},${H} Z`;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" className={styles.sparklSvg} preserveAspectRatio="none">
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.35" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#${gradId})`} />
+      <polyline points={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 const HISTORY_LIMIT_OPTIONS: { label: string; value: number }[] = [
   { label: '5', value: 5 },
@@ -111,13 +153,14 @@ interface SettingsModalProps {
   onSetResponseHistoryLimit: (limit: number) => void;
   onSetHttpTimeout: (secs: number) => void;
   onSetFormatOnSend: (v: boolean) => void;
+  onSetSysApplet?: (v: boolean) => void;
   onClearNavHistory?: () => void;
   onReset?: () => void;
   onResetAll?: () => Promise<void>;
   onClose: () => void;
 }
 
-export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetResponseHistoryLimit, onSetHttpTimeout, onSetFormatOnSend, onClearNavHistory, onReset, onResetAll, onClose }: SettingsModalProps) {
+export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetResponseHistoryLimit, onSetHttpTimeout, onSetFormatOnSend, onSetSysApplet, onClearNavHistory, onReset, onResetAll, onClose }: SettingsModalProps) {
   const [tab, setTab] = useState<Tab>('general');
   const [recording, setRecording] = useState<keyof ActionShortcuts | null>(null);
   const [confirmingReset, setConfirmingReset] = useState(false);
@@ -140,6 +183,11 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetRespons
     try { return (window as any).__APP_VERSION__ ?? __APP_VERSION__; } catch { return __APP_VERSION__; }
   });
 
+  const MAX_HISTORY = 60;
+  const [sysStats, setSysStats] = useState<SystemStats | null>(null);
+  const [cpuHistory, setCpuHistory] = useState<number[]>([]);
+  const [ramHistory, setRamHistory] = useState<number[]>([]);
+
   useEffect(() => {
     getVersion().then(setAppVersion).catch(() => {});
   }, []);
@@ -152,6 +200,22 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetRespons
       .then(setDbStats)
       .catch((e) => setDbStatsError(String(e)));
     setLsInfo(readCallstackLocalStorage());
+  }, [tab]);
+
+  // Poll system stats every 2s when on the System tab
+  useEffect(() => {
+    if (tab !== 'system') return;
+    const poll = async () => {
+      try {
+        const stats = await invoke<SystemStats>('get_system_stats');
+        setSysStats(stats);
+        setCpuHistory((prev) => [...prev.slice(-(MAX_HISTORY - 1)), stats.cpu_usage]);
+        setRamHistory((prev) => [...prev.slice(-(MAX_HISTORY - 1)), stats.mem_bytes]);
+      } catch {}
+    };
+    poll();
+    const id = setInterval(poll, 2000);
+    return () => clearInterval(id);
   }, [tab]);
 
   const handleResetAllClick = useCallback(() => {
@@ -316,6 +380,12 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetRespons
             onClick={() => setTab('data')}
           >
             Data
+          </button>
+          <button
+            className={`${styles.tab} ${tab === 'system' ? styles.tabActive : ''}`}
+            onClick={() => setTab('system')}
+          >
+            System
           </button>
         </div>
 
@@ -635,6 +705,73 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetRespons
                 )}
               </div>
             </div>
+          )}
+
+          {tab === 'system' && (
+            <>
+            <section className={styles.section}>
+              <div className={styles.sectionTitle}>Sidebar applet</div>
+              <div className={styles.sectionDesc}>
+                Compact CPU / memory / DB bar below the history panel. Hover to see sparklines.
+              </div>
+              <label className={styles.toggleRow}>
+                <input
+                  type="checkbox"
+                  checked={settings.showSysApplet}
+                  onChange={(e) => onSetSysApplet?.(e.target.checked)}
+                />
+                <span>Show stats applet in sidebar</span>
+              </label>
+            </section>
+            <div className={styles.columns}>
+              <div className={styles.column}>
+                <section className={styles.section}>
+                  <div className={styles.sectionTitle}>CPU</div>
+                  <div className={styles.sparklineWrap}>
+                    <Sparkline data={cpuHistory} gradId="sg-cpu" color="var(--accent-get)" />
+                    <div className={styles.sparklineLabel}>
+                      {sysStats ? `${sysStats.cpu_usage.toFixed(1)}%` : '—'}
+                      <span className={styles.sparklineSub}>this app · 60s window</span>
+                    </div>
+                  </div>
+                </section>
+                <section className={styles.section}>
+                  <div className={styles.sectionTitle}>Memory</div>
+                  <div className={styles.sparklineWrap}>
+                    <Sparkline data={ramHistory} gradId="sg-ram" color="var(--accent-post)" />
+                    <div className={styles.sparklineLabel}>
+                      {sysStats ? formatBytes(sysStats.mem_bytes) : '—'}
+                      <span className={styles.sparklineSub}>this app · RSS · 60s window</span>
+                    </div>
+                  </div>
+                </section>
+              </div>
+              <div className={styles.column}>
+                <section className={styles.section}>
+                  <div className={styles.sectionTitle}>Storage</div>
+                  {sysStats ? (
+                    <div className={styles.statsGrid}>
+                      <div className={styles.statCell}>
+                        <span className={styles.statLabel}>Database size</span>
+                        <span className={styles.statValue}>{formatBytes(sysStats.db_size_bytes)}</span>
+                      </div>
+                    </div>
+                  ) : <div className={styles.mutedText}>Loading…</div>}
+                </section>
+                <section className={styles.section}>
+                  <div className={styles.sectionTitle}>App</div>
+                  {sysStats ? (
+                    <div className={styles.statsGrid}>
+                      <div className={styles.statCell}>
+                        <span className={styles.statLabel}>Uptime</span>
+                        <span className={styles.statValue}>{formatUptime(sysStats.proc_uptime_secs)}</span>
+                      </div>
+                    </div>
+                  ) : <div className={styles.mutedText}>Loading…</div>}
+                </section>
+              </div>
+            </div>
+            </>
           )}
 
         </div>

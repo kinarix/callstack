@@ -26,7 +26,7 @@ function clearUIState() {
 function AppContent() {
   const { state, dispatch } = useApp();
   const { loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations, listDataFiles, createRequest, duplicateRequest, getLastResponse, updateEnvironmentSecrets } = useDatabase();
-  const { settings, setZoom, setShortcut, setResponseHistoryLimit, setHttpTimeout, setFormatOnSend, resetSettings } = useSettings();
+  const { settings, setZoom, setShortcut, setResponseHistoryLimit, setHttpTimeout, setFormatOnSend, setSysApplet, resetSettings } = useSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [displayZoom, setDisplayZoom] = useState(settings.zoom);
   const displayZoomRef = useRef(settings.zoom);
@@ -388,6 +388,7 @@ function AppContent() {
             onToggleCollapse={() => setSidebarCollapsed((c) => !c)}
             externalRenameRequestId={externalRenameId}
             onOpenSettings={() => setSettingsOpen(true)}
+            showSysApplet={settings.showSysApplet}
           />
         </div>
         <div
@@ -463,6 +464,7 @@ function AppContent() {
           onSetResponseHistoryLimit={setResponseHistoryLimit}
           onSetHttpTimeout={setHttpTimeout}
           onSetFormatOnSend={setFormatOnSend}
+          onSetSysApplet={setSysApplet}
           onReset={resetSettings}
           onResetAll={() => invoke('reset_all_data')}
           onClearNavHistory={() => dispatch({ type: 'CLEAR_NAV_HISTORY' })}

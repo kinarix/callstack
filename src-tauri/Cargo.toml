@@ -1,6 +1,6 @@
 [package]
 name = "callstack"
-version = "0.11.0"
+version = "0.15.0"
 description = "A modern REST API testing tool"
 authors = ["Kinarix"]
 edition = "2021"
@@ -33,6 +33,7 @@ tokio = { version = "1", features = ["full"] }
 dirs = "6"
 rfd = "0.17"
 arboard = { version = "3", default-features = false }
+sysinfo = { version = "0.32", default-features = false, features = ["system"] }
 
 [profile.release]
 strip = true        # remove debug symbols from binary

@@ -10,15 +10,16 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'SET_CURRENT_REQUEST': {
       const newId = action.payload;
       if (newId === state.currentRequestId) {
-        return state;
+        return { ...state, requestSelectSignal: state.requestSelectSignal + 1 };
       }
       if (newId === null) {
-        return { ...state, currentRequestId: null, currentResponse: null };
+        return { ...state, currentRequestId: null, currentResponse: null, requestSelectSignal: state.requestSelectSignal + 1 };
       }
       const truncated = state.requestNavHistory.slice(0, state.navHistoryIndex + 1);
       const next = [...truncated, newId].slice(-50);
       return { ...state, currentRequestId: newId, currentResponse: null,
-               requestNavHistory: next, navHistoryIndex: next.length - 1 };
+               requestNavHistory: next, navHistoryIndex: next.length - 1,
+               requestSelectSignal: state.requestSelectSignal + 1 };
     }
     case 'SET_PROJECTS':
       return { ...state, projects: action.payload };
@@ -251,6 +252,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
     }
     case 'CLEAR_NAV_HISTORY':
       return { ...state, requestNavHistory: [], navHistoryIndex: -1 };
+    case 'SET_PENDING_HISTORY_RESPONSE':
+      return { ...state, pendingHistoryResponseId: action.payload };
     case 'SHOW_ERROR':
       return { ...state, error: action.payload };
     case 'CLEAR_ERROR':
@@ -320,6 +323,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       error: null,
       requestNavHistory: [],
       navHistoryIndex: -1,
+      pendingHistoryResponseId: null,
+      requestSelectSignal: 0,
     };
   });
 
