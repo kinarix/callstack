@@ -31,6 +31,10 @@ interface UrlBarProps {
   onEnvSelect: (env: Environment | null) => void;
   envVars?: KeyValue[];
   secrets?: KeyValue[];
+  canNavigateBack?: boolean;
+  canNavigateForward?: boolean;
+  onNavigateBack?: () => void;
+  onNavigateForward?: () => void;
 }
 
 const METHODS: HTTPMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
@@ -114,7 +118,13 @@ export function UrlBar({
   onEnvSelect,
   envVars = [],
   secrets = [],
+  canNavigateBack,
+  canNavigateForward,
+  onNavigateBack,
+  onNavigateForward,
 }: UrlBarProps) {
+  const [blockedToastKey, setBlockedToastKey] = useState<number | null>(null);
+
   const handleUrlBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const url = e.target.value;
     if (onUrlBlur) {
@@ -132,6 +142,28 @@ export function UrlBar({
           </svg>
         </button>
       )}
+      <div className={styles.navButtons}>
+        <button
+          className={styles.navBtn}
+          onClick={onNavigateBack}
+          disabled={!canNavigateBack}
+          title="Back (Cmd+[)"
+        >
+          <svg width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden>
+            <path d="M7.5 2L2.5 8L7.5 14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <button
+          className={styles.navBtn}
+          onClick={onNavigateForward}
+          disabled={!canNavigateForward}
+          title="Forward (Cmd+])"
+        >
+          <svg width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden>
+            <path d="M2.5 2L7.5 8L2.5 14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
       <input
         type="text"
         className={styles.nameInput}
@@ -163,7 +195,12 @@ export function UrlBar({
           placeholder="https://api.example.com/endpoint"
           envVars={envVars}
           secrets={secrets}
-          onKeyDown={(e) => { if (e.key === 'Enter') onSend(); }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              if (isBlocked) { setBlockedToastKey(Date.now()); return; }
+              if (!isLoading) onSend();
+            }
+          }}
           onBlur={handleUrlBlur}
         />
         <label className={styles.redirectToggle} title="Follow 3xx redirects automatically">
@@ -176,12 +213,12 @@ export function UrlBar({
         </label>
       </div>
       <button
-        className={isLoading ? `${styles.sendBtn} ${styles.sendBtnCancel}` : styles.sendBtn}
+        className={(isLoading || isBlocked) ? `${styles.sendBtn} ${styles.sendBtnCancel}` : styles.sendBtn}
         onClick={isLoading ? onCancel : onSend}
         disabled={isBlocked || (!isLoading && !url)}
         title={isLoading ? 'Cancel request' : isBlocked ? 'Another request is in progress' : 'Send request (Enter)'}
       >
-        {isLoading ? (
+        {(isLoading || isBlocked) ? (
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
             <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
@@ -189,6 +226,11 @@ export function UrlBar({
           '→'
         )}
       </button>
+      {blockedToastKey !== null && (
+        <div key={blockedToastKey} className={styles.blockedToast}>
+          A request is already in progress
+        </div>
+      )}
     </div>
   );
 }

@@ -329,6 +329,20 @@ function AppContent() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [settings.shortcuts, state.currentRequestId, state.currentProjectId, state.currentResponse, state.requests, activePane, createRequest, duplicateRequest, dispatch]);
 
+  // Nav history keyboard shortcuts — capture phase so CodeMirror doesn't block
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (matchesShortcut(e, settings.shortcuts.historyBack)) {
+        e.preventDefault(); dispatch({ type: 'HISTORY_BACK' }); return;
+      }
+      if (matchesShortcut(e, settings.shortcuts.historyForward)) {
+        e.preventDefault(); dispatch({ type: 'HISTORY_FORWARD' });
+      }
+    };
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
+  }, [settings.shortcuts.historyBack, settings.shortcuts.historyForward, dispatch]);
+
   const ZOOM_LEVELS = [1, 1.1, 1.25, 1.5];
   useEffect(() => {
     const onZoomKey = (e: KeyboardEvent) => {
@@ -451,6 +465,7 @@ function AppContent() {
           onSetFormatOnSend={setFormatOnSend}
           onReset={resetSettings}
           onResetAll={() => invoke('reset_all_data')}
+          onClearNavHistory={() => dispatch({ type: 'CLEAR_NAV_HISTORY' })}
           onClose={() => setSettingsOpen(false)}
         />
       )}

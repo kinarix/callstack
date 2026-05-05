@@ -4,6 +4,7 @@
   padding: var(--space-1) var(--space-2);
   border-bottom: 1px solid var(--border-primary);
   background: var(--bg-primary);
+  position: relative;
 }
 
 .expandBtn {
@@ -277,4 +278,68 @@
 .sendBtnCancel:hover:not(:disabled) {
   box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
   transform: scale(1.1);
+}
+
+.navButtons {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.navBtn {
+  width: 30px;
+  height: 38px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  color: var(--accent-post);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+
+.navBtn:hover:not(:disabled) {
+  color: var(--accent-post);
+  border-color: var(--accent-post);
+  background: color-mix(in srgb, var(--accent-post) 10%, transparent);
+}
+
+.navBtn:active:not(:disabled) {
+  transform: scale(0.93);
+}
+
+.navBtn:disabled {
+  opacity: 0.25;
+  cursor: default;
+  color: var(--text-tertiary);
+}
+
+.blockedToast {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--accent-put);
+  color: var(--accent-put);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+  white-space: nowrap;
+  animation: toastFade 1.8s ease forwards;
+  z-index: 200;
+}
+
+@keyframes toastFade {
+  0%   { opacity: 0; transform: translate(-50%, -46%); }
+  12%  { opacity: 1; transform: translate(-50%, -50%); }
+  65%  { opacity: 1; }
+  100% { opacity: 0; }
 }

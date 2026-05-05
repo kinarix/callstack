@@ -15,14 +15,16 @@ const ZOOM_OPTIONS: { label: string; value: number }[] = [
 ];
 
 const ACTION_LABELS: { key: keyof ActionShortcuts; label: string }[] = [
-  { key: 'execute',      label: 'Execute request' },
-  { key: 'rename',       label: 'Rename request' },
-  { key: 'newRequest',   label: 'New request' },
-  { key: 'copyResponse', label: 'Copy response' },
-  { key: 'cloneRequest', label: 'Clone request' },
-  { key: 'saveResponse', label: 'Save response' },
-  { key: 'zoomIn',       label: 'Zoom in' },
-  { key: 'zoomOut',      label: 'Zoom out' },
+  { key: 'execute',        label: 'Execute request' },
+  { key: 'rename',         label: 'Rename request' },
+  { key: 'newRequest',     label: 'New request' },
+  { key: 'copyResponse',   label: 'Copy response' },
+  { key: 'cloneRequest',   label: 'Clone request' },
+  { key: 'saveResponse',   label: 'Save response' },
+  { key: 'zoomIn',         label: 'Zoom in' },
+  { key: 'zoomOut',        label: 'Zoom out' },
+  { key: 'historyBack',    label: 'Navigate back' },
+  { key: 'historyForward', label: 'Navigate forward' },
 ];
 
 const BLOCKED_KEYS = new Set([
@@ -109,15 +111,17 @@ interface SettingsModalProps {
   onSetResponseHistoryLimit: (limit: number) => void;
   onSetHttpTimeout: (secs: number) => void;
   onSetFormatOnSend: (v: boolean) => void;
+  onClearNavHistory?: () => void;
   onReset?: () => void;
   onResetAll?: () => Promise<void>;
   onClose: () => void;
 }
 
-export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetResponseHistoryLimit, onSetHttpTimeout, onSetFormatOnSend, onReset, onResetAll, onClose }: SettingsModalProps) {
+export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetResponseHistoryLimit, onSetHttpTimeout, onSetFormatOnSend, onClearNavHistory, onReset, onResetAll, onClose }: SettingsModalProps) {
   const [tab, setTab] = useState<Tab>('general');
   const [recording, setRecording] = useState<keyof ActionShortcuts | null>(null);
   const [confirmingReset, setConfirmingReset] = useState(false);
+  const [confirmClearNav, setConfirmClearNav] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [confirmClearUi, setConfirmClearUi] = useState(false);
   const [dbStats, setDbStats] = useState<DbStats | null>(null);
@@ -412,6 +416,27 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetRespons
                     <span>Format body before send</span>
                   </label>
                 </section>
+                {onClearNavHistory && (
+                  <section className={styles.section}>
+                    <div className={styles.sectionTitle}>Navigation history</div>
+                    <div className={styles.sectionDesc}>
+                      Back/forward history of visited requests (session only).
+                    </div>
+                    <div className={styles.resetRow}>
+                      {!confirmClearNav ? (
+                        <button className={styles.resetBtn} onClick={() => setConfirmClearNav(true)}>
+                          Clear navigation history
+                        </button>
+                      ) : (
+                        <div className={styles.dangerConfirmActions}>
+                          <span className={styles.mutedText}>Clears the back/forward stack.</span>
+                          <button className={styles.dangerCancelBtn} onClick={() => setConfirmClearNav(false)}>Cancel</button>
+                          <button className={styles.dangerConfirmBtn} onClick={() => { onClearNavHistory(); setConfirmClearNav(false); }}>Yes, clear</button>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                )}
               </div>
             </div>
           )}

@@ -44,7 +44,7 @@ function formatTimestamp(ts: number): string {
   const h = String(d.getHours()).padStart(2, '0');
   const m = String(d.getMinutes()).padStart(2, '0');
   const s = String(d.getSeconds()).padStart(2, '0');
-  return `${yyyy}-${mo}-${dd} ${h}:${m}:${s}`;
+  return `${dd}-${mo}-${yyyy} ${h}:${m}:${s}`;
 }
 
 interface ResponseViewerProps {
@@ -442,17 +442,26 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
           {displayedResponse.status}{displayedResponse.statusText ? ` ${displayedResponse.statusText}` : ''}
         </div>
         <div className={styles.info}>
-          <span className={styles.infoItem}>
+          <span
+            className={`${styles.infoItem} ${styles.infoTime}`}
+            title={`Time: ${displayedResponse.time}ms`}
+          >
             Time: <strong>{displayedResponse.time}ms</strong>
           </span>
-          <span className={styles.infoItem}>
+          <span
+            className={`${styles.infoItem} ${styles.infoSize}`}
+            title={`Size: ${formatBytes(displayedResponse.size)}${displayedResponse.transferSize != null && displayedResponse.transferSize !== displayedResponse.size ? ` (${formatBytes(displayedResponse.transferSize)})` : ''}`}
+          >
             Size: <strong>{formatBytes(displayedResponse.size)}</strong>
             {displayedResponse.transferSize != null && displayedResponse.transferSize !== displayedResponse.size && (
-              <span className={styles.transferSize}> ({formatBytes(displayedResponse.transferSize)} transferred)</span>
+              <span className={styles.transferSize}> ({formatBytes(displayedResponse.transferSize)})</span>
             )}
           </span>
           {displayedResponse.timestamp != null && (
-            <span className={styles.infoItem}>
+            <span
+              className={`${styles.infoItem} ${styles.infoAt}`}
+              title={`At: ${formatTimestamp(displayedResponse.timestamp)}`}
+            >
               At: <strong>{formatTimestamp(displayedResponse.timestamp)}</strong>
             </span>
           )}

@@ -484,6 +484,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
 
   const handleSend = async () => {
     if (!request || !request.url) return;
+    if (state.isLoading) return;
 
     // Clear console on each send
     setConsoleLogs([]);
@@ -726,6 +727,10 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         onEnvSelect={handleEnvSelect}
         envVars={envVars}
         secrets={secrets}
+        canNavigateBack={state.navHistoryIndex > 0}
+        canNavigateForward={state.navHistoryIndex < state.requestNavHistory.length - 1}
+        onNavigateBack={() => dispatch({ type: 'HISTORY_BACK' })}
+        onNavigateForward={() => dispatch({ type: 'HISTORY_FORWARD' })}
       />
       {urlError && (
         <div className={styles.bodyError}>

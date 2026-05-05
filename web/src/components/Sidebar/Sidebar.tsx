@@ -230,6 +230,15 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     }
   }, [state.projects.length, state.automations.length, state.requests.length]);
 
+  // Scroll to current request on navigation (back/forward)
+  useEffect(() => {
+    if (state.currentRequestId == null) return;
+    setTimeout(() => {
+      document.getElementById(`request-row-${state.currentRequestId}`)
+        ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }, 120);
+  }, [state.currentRequestId]);
+
   // Keyboard shortcut from App.tsx triggers inline rename
   useEffect(() => {
     if (externalRenameRequestId != null) setEditingRequestId(externalRenameRequestId);
