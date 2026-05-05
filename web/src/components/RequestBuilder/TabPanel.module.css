@@ -33,6 +33,7 @@
 .bodyToolbar {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-1);
   padding: 4px var(--space-2);
   flex-shrink: 0;
@@ -41,21 +42,35 @@
 }
 
 .formatBtn {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  padding: 2px 7px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-secondary);
-  background: transparent;
-  color: var(--text-tertiary);
+  border: 1px solid color-mix(in srgb, var(--accent-patch) 35%, transparent);
+  background: color-mix(in srgb, var(--accent-patch) 10%, transparent);
+  color: var(--accent-patch);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'Outfit', sans-serif;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.formatBtn:hover {
-  color: var(--text-secondary);
-  border-color: var(--border-primary);
+.formatBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-patch) 20%, transparent);
+  border-color: color-mix(in srgb, var(--accent-patch) 55%, transparent);
+}
+
+.formatBtn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.formatBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .validationTag {

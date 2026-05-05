@@ -505,8 +505,10 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         // formatted body renders before the response arrives.
         const view = bodyEditorViewRef.current;
         if (view) {
+          const cursorPos = view.state.selection.main.head;
           view.dispatch({
             changes: { from: 0, to: view.state.doc.length, insert: formatted },
+            selection: { anchor: Math.min(cursorPos, formatted.length) },
             annotations: [ExternalChange.of(true)],
           });
         }
