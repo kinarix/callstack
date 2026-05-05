@@ -261,7 +261,7 @@ function saveResponseState(requestId: number, patch: Partial<ResponsePanelState>
 
 export function ResponseViewer({ response, requestId, requestName, copyFlash, onClear, onCopy }: ResponseViewerProps) {
   const { dispatch } = useApp();
-  const { getResponseHistory } = useDatabase();
+  const { getResponseHistory, clearRequestHistory } = useDatabase();
   const [tab, setTab] = useState<'body' | 'headers' | 'preview' | 'tests' | 'cookies' | 'history'>('body');
   const [headersPinned, setHeadersPinned] = useState(false);
   const [testsPinned, setTestsPinned] = useState(false);
@@ -887,11 +887,31 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
                   ))}
                 </div>
               )}
-              {diffA !== null && diffB !== null && diffA !== diffB && (
+              {(history.length > 0 || (diffA !== null && diffB !== null && diffA !== diffB)) && (
                 <div className={styles.historyActions}>
-                  <button className={styles.compareBtn} onClick={() => setDiffMode(true)}>
-                    Compare A vs B
-                  </button>
+                  {diffA !== null && diffB !== null && diffA !== diffB && (
+                    <button className={styles.compareBtn} onClick={() => setDiffMode(true)}>
+                      Compare A vs B
+                    </button>
+                  )}
+                  {history.length > 0 && requestId != null && (
+                    <button
+                      className={styles.clearHistoryBtn}
+                      onClick={() => {
+                        clearRequestHistory(requestId).then(() => {
+                          setHistory([]);
+                          setPreviewResponse(null);
+                          setDiffA(null);
+                          setDiffB(null);
+                          setDiffMode(false);
+                          onClear?.();
+                        }).catch(console.error);
+                      }}
+                      title="Delete all history for this request"
+                    >
+                      Clear history
+                    </button>
+                  )}
                 </div>
               )}
             </>

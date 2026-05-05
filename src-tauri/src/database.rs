@@ -1085,6 +1085,14 @@ pub fn clear_response_history(db: tauri::State<Database>) -> Result<(), String> 
 }
 
 #[tauri::command]
+pub fn clear_request_history(db: tauri::State<Database>, request_id: i64) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM responses WHERE request_id = ?1", params![request_id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 pub fn get_last_response(
     db: tauri::State<Database>,
     request_id: i64,

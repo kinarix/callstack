@@ -554,6 +554,10 @@ export function useDatabase() {
     await invoke('delete_data_file', { id });
   }, []);
 
+  const clearRequestHistory = useCallback(async (requestId: number): Promise<void> => {
+    await invoke('clear_request_history', { requestId });
+  }, []);
+
   const listCookies = useCallback(async (projectId: number): Promise<Cookie[]> => {
     return invoke<Cookie[]>('list_cookies', { projectId });
   }, []);
@@ -589,6 +593,7 @@ export function useDatabase() {
     saveResponse,
     getLastResponse,
     getResponseHistory,
+    clearRequestHistory,
     listEnvironments,
     createEnvironment,
     updateEnvironment,
