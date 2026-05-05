@@ -21,6 +21,7 @@ import { FilePickerModal } from '../FilePickerModal/FilePickerModal';
 import { ProjectRow } from './ProjectRow';
 import type { DragOver } from './ProjectRow';
 import { HistoryPanel } from './HistoryPanel';
+import { SysApplet } from './SysApplet';
 import styles from './Sidebar.module.css';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -61,6 +62,7 @@ interface SidebarProps {
   onToggleCollapse: () => void;
   externalRenameRequestId?: number | null;
   onOpenSettings: () => void;
+  showSysApplet?: boolean;
 }
 
 function GearIcon() {
@@ -98,7 +100,7 @@ function getLogoGradient(): string {
   return 'linear-gradient(135deg, #6366f1, #3b82f6)';                        // night
 }
 
-export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, onOpenSettings }: SidebarProps) {
+export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, onOpenSettings, showSysApplet }: SidebarProps) {
   const { state, dispatch } = useApp();
   const {
     createProject,
@@ -1320,6 +1322,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
           }}
           refreshSignal={state.currentResponse?.id}
         />
+        {showSysApplet && <SysApplet />}
       </div>
     </>
   );

@@ -24,6 +24,7 @@ export interface Settings {
   responseHistoryLimit: number;
   httpTimeout: number;
   formatOnSend: boolean;
+  showSysApplet: boolean;
 }
 
 export const DEFAULTS: Settings = {
@@ -43,6 +44,7 @@ export const DEFAULTS: Settings = {
   responseHistoryLimit: 10,
   httpTimeout: 30,
   formatOnSend: true,
+  showSysApplet: false,
 };
 
 function loadSettings(): Settings {
@@ -68,6 +70,7 @@ function loadSettings(): Settings {
       responseHistoryLimit: parsed.responseHistoryLimit ?? DEFAULTS.responseHistoryLimit,
       httpTimeout: parsed.httpTimeout ?? DEFAULTS.httpTimeout,
       formatOnSend: parsed.formatOnSend ?? DEFAULTS.formatOnSend,
+      showSysApplet: parsed.showSysApplet ?? DEFAULTS.showSysApplet,
     };
   } catch {
     return DEFAULTS;
@@ -147,10 +150,18 @@ export function useSettings() {
     });
   }, []);
 
+  const setSysApplet = useCallback((showSysApplet: boolean) => {
+    setSettings((prev) => {
+      const next = { ...prev, showSysApplet };
+      saveSettings(next);
+      return next;
+    });
+  }, []);
+
   const resetSettings = useCallback(() => {
     setSettings(DEFAULTS);
     saveSettings(DEFAULTS);
   }, []);
 
-  return { settings, setZoom, setShortcut, setResponseHistoryLimit, setHttpTimeout, setFormatOnSend, resetSettings };
+  return { settings, setZoom, setShortcut, setResponseHistoryLimit, setHttpTimeout, setFormatOnSend, setSysApplet, resetSettings };
 }

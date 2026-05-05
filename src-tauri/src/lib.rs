@@ -5,6 +5,41 @@ use database::Database;
 use serde::Serialize;
 use tauri::Manager;
 
+pub struct SysInfo(pub std::sync::Mutex<sysinfo::System>);
+
+#[derive(Serialize)]
+struct SystemStats {
+    cpu_usage: f32,
+    mem_bytes: u64,
+    db_size_bytes: u64,
+    proc_uptime_secs: u64,
+}
+
+#[tauri::command]
+fn get_system_stats(sysinfo: tauri::State<'_, SysInfo>) -> Result<SystemStats, String> {
+    let mut sys = sysinfo.0.lock().map_err(|e| e.to_string())?;
+    let pid = sysinfo::Pid::from_u32(std::process::id());
+    sys.refresh_processes(sysinfo::ProcessesToUpdate::Some(&[pid]), false);
+
+    let proc = sys.process(pid);
+    let cpu_usage = proc.map(|p| p.cpu_usage()).unwrap_or(0.0);
+    let mem_bytes = proc.map(|p| p.memory()).unwrap_or(0);
+    let proc_start = proc.map(|p| p.start_time()).unwrap_or(0);
+    let now_secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let proc_uptime_secs = if proc_start > 0 { now_secs.saturating_sub(proc_start) } else { 0 };
+
+    let db_size_bytes = crate::database::db_path()
+        .ok()
+        .and_then(|p| std::fs::metadata(p).ok())
+        .map(|m| m.len())
+        .unwrap_or(0);
+
+    Ok(SystemStats { cpu_usage, mem_bytes, db_size_bytes, proc_uptime_secs })
+}
+
 pub struct CancelHandle(pub tokio::sync::Mutex<Option<tokio::task::AbortHandle>>);
 
 #[tauri::command]
@@ -277,6 +312,7 @@ fn compact_database(db: tauri::State<'_, Database>) -> Result<(), String> {
 pub fn run() {
     let db = Database::new().expect("Failed to initialize database");
     let cancel_handle = CancelHandle(tokio::sync::Mutex::new(None));
+    let sys_info = SysInfo(std::sync::Mutex::new(sysinfo::System::new()));
 
     tauri::Builder::default()
         .menu(|handle| tauri::menu::Menu::default(handle))
@@ -302,6 +338,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .manage(db)
         .manage(cancel_handle)
+        .manage(sys_info)
         .invoke_handler(tauri::generate_handler![
             http_client::send_request,
             database::list_projects,
@@ -359,6 +396,7 @@ pub fn run() {
             get_full_snapshot,
             write_clipboard,
             open_system_url,
+            get_system_stats,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
