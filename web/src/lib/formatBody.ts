@@ -11,7 +11,7 @@ function formatXml(xml: string): string {
           return '  '.repeat(level) + line;
         }
         const indented = '  '.repeat(level) + line;
-        if (!line.startsWith('<?') && !line.startsWith('<!--') && !line.endsWith('/>') && !/<[^>]+\/>/.test(line) && !line.includes('</')) {
+        if (!line.startsWith('<?') && !line.startsWith('<!--') && !line.endsWith('/>') && !/<[^>]{1,500}\/>/.test(line) && !line.includes('</')) {
           level++;
         }
         return indented;

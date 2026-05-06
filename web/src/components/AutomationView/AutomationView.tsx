@@ -1182,7 +1182,9 @@ export default function AutomationView({ automationId, showExpandBtn, onExpand }
     setResultFilter('all');
 
     const { results, durationMs, overallStatus } = await run(localSteps, requestMap, envVars, activeEnvId, (entry) => {
-      dispatch({ type: 'ADD_LOG', payload: { ...entry, id: Date.now() ^ (Math.random() * 0xffffffff | 0) } });
+      const rnd = new Uint32Array(1);
+      crypto.getRandomValues(rnd);
+      dispatch({ type: 'ADD_LOG', payload: { ...entry, id: Date.now() ^ rnd[0] } });
     }, state.dataFiles, projectEnvs, automation?.projectId ?? null);
     const saved = await saveAutomationRun(automationId, overallStatus, results, durationMs);
     setPastRuns((prev) => [saved, ...prev.slice(0, 9)]);
