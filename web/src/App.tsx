@@ -14,6 +14,7 @@ import styles from './App.module.css';
 import { useDatabase } from './hooks/useDatabase';
 import { useSettings, matchesShortcut } from './hooks/useSettings';
 import { formatBody } from './lib/formatBody';
+import { isScratchProject, SCRATCH_PROJECT_NAME } from './lib/utils';
 import type { KeyValue } from './lib/types';
 
 function clearUIState() {
@@ -25,7 +26,7 @@ function clearUIState() {
 
 function AppContent() {
   const { state, dispatch } = useApp();
-  const { loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations, listDataFiles, createRequest, duplicateRequest, getLastResponse, updateEnvironmentSecrets } = useDatabase();
+  const { loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations, listDataFiles, createRequest, createProject, duplicateRequest, getLastResponse, updateEnvironmentSecrets } = useDatabase();
   const { settings, setZoom, setShortcut, setResponseHistoryLimit, setHttpTimeout, setFormatOnSend, setSysApplet, resetSettings } = useSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [displayZoom, setDisplayZoom] = useState(settings.zoom);
@@ -91,6 +92,11 @@ function AppContent() {
 
   useEffect(() => {
     loadUserProjects(null).then(async (projects) => {
+      const scratchProject = projects.find((p) => isScratchProject(p.name));
+      const nonScratchProjects = scratchProject
+        ? projects.filter((p) => p.id !== scratchProject.id)
+        : projects;
+
       if (projects.length === 0) {
         dispatch({ type: 'SET_PROJECTS', payload: projects });
         setReady(true);
@@ -107,16 +113,16 @@ function AppContent() {
         Promise.all(projects.map((p) => listDataFiles(p.id))).then((r) => r.flat()),
       ]);
 
-      // Pick initial project (LS pref → first project)
+      // Pick initial project from non-scratch projects only (LS pref → first)
       const savedProjectId = localStorage.getItem('callstack.currentProjectId');
       let initialProjectId: number | null = null;
       if (savedProjectId) {
         const id = parseInt(savedProjectId, 10);
-        if (projects.find((p) => p.id === id)) initialProjectId = id;
+        if (nonScratchProjects.find((p) => p.id === id)) initialProjectId = id;
       }
-      if (initialProjectId == null) initialProjectId = projects[0].id;
+      if (initialProjectId == null && nonScratchProjects.length > 0) initialProjectId = nonScratchProjects[0].id;
 
-      // If a saved request belongs to a different project, prefer that project
+      // If a saved request belongs to a different non-scratch project, prefer that project
       const savedReqId = localStorage.getItem('callstack.currentRequestId');
       let restoredReqId: number | null = null;
       if (savedReqId) {
@@ -124,7 +130,7 @@ function AppContent() {
         const req = allRequests.find((r) => r.id === id);
         if (req) {
           restoredReqId = id;
-          initialProjectId = req.project_id;
+          if (req.project_id !== scratchProject?.id) initialProjectId = req.project_id;
         }
       }
 
@@ -134,6 +140,10 @@ function AppContent() {
         const id = parseInt(savedAutoId, 10);
         const auto = allAutomations.find((a) => a.id === id);
         if (auto) initialProjectId = auto.projectId;
+      }
+
+      if (scratchProject) {
+        dispatch({ type: 'SET_SCRATCH_PROJECT', payload: scratchProject.id });
       }
 
       // One-time migration: move per-env secrets from localStorage → DB
@@ -374,6 +384,19 @@ function AppContent() {
     return () => window.removeEventListener('keydown', onKey, true);
   }, [state.error, dispatch]);
 
+  const handleNewRequest = useCallback(async () => {
+    let scratchId = state.scratchProjectId;
+    if (scratchId == null) {
+      const project = await createProject(null, SCRATCH_PROJECT_NAME, null);
+      dispatch({ type: 'ADD_PROJECT', payload: project });
+      dispatch({ type: 'SET_SCRATCH_PROJECT', payload: project.id });
+      scratchId = project.id;
+    }
+    const req = await createRequest(scratchId, null, 'New Request', null);
+    dispatch({ type: 'ADD_REQUEST', payload: req });
+    dispatch({ type: 'SET_CURRENT_REQUEST', payload: req.id });
+  }, [state.scratchProjectId, createProject, createRequest, dispatch]);
+
   const currentRequest = state.requests.find((r) => r.id === state.currentRequestId) || null;
 
   const gridCols = sidebarCollapsed ? `0px 0px 1fr` : `${sidebarWidth}px 4px 1fr`;
@@ -435,6 +458,7 @@ function AppContent() {
                 }}
                 onRequestFocus={() => setActivePane('request')}
                 onResponseFocus={() => setActivePane('response')}
+                onNew={handleNewRequest}
               />
             ) : (
               <div className={styles.emptyState}>

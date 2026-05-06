@@ -157,6 +157,7 @@ export interface AppState {
   navHistoryIndex: number;
   pendingHistoryResponseId: number | null;
   requestSelectSignal: number;
+  scratchProjectId: number | null;
 }
 
 export interface AppContextType {
@@ -211,7 +212,8 @@ export type AppAction =
   | { type: 'HISTORY_BACK' }
   | { type: 'HISTORY_FORWARD' }
   | { type: 'CLEAR_NAV_HISTORY' }
-  | { type: 'SET_PENDING_HISTORY_RESPONSE'; payload: number | null };
+  | { type: 'SET_PENDING_HISTORY_RESPONSE'; payload: number | null }
+  | { type: 'SET_SCRATCH_PROJECT'; payload: number };
 
 export type BranchCondition =
   | { type: 'lastRequestPass' }

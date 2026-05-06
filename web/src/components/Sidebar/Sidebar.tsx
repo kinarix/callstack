@@ -17,6 +17,7 @@ import { exportProject as exportCallstackProject, exportProjectPlain, importArch
 import type { ArchivePreview } from '../../lib/callstackSchema';
 import { invoke } from '@tauri-apps/api/core';
 import type { Automation, Cookie, DataFile, Environment, Request } from '../../lib/types';
+import { isScratchProject } from '../../lib/utils';
 import { FilePickerModal } from '../FilePickerModal/FilePickerModal';
 import { ProjectRow } from './ProjectRow';
 import type { DragOver } from './ProjectRow';
@@ -1206,8 +1207,12 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
         <div className={styles.tree}>
           {(() => {
             const q = searchQuery.trim().toLowerCase();
+            const nonScratchProjects = projects.filter((p) => !isScratchProject(p.name));
+            const scratchRequests = state.scratchProjectId != null
+              ? requests.filter((r) => r.project_id === state.scratchProjectId)
+              : [];
             const visibleProjects = q
-              ? projects.filter((project) =>
+              ? nonScratchProjects.filter((project) =>
                   projectHasMatch(
                     project,
                     requests,
@@ -1219,13 +1224,43 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
                     q,
                   ),
                 )
-              : projects;
-            return visibleProjects.length === 0 ? (
+              : nonScratchProjects;
+            const scratchSection = !q && scratchRequests.length > 0 ? (
+              <div className={styles.scratchSection}>
+                {scratchRequests.map((req) => (
+                  <div
+                    key={req.id}
+                    className={`${styles.scratchItem} ${currentRequestId === req.id ? styles.scratchItemActive : ''}`}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = 'move';
+                      dragging.current = { kind: 'request', id: req.id };
+                    }}
+                    onDragEnd={() => { dragging.current = null; }}
+                    onClick={() => handleSelect(req.id)}
+                  >
+                    <svg className={styles.scratchIcon} width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden>
+                      <path d="M7.5 1.5L9.5 3.5L4 9H2V7L7.5 1.5Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" fill="currentColor" fillOpacity="0.12"/>
+                      <path d="M6.5 2.5L8.5 4.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+                    </svg>
+                    <span className={styles.scratchName}>{req.name || 'New Request'}</span>
+                    <span className={styles.scratchBadge}>unsaved</span>
+                    <button
+                      className={styles.scratchDiscard}
+                      onClick={(e) => { e.stopPropagation(); requestDeleteRequest(req.id, e); }}
+                      title="Delete"
+                    >×</button>
+                  </div>
+                ))}
+              </div>
+            ) : null;
+            return visibleProjects.length === 0 && !scratchSection ? (
               <div className={styles.empty}>
                 {q ? 'No matches.' : 'No projects yet. Click + to create one.'}
               </div>
             ) : (
-              visibleProjects.map((project) => (
+              <>
+                {visibleProjects.map((project) => (
               <ProjectRow
                 key={project.id}
                 project={project}
@@ -1309,7 +1344,9 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
                 onRequestDragOver={onRequestDragOver}
                 clearDragOverIfLeaving={clearDragOverIfLeaving}
               />
-            ))
+            ))}
+                {scratchSection}
+              </>
           );
         })()}
         </div>

@@ -141,3 +141,9 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+.fieldError {
+  font-size: 11px;
+  color: var(--status-error, var(--accent-delete));
+  margin-top: 2px;
+}

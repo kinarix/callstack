@@ -36,6 +36,7 @@ interface RequestBuilderProps {
   onResponseFocus?: () => void;
   httpTimeout?: number;
   settings: Settings;
+  onNew?: () => void;
 }
 
 interface UrlError {
@@ -184,7 +185,7 @@ function validateBody(body: string, contentType: string): string | null {
 }
 
 
-export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, copyFlashPane, onCopyResponse, onRequestFocus, onResponseFocus, httpTimeout, settings }: RequestBuilderProps) {
+export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, copyFlashPane, onCopyResponse, onRequestFocus, onResponseFocus, httpTimeout, settings, onNew }: RequestBuilderProps) {
   const { state, dispatch } = useApp();
   const { send, cancelRequest } = useHttpClient();
   const { updateRequest, saveResponse, updateEnvironment, updateEnvironmentSecrets } = useDatabase();
@@ -395,6 +396,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
     });
   };
 
+  const isScratchRequest = state.scratchProjectId != null && request?.project_id === state.scratchProjectId;
   const projectEnvironments = state.environments.filter(
     (e) => e.project_id === (request?.project_id ?? -1)
   );
@@ -731,6 +733,8 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         canNavigateForward={state.navHistoryIndex < state.requestNavHistory.length - 1}
         onNavigateBack={() => dispatch({ type: 'HISTORY_BACK' })}
         onNavigateForward={() => dispatch({ type: 'HISTORY_FORWARD' })}
+        onNew={onNew}
+        envDisabled={isScratchRequest}
       />
       {urlError && (
         <div className={styles.bodyError}>
