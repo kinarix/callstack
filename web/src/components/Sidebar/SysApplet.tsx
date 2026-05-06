@@ -92,8 +92,11 @@ export function SysApplet() {
   return (
     <div
       className={styles.applet}
+      tabIndex={0}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
     >
       {hovered && (
         <div className={styles.popover}>

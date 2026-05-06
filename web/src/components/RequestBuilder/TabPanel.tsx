@@ -176,7 +176,7 @@ interface TabPanelProps {
   bodyEditorViewRef?: React.MutableRefObject<EditorView | null>;
 }
 
-export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, secrets, onScriptTest, copyFlash, useCookieJar = true, onUseCookieJarChange, projectId = null, bodyEditorViewRef }: TabPanelProps) {
+export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, secrets, onScriptTest, copyFlash, useCookieJar = true, onUseCookieJarChange, projectId = null, bodyEditorViewRef }: Readonly<TabPanelProps>) {
   const [pinned, setPinned] = useState<Set<PinnableTab>>(() => request ? loadPinned(request.id) : new Set());
   const [implicitExpanded, setImplicitExpanded] = useState(true);
   const [userHeadersExpanded, setUserHeadersExpanded] = useState(true);
@@ -226,6 +226,84 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
     return () => clearTimeout(id);
   }, [request?.body]);
 
+  const currentContentType = getContentType(request?.headers ?? []);
+  const isFormattableType = currentContentType.includes('json') || currentContentType.includes('xml') || currentContentType.includes('html');
+  const bodyValidation = useMemo(() => validateBody(debouncedBody, currentContentType, envVars), [debouncedBody, currentContentType, envVars]);
+  const resolvedUrl = useMemo(
+    () => resolveTemplate(request?.url ?? '', [...(envVars ?? []), ...(secrets ?? [])]),
+    [request?.url, envVars, secrets]
+  );
+
+  const bodyMeta = useMemo(() => {
+    const bytes = new TextEncoder().encode(request?.body ?? '').length;
+    const bodyLen = bytes || undefined;
+    const implicitDefaults = getImplicitDefaults(resolvedUrl, bodyLen);
+    let bodySizeStr: string;
+    if (bytes === 0) bodySizeStr = '';
+    else if (bytes < 1024) bodySizeStr = `${bytes} B`;
+    else if (bytes < 1024 * 1024) bodySizeStr = `${(bytes / 1024).toFixed(1)} KB`;
+    else bodySizeStr = `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    return { bodyLen, implicitDefaults, bodySizeStr };
+  }, [request?.body, resolvedUrl]);
+
+  const bodySize = bodyMeta.bodySizeStr;
+
+  const implicitItems = useMemo(() => {
+    return bodyMeta.implicitDefaults.map(def => {
+      const override = (request?.headers ?? []).find(h => h.key.toLowerCase() === def.key.toLowerCase());
+      return override ? { ...def, value: override.value, enabled: override.enabled ?? true } : def;
+    });
+  }, [bodyMeta.implicitDefaults, request?.headers]);
+
+  const implicitDisabledKeys = useMemo(
+    () => new Set((request?.headers ?? []).filter(h => h.key && h.enabled === false).map(h => h.key.toLowerCase())),
+    [request?.headers]
+  );
+
+  const implicitChangedKeys = useMemo(() => {
+    const defaultMap = new Map(bodyMeta.implicitDefaults.map(d => [d.key.toLowerCase(), d.value]));
+    return new Set(
+      (request?.headers ?? [])
+        .filter(h => h.key && (h.enabled ?? true) && h.value !== defaultMap.get(h.key.toLowerCase()))
+        .map(h => h.key.toLowerCase())
+    );
+  }, [request?.headers, bodyMeta.implicitDefaults]);
+
+  const implicitKeys = useMemo(
+    () => new Set(bodyMeta.implicitDefaults.map(d => d.key.toLowerCase())),
+    [bodyMeta.implicitDefaults]
+  );
+
+  const userHeaders = useMemo(
+    () => (request?.headers ?? []).filter(h => !implicitKeys.has(h.key.toLowerCase())),
+    [request?.headers, implicitKeys]
+  );
+
+  const bodyLines = request?.body?.split('\n').length ?? 1;
+  const bodyReserve = Math.min(MAX_BODY_H, bodyLines * LINE_H);
+
+  const pinnedHeights = useMemo(() => {
+    const visiblePinned = PINNABLE.filter(p => pinned.has(p) && activeTab !== p);
+    if (!visiblePinned.length || !paneHeight) return {} as Record<string, number>;
+    const ideal = (tab: PinnableTab): number => {
+      if (tab === 'params') return PIN_HDR_H + (request?.params ?? []).length * ROW_H + ADD_H;
+      if (tab === 'headers') {
+        return PIN_HDR_H
+          + TOGGLE_H
+          + (implicitExpanded ? implicitItems.length * ROW_H : 0)
+          + TOGGLE_H
+          + (userHeadersExpanded ? userHeaders.length * ROW_H + ADD_H : 0);
+      }
+      return PIN_HDR_H + 80;
+    };
+    const budget = Math.max(0, paneHeight - bodyReserve);
+    const estimates = Object.fromEntries(visiblePinned.map(p => [p, ideal(p)]));
+    const totalEstimated = Object.values(estimates).reduce((a, b) => a + b, 0);
+    if (totalEstimated <= budget) return estimates;
+    const scale = budget / totalEstimated;
+    return Object.fromEntries(visiblePinned.map(p => [p, Math.max(MIN_PIN_H, estimates[p] * scale)]));
+  }, [pinned, activeTab, paneHeight, bodyReserve, request?.params, implicitExpanded, implicitItems, userHeadersExpanded, userHeaders]);
+
   if (!request) {
     return <div className={styles.empty}>Select a request to get started</div>;
   }
@@ -237,7 +315,6 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
         next.delete(panel);
       } else {
         next.add(panel);
-        // If pinning the currently active tab, move to body
         if (activeTab === panel) setActiveTab('body');
       }
       savePinned(request.id, next);
@@ -277,55 +354,6 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
     onRequestChange({ headers: upsertContentType(request.headers, value) });
   };
 
-  const currentContentType = getContentType(request.headers);
-  const isFormattableType = currentContentType.includes('json') || currentContentType.includes('xml') || currentContentType.includes('html');
-  const bodyValidation = useMemo(() => validateBody(debouncedBody, currentContentType, envVars), [debouncedBody, currentContentType, envVars]);
-  const resolvedUrl = useMemo(
-    () => resolveTemplate(request.url, [...(envVars ?? []), ...(secrets ?? [])]),
-    [request.url, envVars, secrets]
-  );
-
-  const bodyMeta = useMemo(() => {
-    const bytes = new TextEncoder().encode(request.body).length;
-    const bodyLen = bytes || undefined;
-    const implicitDefaults = getImplicitDefaults(resolvedUrl, bodyLen);
-    const bodySizeStr = bytes === 0 ? '' : bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-    return { bodyLen, implicitDefaults, bodySizeStr };
-  }, [request.body, resolvedUrl]);
-
-  const bodySize = bodyMeta.bodySizeStr;
-
-  const implicitItems = useMemo(() => {
-    return bodyMeta.implicitDefaults.map(def => {
-      const override = request.headers.find(h => h.key.toLowerCase() === def.key.toLowerCase());
-      return override ? { ...def, value: override.value, enabled: override.enabled ?? true } : def;
-    });
-  }, [bodyMeta.implicitDefaults, request.headers]);
-
-  const implicitDisabledKeys = useMemo(
-    () => new Set(request.headers.filter(h => h.key && h.enabled === false).map(h => h.key.toLowerCase())),
-    [request.headers]
-  );
-
-  const implicitChangedKeys = useMemo(() => {
-    const defaultMap = new Map(bodyMeta.implicitDefaults.map(d => [d.key.toLowerCase(), d.value]));
-    return new Set(
-      request.headers
-        .filter(h => h.key && (h.enabled ?? true) && h.value !== defaultMap.get(h.key.toLowerCase()))
-        .map(h => h.key.toLowerCase())
-    );
-  }, [request.headers, bodyMeta.implicitDefaults]);
-
-  const implicitKeys = useMemo(
-    () => new Set(bodyMeta.implicitDefaults.map(d => d.key.toLowerCase())),
-    [bodyMeta.implicitDefaults]
-  );
-
-  const userHeaders = useMemo(
-    () => request.headers.filter(h => !implicitKeys.has(h.key.toLowerCase())),
-    [request.headers, implicitKeys]
-  );
-
   const handleUserHeadersChange = (newHeaders: KeyValue[]) => {
     const implicitOverrides = request.headers.filter(h => implicitKeys.has(h.key.toLowerCase()));
     onRequestChange({ headers: [...implicitOverrides, ...newHeaders] });
@@ -341,10 +369,8 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
       const isDefault = item.value === defaultMap.get(lKey);
       const isEnabled = item.enabled ?? true;
       if (isDefault && isEnabled) {
-        // Reverted to default and enabled — remove any stored override
         if (idx >= 0) updated = updated.filter((_, i) => i !== idx);
       } else {
-        // Value changed or disabled — store in headers
         if (idx >= 0) updated[idx] = { ...updated[idx], value: item.value, enabled: isEnabled };
         else updated.push({ key: item.key, value: item.value, enabled: isEnabled });
       }
@@ -353,31 +379,6 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
   };
 
   const hasMissingFiles = files.some(f => f.path === '');
-
-  const bodyLines = request.body?.split('\n').length ?? 1;
-  const bodyReserve = Math.min(MAX_BODY_H, bodyLines * LINE_H);
-
-  const pinnedHeights = useMemo(() => {
-    const visiblePinned = PINNABLE.filter(p => pinned.has(p) && activeTab !== p);
-    if (!visiblePinned.length || !paneHeight) return {} as Record<string, number>;
-    const ideal = (tab: PinnableTab): number => {
-      if (tab === 'params') return PIN_HDR_H + request.params.length * ROW_H + ADD_H;
-      if (tab === 'headers') {
-        return PIN_HDR_H
-          + TOGGLE_H
-          + (implicitExpanded ? implicitItems.length * ROW_H : 0)
-          + TOGGLE_H
-          + (userHeadersExpanded ? userHeaders.length * ROW_H + ADD_H : 0);
-      }
-      return PIN_HDR_H + 80;
-    };
-    const budget = Math.max(0, paneHeight - bodyReserve);
-    const estimates = Object.fromEntries(visiblePinned.map(p => [p, ideal(p)]));
-    const totalEstimated = Object.values(estimates).reduce((a, b) => a + b, 0);
-    if (totalEstimated <= budget) return estimates;
-    const scale = budget / totalEstimated;
-    return Object.fromEntries(visiblePinned.map(p => [p, Math.max(MIN_PIN_H, estimates[p] * scale)]));
-  }, [pinned, activeTab, paneHeight, bodyReserve, request.params, implicitExpanded, implicitItems, userHeadersExpanded, userHeaders]);
 
   overridesRef.current = overrides;
   const effectiveHeights = { ...pinnedHeights, ...overrides };

@@ -38,7 +38,7 @@ function formatJson(text: string): string {
     const replaced = text.replace(
       /"(?:[^"\\]|\\.)*"|\{\{[\w.\s$#-]+\}\}/g,
       (match) => {
-        if (match[0] === '"') return match;
+        if (match.startsWith('"')) return match;
         const i = tokenMap.length;
         tokenMap.push(match);
         return `"__TMPL_${i}__"`;
@@ -47,7 +47,7 @@ function formatJson(text: string): string {
     try {
       let formatted = JSON.stringify(JSON.parse(replaced), null, 2);
       if (tokenMap.length > 0) {
-        formatted = formatted.replace(/"__TMPL_(\d+)__"/g, (_, n) => tokenMap[parseInt(n, 10)]);
+        formatted = formatted.replace(/"__TMPL_(\d+)__"/g, (_, n) => tokenMap[Number.parseInt(n, 10)]);
       }
       return formatted;
     } catch {

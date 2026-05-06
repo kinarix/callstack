@@ -1,5 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import React from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { xml } from '@codemirror/lang-xml';
 import { EditorView } from '@codemirror/view';
@@ -222,7 +221,7 @@ export function BodyEditor({
   secrets = [],
   memoryKey,
   viewRef,
-}: BodyEditorProps) {
+}: Readonly<BodyEditorProps>) {
   const [validation, setValidation] = useState<{ valid: boolean; error?: string }>({ valid: true });
 
   const hasCsvTokens = /\{\{\s*#[\w.-]+\s*\}\}/.test(body);

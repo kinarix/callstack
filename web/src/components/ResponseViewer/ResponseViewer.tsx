@@ -453,6 +453,10 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
     document.addEventListener('mouseup', onUp);
   }
 
+  const transferSizeSuffix = displayedResponse.transferSize != null && displayedResponse.transferSize !== displayedResponse.size
+    ? ` (${formatBytes(displayedResponse.transferSize)})`
+    : '';
+
   return (
     <div className={styles.viewer}>
       <div className={styles.header}>
@@ -469,7 +473,7 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
           </span>
           <span
             className={`${styles.infoItem} ${styles.infoSize}`}
-            title={`Size: ${formatBytes(displayedResponse.size)}${displayedResponse.transferSize != null && displayedResponse.transferSize !== displayedResponse.size ? ` (${formatBytes(displayedResponse.transferSize)})` : ''}`}
+            title={`Size: ${formatBytes(displayedResponse.size)}${transferSizeSuffix}`}
           >
             Size: <strong>{formatBytes(displayedResponse.size)}</strong>
             {displayedResponse.transferSize != null && displayedResponse.transferSize !== displayedResponse.size && (

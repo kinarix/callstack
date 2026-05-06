@@ -8,79 +8,19 @@ export interface CurlImport {
   body: string;
 }
 
-// Tokenize a curl command string, respecting single/double/ansi-c quotes
-// and line-continuation backslashes.
-function tokenize(input: string): string[] {
-  const tokens: string[] = [];
-  // Normalize line continuations
-  const src = input.replace(/\\\n/g, ' ');
-  let i = 0;
-
-  while (i < src.length) {
-    // Skip whitespace
-    while (i < src.length && /\s/.test(src[i])) i++;
-    if (i >= src.length) break;
-
-    let token = '';
-
-    while (i < src.length && !/\s/.test(src[i])) {
-      const ch = src[i];
-
-      // ANSI-C quoting: $'...'
-      if (ch === '$' && src[i + 1] === "'") {
-        i += 2;
-        while (i < src.length && src[i] !== "'") {
-          if (src[i] === '\\') {
-            i++;
-            const esc = src[i];
-            if (esc === 'n') token += '\n';
-            else if (esc === 't') token += '\t';
-            else if (esc === 'r') token += '\r';
-            else token += esc;
-          } else {
-            token += src[i];
-          }
-          i++;
-        }
-        i++; // closing '
-        continue;
-      }
-
-      // Single-quoted string: contents are literal
-      if (ch === "'") {
-        i++;
-        while (i < src.length && src[i] !== "'") {
-          token += src[i++];
-        }
-        i++; // closing '
-        continue;
-      }
-
-      // Double-quoted string: backslash escapes apply
-      if (ch === '"') {
-        i++;
-        while (i < src.length && src[i] !== '"') {
-          if (src[i] === '\\') {
-            i++;
-            token += src[i] ?? '';
-          } else {
-            token += src[i];
-          }
-          i++;
-        }
-        i++; // closing "
-        continue;
-      }
-
-      token += ch;
-      i++;
-    }
-
-    if (token) tokens.push(token);
-  }
-
-  return tokens;
+interface QuoteResult {
+  token: string;
+  i: number;
 }
+
+interface ParseState {
+  method: string;
+  url: string;
+  headers: KeyValue[];
+  body: string;
+}
+
+type FlagHandler = (tokens: string[], i: number, state: ParseState) => number;
 
 // Flags that consume no extra argument
 const NO_ARG_FLAGS = new Set([
@@ -98,6 +38,159 @@ const SKIP_ARG_FLAGS = new Set([
   '--retry-delay', '--retry-max-time',
 ]);
 
+function readAnsiCQuoted(src: string, i: number): QuoteResult {
+  let token = '';
+  i += 2; // skip $'
+  while (i < src.length && src[i] !== "'") {
+    if (src[i] === '\\') {
+      i++;
+      const esc = src[i];
+      if (esc === 'n') token += '\n';
+      else if (esc === 't') token += '\t';
+      else if (esc === 'r') token += '\r';
+      else token += esc;
+    } else {
+      token += src[i];
+    }
+    i++;
+  }
+  return { token, i: i + 1 }; // +1 for closing '
+}
+
+function readSingleQuoted(src: string, i: number): QuoteResult {
+  let token = '';
+  i++; // skip opening '
+  while (i < src.length && src[i] !== "'") {
+    token += src[i++];
+  }
+  return { token, i: i + 1 }; // +1 for closing '
+}
+
+function readDoubleQuoted(src: string, i: number): QuoteResult {
+  let token = '';
+  i++; // skip opening "
+  while (i < src.length && src[i] !== '"') {
+    if (src[i] === '\\') {
+      i++;
+      token += src[i] ?? '';
+    } else {
+      token += src[i];
+    }
+    i++;
+  }
+  return { token, i: i + 1 }; // +1 for closing "
+}
+
+// Tokenize a curl command string, respecting single/double/ansi-c quotes
+// and line-continuation backslashes.
+function tokenize(input: string): string[] {
+  const tokens: string[] = [];
+  const src = input.replace(/\\\n/g, ' ');
+  let i = 0;
+
+  while (i < src.length) {
+    while (i < src.length && /\s/.test(src[i])) i++;
+    if (i >= src.length) break;
+
+    let token = '';
+
+    while (i < src.length && !/\s/.test(src[i])) {
+      const ch = src[i];
+      if (ch === '$' && src[i + 1] === "'") {
+        const r = readAnsiCQuoted(src, i);
+        token += r.token;
+        i = r.i;
+      } else if (ch === "'") {
+        const r = readSingleQuoted(src, i);
+        token += r.token;
+        i = r.i;
+      } else if (ch === '"') {
+        const r = readDoubleQuoted(src, i);
+        token += r.token;
+        i = r.i;
+      } else {
+        token += ch;
+        i++;
+      }
+    }
+
+    if (token) tokens.push(token);
+  }
+
+  return tokens;
+}
+
+function parseUrl(raw: string): { url: string; params: KeyValue[] } {
+  const qIdx = raw.indexOf('?');
+  if (qIdx === -1) return { url: raw, params: [] };
+
+  const url = raw.slice(0, qIdx);
+  const params: KeyValue[] = [];
+  for (const pair of raw.slice(qIdx + 1).split('&')) {
+    const eqIdx = pair.indexOf('=');
+    if (eqIdx > 0) {
+      params.push({
+        key: decodeURIComponent(pair.slice(0, eqIdx)),
+        value: decodeURIComponent(pair.slice(eqIdx + 1)),
+        enabled: true,
+      });
+    } else if (pair) {
+      params.push({ key: decodeURIComponent(pair), value: '', enabled: true });
+    }
+  }
+  return { url, params };
+}
+
+function methodHandler(tokens: string[], i: number, state: ParseState): number {
+  state.method = tokens[i + 1] ?? '';
+  return i + 2;
+}
+
+function headerHandler(tokens: string[], i: number, state: ParseState): number {
+  const raw = tokens[i + 1] ?? '';
+  const colon = raw.indexOf(':');
+  if (colon > 0) {
+    state.headers.push({
+      key: raw.slice(0, colon).trim(),
+      value: raw.slice(colon + 1).trim(),
+      enabled: true,
+    });
+  }
+  return i + 2;
+}
+
+function dataHandler(tokens: string[], i: number, state: ParseState): number {
+  const chunk = tokens[i + 1] ?? '';
+  state.body = state.body ? `${state.body}&${chunk}` : chunk;
+  return i + 2;
+}
+
+function userHandler(tokens: string[], i: number, state: ParseState): number {
+  const encoded = btoa(tokens[i + 1] ?? '');
+  state.headers.push({ key: 'Authorization', value: `Basic ${encoded}`, enabled: true });
+  return i + 2;
+}
+
+function userAgentHandler(tokens: string[], i: number, state: ParseState): number {
+  state.headers.push({ key: 'User-Agent', value: tokens[i + 1] ?? '', enabled: true });
+  return i + 2;
+}
+
+function urlFlagHandler(tokens: string[], i: number, state: ParseState): number {
+  state.url = tokens[i + 1] ?? '';
+  return i + 2;
+}
+
+const FLAG_HANDLERS: Record<string, FlagHandler> = {
+  '-X': methodHandler, '--request': methodHandler,
+  '-H': headerHandler, '--header': headerHandler,
+  '-d': dataHandler, '--data': dataHandler, '--data-raw': dataHandler,
+  '--data-binary': dataHandler, '--data-urlencode': dataHandler,
+  '-u': userHandler, '--user': userHandler,
+  '-A': userAgentHandler, '--user-agent': userAgentHandler,
+  '--url': urlFlagHandler,
+};
+
 export function parseCurl(input: string): CurlImport | null {
   const trimmed = input.trimStart();
   if (!trimmed.toLowerCase().startsWith('curl')) return null;
@@ -105,117 +198,31 @@ export function parseCurl(input: string): CurlImport | null {
   const tokens = tokenize(trimmed);
   if (!tokens.length || tokens[0].toLowerCase() !== 'curl') return null;
 
-  let method = '';
-  let url = '';
-  const headers: KeyValue[] = [];
-  let body = '';
+  const state: ParseState = { method: '', url: '', headers: [], body: '' };
 
   let i = 1; // skip 'curl'
   while (i < tokens.length) {
     const tok = tokens[i];
+    const handler = FLAG_HANDLERS[tok];
 
-    if (tok === '-X' || tok === '--request') {
-      method = tokens[++i] ?? '';
+    if (handler) {
+      i = handler(tokens, i, state);
+    } else if (NO_ARG_FLAGS.has(tok)) {
       i++;
-      continue;
-    }
-
-    if (tok === '-H' || tok === '--header') {
-      const raw = tokens[++i] ?? '';
-      const colon = raw.indexOf(':');
-      if (colon > 0) {
-        headers.push({
-          key: raw.slice(0, colon).trim(),
-          value: raw.slice(colon + 1).trim(),
-          enabled: true,
-        });
-      }
-      i++;
-      continue;
-    }
-
-    if (tok === '-d' || tok === '--data' || tok === '--data-raw' ||
-        tok === '--data-binary' || tok === '--data-urlencode') {
-      const chunk = tokens[++i] ?? '';
-      body = body ? body + '&' + chunk : chunk;
-      i++;
-      continue;
-    }
-
-    if (tok === '-u' || tok === '--user') {
-      const userPass = tokens[++i] ?? '';
-      const encoded = btoa(userPass);
-      headers.push({ key: 'Authorization', value: `Basic ${encoded}`, enabled: true });
-      i++;
-      continue;
-    }
-
-    if (tok === '-A' || tok === '--user-agent') {
-      const ua = tokens[++i] ?? '';
-      headers.push({ key: 'User-Agent', value: ua, enabled: true });
-      i++;
-      continue;
-    }
-
-    if (tok === '--url') {
-      url = tokens[++i] ?? '';
-      i++;
-      continue;
-    }
-
-    // Flags that accept no argument
-    if (NO_ARG_FLAGS.has(tok)) {
-      i++;
-      continue;
-    }
-
-    // Flags that accept an argument we skip
-    if (SKIP_ARG_FLAGS.has(tok)) {
+    } else if (SKIP_ARG_FLAGS.has(tok)) {
       i += 2;
-      continue;
-    }
-
-    // Combined short flags like -sSL or -Lk
-    if (/^-[a-zA-Z]{2,}$/.test(tok)) {
+    } else if (/^-[a-zA-Z]{2,}$/.test(tok)) {
       i++;
-      continue;
-    }
-
-    // Bare argument is the URL (skip if it looks like an unknown flag)
-    if (!tok.startsWith('-')) {
-      url = tok;
-    }
-
-    i++;
-  }
-
-  if (!url) return null;
-
-  // Infer method
-  if (!method) method = body ? 'POST' : 'GET';
-  method = method.toUpperCase();
-
-  // Parse URL into base + query params
-  let baseUrl = url;
-  const params: KeyValue[] = [];
-
-  const qIdx = url.indexOf('?');
-  if (qIdx !== -1) {
-    baseUrl = url.slice(0, qIdx);
-    const qs = url.slice(qIdx + 1);
-    for (const pair of qs.split('&')) {
-      const eqIdx = pair.indexOf('=');
-      if (eqIdx > 0) {
-        params.push({
-          key: decodeURIComponent(pair.slice(0, eqIdx)),
-          value: decodeURIComponent(pair.slice(eqIdx + 1)),
-          enabled: true,
-        });
-      } else if (pair) {
-        params.push({ key: decodeURIComponent(pair), value: '', enabled: true });
-      }
+    } else {
+      if (!tok.startsWith('-')) state.url = tok;
+      i++;
     }
   }
 
-  return { method, url: baseUrl, headers, params, body };
+  if (!state.url) return null;
+
+  const method = (state.method || (state.body ? 'POST' : 'GET')).toUpperCase();
+  const { url, params } = parseUrl(state.url);
+
+  return { method, url, headers: state.headers, params, body: state.body };
 }

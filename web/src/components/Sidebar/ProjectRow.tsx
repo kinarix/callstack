@@ -248,7 +248,7 @@ export function ProjectRow({
   onDropOnRequest,
   onRequestDragOver,
   clearDragOverIfLeaving,
-}: ProjectRowProps) {
+}: Readonly<ProjectRowProps>) {
   const rootRequests = projectRequests
     .filter((r) => !r.folder_id)
     .sort((a, b) => a.position - b.position);
@@ -507,7 +507,7 @@ export function ProjectRow({
                 {isFolderExpanded && (
                   <div className={styles.folderChildren}>
                     {folderRequests.length === 0 ? (
-                      filtering ? null : <div className={`${styles.treeRow} ${styles.emptyRow}`}>No requests</div>
+                      !filtering && <div className={`${styles.treeRow} ${styles.emptyRow}`}>No requests</div>
                     ) : (
                       folderRequests.map(renderRequestRow)
                     )}
@@ -520,7 +520,7 @@ export function ProjectRow({
           {/* Root-level requests */}
           <div>
             {visibleRootRequests.length === 0 && visibleFolders.length === 0 ? (
-              filtering ? null : <div className={`${styles.treeRow} ${styles.emptyRow}`}>No requests</div>
+              !filtering && <div className={`${styles.treeRow} ${styles.emptyRow}`}>No requests</div>
             ) : (
               visibleRootRequests.map(renderRequestRow)
             )}
@@ -554,7 +554,7 @@ export function ProjectRow({
             {envsExpanded && (
               <div className={styles.folderChildren}>
                 {visibleEnvs.length === 0 ? (
-                  filtering ? null : <div className={`${styles.treeRow} ${styles.emptyRow}`}>No environments</div>
+                  !filtering && <div className={`${styles.treeRow} ${styles.emptyRow}`}>No environments</div>
                 ) : (
                   visibleEnvs.map((env) => (
                     <div
@@ -619,7 +619,7 @@ export function ProjectRow({
             {cookiesExpanded && (
               <div className={styles.folderChildren}>
                 {visibleCookieDomains.length === 0 ? (
-                  filtering ? null : <div className={`${styles.treeRow} ${styles.emptyRow}`}>No cookies stored</div>
+                  !filtering && <div className={`${styles.treeRow} ${styles.emptyRow}`}>No cookies stored</div>
                 ) : (
                   visibleCookieDomains.map((domain) => (
                     <div
@@ -671,7 +671,7 @@ export function ProjectRow({
             {automationsExpanded && (
               <div className={styles.folderChildren}>
                 {visibleAutomations.length === 0 ? (
-                  filtering ? null : <div className={`${styles.treeRow} ${styles.emptyRow}`}>No automations</div>
+                  !filtering && <div className={`${styles.treeRow} ${styles.emptyRow}`}>No automations</div>
                 ) : (
                   visibleAutomations.map((automation) => (
                     <div
@@ -739,7 +739,7 @@ export function ProjectRow({
             {dataFilesExpanded && (
               <div className={styles.folderChildren}>
                 {visibleDataFiles.length === 0 ? (
-                  filtering ? null : <div className={`${styles.treeRow} ${styles.emptyRow}`}>No data files</div>
+                  !filtering && <div className={`${styles.treeRow} ${styles.emptyRow}`}>No data files</div>
                 ) : (
                   visibleDataFiles.map((dataFile) => (
                     <div

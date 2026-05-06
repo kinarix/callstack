@@ -118,7 +118,7 @@ function AppContent() {
       let initialProjectId: number | null = null;
       if (savedProjectId) {
         const id = parseInt(savedProjectId, 10);
-        if (nonScratchProjects.find((p) => p.id === id)) initialProjectId = id;
+        if (nonScratchProjects.some((p) => p.id === id)) initialProjectId = id;
       }
       if (initialProjectId == null && nonScratchProjects.length > 0) initialProjectId = nonScratchProjects[0].id;
 
@@ -349,8 +349,8 @@ function AppContent() {
         e.preventDefault(); dispatch({ type: 'HISTORY_FORWARD' });
       }
     };
-    window.addEventListener('keydown', handler, true);
-    return () => window.removeEventListener('keydown', handler, true);
+    globalThis.addEventListener('keydown', handler, true);
+    return () => globalThis.removeEventListener('keydown', handler, true);
   }, [settings.shortcuts.historyBack, settings.shortcuts.historyForward, dispatch]);
 
   const ZOOM_LEVELS = [1, 1.1, 1.25, 1.5];
