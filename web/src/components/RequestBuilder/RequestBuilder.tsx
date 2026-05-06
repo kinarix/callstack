@@ -24,6 +24,7 @@ import { getImplicitHeaders } from '../../lib/utils';
 import { runScript } from '../../hooks/useScriptRunner';
 import type { EnvMutations } from '../../hooks/useScriptRunner';
 import type { Settings } from '../../hooks/useSettings';
+import type { CurlImport } from '../../lib/parseCurl';
 
 interface RequestBuilderProps {
   request: Request | null;
@@ -262,6 +263,22 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
     },
     [request, saveToDb, dispatch]
   );
+
+  const handleCurlImport = useCallback((data: CurlImport) => {
+    if (!request) return;
+    const changes: Partial<Request> = {
+      method: data.method as Request['method'],
+      url: data.url,
+      headers: data.headers.length ? data.headers : request.headers,
+      params: data.params.length ? data.params : request.params,
+      body: data.body,
+    };
+    if (BODY_METHODS.has(data.method) && !getContentType(changes.headers!)) {
+      changes.headers = upsertContentType(changes.headers!, 'application/json');
+    }
+    dispatch({ type: 'UPDATE_REQUEST', payload: { ...request, ...changes } });
+    saveToDb(request.id, changes);
+  }, [request, dispatch, saveToDb]);
 
   const handleMethodChange = (method: string) => {
     if (!request) return;
@@ -735,6 +752,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         onNavigateForward={() => dispatch({ type: 'HISTORY_FORWARD' })}
         onNew={onNew}
         envDisabled={isScratchRequest}
+        onCurlImport={handleCurlImport}
       />
       {urlError && (
         <div className={styles.bodyError}>

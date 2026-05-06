@@ -4,6 +4,7 @@ import { getMethodColor, getMethodIcon } from '../../lib/utils';
 import { EnvSelector } from './EnvSelector';
 import { TemplateInput } from './TemplateInput';
 import styles from './UrlBar.module.css';
+import { parseCurl, type CurlImport } from '../../lib/parseCurl';
 
 interface UrlError {
   message: string;
@@ -37,6 +38,7 @@ interface UrlBarProps {
   onNavigateForward?: () => void;
   onNew?: () => void;
   envDisabled?: boolean;
+  onCurlImport?: (data: CurlImport) => void;
 }
 
 const METHODS: HTTPMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
@@ -126,8 +128,10 @@ export function UrlBar({
   onNavigateForward,
   onNew,
   envDisabled,
+  onCurlImport,
 }: UrlBarProps) {
   const [blockedToastKey, setBlockedToastKey] = useState<number | null>(null);
+  const [curlToastKey, setCurlToastKey] = useState<number | null>(null);
 
   const handleUrlBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const url = e.target.value;
@@ -192,7 +196,20 @@ export function UrlBar({
         disabled={envDisabled}
       />
       <MethodSelector method={method} onChange={onMethodChange} />
-      <div className={styles.urlInputWrapper}>
+      <div
+        className={styles.urlInputWrapper}
+        onPaste={(e) => {
+          const text = e.clipboardData.getData('text');
+          if (text.trimStart().toLowerCase().startsWith('curl ') && onCurlImport) {
+            const parsed = parseCurl(text);
+            if (parsed) {
+              e.preventDefault();
+              onCurlImport(parsed);
+              setCurlToastKey(Date.now());
+            }
+          }
+        }}
+      >
         {urlError && url && (
           <div className={styles.urlOverlay} aria-hidden>
             {renderUrlSegments(url, urlError)}
@@ -239,6 +256,11 @@ export function UrlBar({
       {blockedToastKey !== null && (
         <div key={blockedToastKey} className={styles.blockedToast}>
           A request is already in progress
+        </div>
+      )}
+      {curlToastKey !== null && (
+        <div key={curlToastKey} className={styles.blockedToast}>
+          Imported from cURL
         </div>
       )}
     </div>
