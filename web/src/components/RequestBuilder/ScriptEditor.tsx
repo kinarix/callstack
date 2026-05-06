@@ -401,7 +401,7 @@ function detectSigHelp(text: string, pos: number): { name: string; paramIndex: n
 
   // Extract function name before '('
   const before = text.slice(0, parenPos).trimEnd();
-  const match = before.match(/([a-zA-Z_$][a-zA-Z0-9_$]*(?:\.[a-zA-Z_$][a-zA-Z0-9_$]*)*)$/);
+  const match = before.slice(-200).match(/([a-zA-Z_$][a-zA-Z0-9_$]*(?:\.[a-zA-Z_$][a-zA-Z0-9_$]*)*)$/);
   if (!match) return null;
   return { name: match[1], paramIndex };
 }

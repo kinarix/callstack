@@ -61,7 +61,7 @@ const jsonTemplateMode: StreamLanguage<JsonTemplateState> = StreamLanguage.defin
         if (ch === '\\') { stream.next(); continue; }
         if (ch === '"') break;
       }
-      if (stream.match(/\s*:/, false)) return 'propertyName';
+      if (stream.match(/\s{0,20}:/, false)) return 'propertyName';
       return 'string';
     }
 

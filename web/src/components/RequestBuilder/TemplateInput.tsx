@@ -42,7 +42,7 @@ export function TemplateInput({
   // Find `{{...` pattern before cursor
   const getTemplateContext = (text: string, pos: number) => {
     const before = text.slice(0, pos);
-    const match = before.match(/\{\{([^}]*)$/);
+    const match = before.slice(-200).match(/\{\{([^}]*)$/);
     if (!match) return null;
     return {
       start: before.lastIndexOf('{{'),
