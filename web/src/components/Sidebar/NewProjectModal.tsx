@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { SCRATCH_PROJECT_NAME } from '../../lib/utils';
 import styles from './NewProjectModal.module.css';
 
 interface NewProjectModalProps {
@@ -9,6 +10,7 @@ interface NewProjectModalProps {
 export function NewProjectModal({ onConfirm, onCancel }: NewProjectModalProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [nameError, setNameError] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -19,6 +21,10 @@ export function NewProjectModal({ onConfirm, onCancel }: NewProjectModalProps) {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
+    if (trimmed === SCRATCH_PROJECT_NAME) {
+      setNameError(`"${SCRATCH_PROJECT_NAME}" is a reserved name.`);
+      return;
+    }
     onConfirm(trimmed, description.trim());
   };
 
@@ -41,7 +47,7 @@ export function NewProjectModal({ onConfirm, onCancel }: NewProjectModalProps) {
                 className={styles.input}
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => { setName(e.target.value); setNameError(null); }}
                 placeholder="My API Project"
                 onKeyDown={(e) => e.key === 'Escape' && onCancel()}
                 autoComplete="off"
@@ -49,6 +55,7 @@ export function NewProjectModal({ onConfirm, onCancel }: NewProjectModalProps) {
                 autoCapitalize="off"
                 spellCheck={false}
               />
+              {nameError && <span className={styles.fieldError}>{nameError}</span>}
             </div>
             <div className={styles.field}>
               <label className={styles.label}>Description <span className={styles.optional}>(optional)</span></label>

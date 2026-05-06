@@ -254,6 +254,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, requestNavHistory: [], navHistoryIndex: -1 };
     case 'SET_PENDING_HISTORY_RESPONSE':
       return { ...state, pendingHistoryResponseId: action.payload };
+    case 'SET_SCRATCH_PROJECT':
+      return { ...state, scratchProjectId: action.payload };
     case 'SHOW_ERROR':
       return { ...state, error: action.payload };
     case 'CLEAR_ERROR':
@@ -325,6 +327,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       navHistoryIndex: -1,
       pendingHistoryResponseId: null,
       requestSelectSignal: 0,
+      scratchProjectId: null,
     };
   });
 

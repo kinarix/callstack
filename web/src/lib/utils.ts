@@ -56,6 +56,12 @@ export function getImplicitDefaults(url: string, bodyLength?: number): KeyValue[
   return implicit;
 }
 
+export const SCRATCH_PROJECT_NAME = '__callstack__';
+
+export function isScratchProject(name: string): boolean {
+  return name === SCRATCH_PROJECT_NAME;
+}
+
 export function getImplicitHeaders(url: string, activeHeaders: KeyValue[], bodyLength?: number, allHeaders?: KeyValue[]): KeyValue[] {
   const keys = new Set((allHeaders ?? activeHeaders).map(h => h.key.toLowerCase()));
   return getImplicitDefaults(url, bodyLength).filter(h => !keys.has(h.key.toLowerCase()));

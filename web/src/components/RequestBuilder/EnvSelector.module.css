@@ -29,6 +29,14 @@
   color: var(--text-primary);
 }
 
+.pill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: var(--border-subtle);
+  color: var(--text-tertiary);
+  filter: grayscale(0.6);
+}
+
 .pill.active {
   border-color: currentColor;
   color: inherit;

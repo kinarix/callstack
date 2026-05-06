@@ -35,6 +35,8 @@ interface UrlBarProps {
   canNavigateForward?: boolean;
   onNavigateBack?: () => void;
   onNavigateForward?: () => void;
+  onNew?: () => void;
+  envDisabled?: boolean;
 }
 
 const METHODS: HTTPMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
@@ -122,6 +124,8 @@ export function UrlBar({
   canNavigateForward,
   onNavigateBack,
   onNavigateForward,
+  onNew,
+  envDisabled,
 }: UrlBarProps) {
   const [blockedToastKey, setBlockedToastKey] = useState<number | null>(null);
 
@@ -140,6 +144,11 @@ export function UrlBar({
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
             <path d="M5.5 3.5L9 7L5.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
+        </button>
+      )}
+      {onNew && (
+        <button className={styles.newBtn} onClick={onNew} title="New request (Cmd+N)">
+          +
         </button>
       )}
       <div className={styles.navButtons}>
@@ -180,6 +189,7 @@ export function UrlBar({
         environments={environments}
         activeEnvId={activeEnvId}
         onSelect={onEnvSelect}
+        disabled={envDisabled}
       />
       <MethodSelector method={method} onChange={onMethodChange} />
       <div className={styles.urlInputWrapper}>

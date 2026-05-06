@@ -551,3 +551,79 @@
 .searchClear:hover {
   color: var(--text-primary);
 }
+
+.scratchSection {
+  padding: 4px 8px 2px;
+}
+
+.scratchItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.12s;
+}
+
+.scratchItem:hover {
+  background: var(--bg-hover);
+}
+
+.scratchItemActive {
+  background: color-mix(in srgb, var(--accent-get) 12%, transparent);
+}
+
+.scratchIcon {
+  flex-shrink: 0;
+  color: var(--accent-put);
+  opacity: 0.85;
+}
+
+.scratchName {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.scratchBadge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent-put);
+  background: color-mix(in srgb, var(--accent-put) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-put) 30%, transparent);
+  border-radius: 3px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.scratchDiscard {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: color 0.12s, opacity 0.12s;
+}
+
+.scratchItem:hover .scratchDiscard {
+  opacity: 1;
+}
+
+.scratchDiscard:hover {
+  color: var(--accent-delete);
+}

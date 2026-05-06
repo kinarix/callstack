@@ -280,6 +280,35 @@
   transform: scale(1.1);
 }
 
+.newBtn {
+  flex-shrink: 0;
+  width: 30px;
+  height: 38px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  color: var(--accent-get);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  margin-right: 4px;
+}
+
+.newBtn:hover {
+  color: var(--accent-get);
+  border-color: var(--accent-get);
+  background: color-mix(in srgb, var(--accent-get) 10%, transparent);
+}
+
+.newBtn:active {
+  transform: scale(0.93);
+}
+
 .navButtons {
   display: flex;
   align-items: center;

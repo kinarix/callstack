@@ -87,7 +87,7 @@ const noEnvIcon = (
   </svg>
 );
 
-export function EnvSelector({ environments, activeEnvId, onSelect, emptyLabel = 'No Env' }: EnvSelectorProps) {
+export function EnvSelector({ environments, activeEnvId, onSelect, emptyLabel = 'No Env', disabled }: EnvSelectorProps & { disabled?: boolean }) {
   const [open, setOpen] = useState(false);
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
   const pillRef = useRef<HTMLButtonElement>(null);
@@ -135,8 +135,9 @@ export function EnvSelector({ environments, activeEnvId, onSelect, emptyLabel = 
         ref={pillRef}
         className={`${styles.pill} ${styles.active}`}
         style={{ color: activeMeta.color, borderColor: activeMeta.color }}
-        onClick={handleOpen}
-        title="Select environment"
+        onClick={disabled ? undefined : handleOpen}
+        disabled={disabled}
+        title={disabled ? 'Save to a project to use environments' : 'Select environment'}
       >
         {activeMeta.icon}
         <span>{activeEnv ? activeEnv.name : emptyLabel}</span>
