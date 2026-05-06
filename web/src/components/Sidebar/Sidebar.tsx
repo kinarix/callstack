@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, type Dispatch, type SetStateAction } from 'react';
 import { ThemeToggle } from '../Header/ThemeToggle';
 import { AccentToggle } from '../Header/AccentToggle';
 import { useApp } from '../../context/AppContext';
@@ -16,7 +16,7 @@ import { exportFolderAsPostman, exportProjectAsPostman } from '../../utils/postm
 import { exportProject as exportCallstackProject, exportProjectPlain, importArchive, deserializeAutomationStep } from '../../utils/callstackArchive';
 import type { ArchivePreview } from '../../lib/callstackSchema';
 import { invoke } from '@tauri-apps/api/core';
-import type { Automation, Cookie, DataFile, Environment, Request } from '../../lib/types';
+import type { AppAction, AppState, Automation, Cookie, DataFile, Environment, Request } from '../../lib/types';
 import { isScratchProject } from '../../lib/utils';
 import { FilePickerModal } from '../FilePickerModal/FilePickerModal';
 import { ProjectRow } from './ProjectRow';
@@ -89,6 +89,37 @@ function HelpIcon() {
   );
 }
 
+function autoExpandActiveItems(
+  state: AppState,
+  dispatch: Dispatch<AppAction>,
+  setExpandedAutomationSections: Dispatch<SetStateAction<Set<number>>>,
+): void {
+  if (state.activeView === 'automation' && state.activeAutomationId != null) {
+    const auto = state.automations.find((a) => a.id === state.activeAutomationId);
+    if (auto) {
+      if (!state.expandedProjects.has(auto.projectId)) {
+        dispatch({ type: 'TOGGLE_PROJECT', payload: auto.projectId });
+      }
+      setExpandedAutomationSections((prev) => {
+        if (prev.has(auto.projectId)) return prev;
+        const next = new Set(prev); next.add(auto.projectId); return next;
+      });
+    }
+  }
+
+  if (state.currentRequestId != null) {
+    const req = state.requests.find((r) => r.id === state.currentRequestId);
+    if (req) {
+      if (!state.expandedProjects.has(req.project_id)) {
+        dispatch({ type: 'TOGGLE_PROJECT', payload: req.project_id });
+      }
+      if (req.folder_id != null && !state.expandedFolders.has(req.folder_id)) {
+        dispatch({ type: 'TOGGLE_FOLDER', payload: req.folder_id });
+      }
+    }
+  }
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 function getLogoGradient(): string {
@@ -101,7 +132,7 @@ function getLogoGradient(): string {
   return 'linear-gradient(135deg, #6366f1, #3b82f6)';                        // night
 }
 
-export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, onOpenSettings, showSysApplet }: SidebarProps) {
+export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, onOpenSettings, showSysApplet }: Readonly<SidebarProps>) {
   const { state, dispatch } = useApp();
   const {
     createProject,
@@ -229,33 +260,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     if (didAutoExpand.current) return;
     if (state.projects.length === 0) return;
     didAutoExpand.current = true;
-
-    // Active automation: expand its project + the automation section under that project
-    if (state.activeView === 'automation' && state.activeAutomationId != null) {
-      const auto = state.automations.find((a) => a.id === state.activeAutomationId);
-      if (auto) {
-        if (!state.expandedProjects.has(auto.projectId)) {
-          dispatch({ type: 'TOGGLE_PROJECT', payload: auto.projectId });
-        }
-        setExpandedAutomationSections((prev) => {
-          if (prev.has(auto.projectId)) return prev;
-          const next = new Set(prev); next.add(auto.projectId); return next;
-        });
-      }
-    }
-
-    // Active request: expand its project (and folder, if any)
-    if (state.currentRequestId != null) {
-      const req = state.requests.find((r) => r.id === state.currentRequestId);
-      if (req) {
-        if (!state.expandedProjects.has(req.project_id)) {
-          dispatch({ type: 'TOGGLE_PROJECT', payload: req.project_id });
-        }
-        if (req.folder_id != null && !state.expandedFolders.has(req.folder_id)) {
-          dispatch({ type: 'TOGGLE_FOLDER', payload: req.folder_id });
-        }
-      }
-    }
+    autoExpandActiveItems(state, dispatch, setExpandedAutomationSections);
   }, [state.projects.length, state.automations.length, state.requests.length]);
 
   // Scroll to current request on navigation (back/forward)
@@ -1231,6 +1236,8 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
                   <div
                     key={req.id}
                     className={`${styles.scratchItem} ${currentRequestId === req.id ? styles.scratchItemActive : ''}`}
+                    role="button"
+                    tabIndex={0}
                     draggable
                     onDragStart={(e) => {
                       e.dataTransfer.effectAllowed = 'move';
@@ -1238,6 +1245,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
                     }}
                     onDragEnd={() => { dragging.current = null; }}
                     onClick={() => handleSelect(req.id)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleSelect(req.id); }}
                   >
                     <svg className={styles.scratchIcon} width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden>
                       <path d="M7.5 1.5L9.5 3.5L4 9H2V7L7.5 1.5Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" fill="currentColor" fillOpacity="0.12"/>

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useDatabase } from '../../hooks/useDatabase';
 import type { HistoryEntry } from '../../hooks/useDatabase';
 import { getMethodColor, getStatusColor } from '../../lib/utils';
+import type { HTTPMethod } from '../../lib/types';
 import styles from './HistoryPanel.module.css';
 
 function ClockIcon() {
@@ -13,7 +14,7 @@ function ClockIcon() {
   );
 }
 
-function ChevronIcon({ open }: { open: boolean }) {
+function ChevronIcon({ open }: Readonly<{ open: boolean }>) {
   return (
     <svg
       width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden
@@ -44,7 +45,7 @@ interface HistoryPanelProps {
   refreshSignal?: number;
 }
 
-export function HistoryPanel({ onSelectRequest, refreshSignal }: HistoryPanelProps) {
+export function HistoryPanel({ onSelectRequest, refreshSignal }: Readonly<HistoryPanelProps>) {
   const { getAllResponseHistory } = useDatabase();
   const [open, setOpen] = useState(() => {
     try { return localStorage.getItem('callstack.historyPanelOpen') !== 'false'; }
@@ -54,7 +55,7 @@ export function HistoryPanel({ onSelectRequest, refreshSignal }: HistoryPanelPro
   const [listHeight, setListHeight] = useState(() => {
     try {
       const v = localStorage.getItem('callstack.historyPanelHeight');
-      return v ? Math.max(60, Math.min(600, parseInt(v, 10))) : 220;
+      return v ? Math.max(60, Math.min(600, Number.parseInt(v, 10))) : 220;
     } catch { return 220; }
   });
   const listHeightRef = useRef(listHeight);
@@ -92,12 +93,12 @@ export function HistoryPanel({ onSelectRequest, refreshSignal }: HistoryPanelPro
 
     const onMouseUp = () => {
       localStorage.setItem('callstack.historyPanelHeight', String(listHeightRef.current));
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
+      globalThis.removeEventListener('mousemove', onMouseMove);
+      globalThis.removeEventListener('mouseup', onMouseUp);
     };
 
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    globalThis.addEventListener('mousemove', onMouseMove);
+    globalThis.addEventListener('mouseup', onMouseUp);
   };
 
   return (
@@ -118,8 +119,7 @@ export function HistoryPanel({ onSelectRequest, refreshSignal }: HistoryPanelPro
       <div className={styles.headerSeparator} />
 
       {open && (
-        <>
-          <div className={styles.list} style={{ maxHeight: listHeight }}>
+        <div className={styles.list} style={{ maxHeight: listHeight }}>
           {entries.length === 0 ? (
             <div className={styles.empty}>No history yet</div>
           ) : (
@@ -132,7 +132,7 @@ export function HistoryPanel({ onSelectRequest, refreshSignal }: HistoryPanelPro
               >
                 <span
                   className={styles.method}
-                  style={{ color: getMethodColor(entry.requestMethod as any) }}
+                  style={{ color: getMethodColor(entry.requestMethod as HTTPMethod) }}
                 >
                   {entry.requestMethod.length > 4
                     ? entry.requestMethod.slice(0, 3)
@@ -151,8 +151,7 @@ export function HistoryPanel({ onSelectRequest, refreshSignal }: HistoryPanelPro
               </button>
             ))
           )}
-          </div>
-        </>
+        </div>
       )}
     </div>
   );

@@ -102,7 +102,7 @@ function formatUptime(secs: number): string {
   return `${m}m`;
 }
 
-function Sparkline({ data, gradId, color }: { data: number[]; gradId: string; color: string }) {
+function Sparkline({ data, gradId, color }: Readonly<{ data: number[]; gradId: string; color: string }>) {
   const W = 200, H = 44;
   if (data.length < 2) return <div className={styles.sparklinePH} />;
   const max = Math.max(...data, 1);
@@ -160,7 +160,84 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetResponseHistoryLimit, onSetHttpTimeout, onSetFormatOnSend, onSetSysApplet, onClearNavHistory, onReset, onResetAll, onClose }: SettingsModalProps) {
+interface SystemTabProps {
+  settings: Settings;
+  onSetSysApplet: ((v: boolean) => void) | undefined;
+  sysStats: SystemStats | null;
+  cpuHistory: number[];
+  ramHistory: number[];
+}
+
+function SystemTab({ settings, onSetSysApplet, sysStats, cpuHistory, ramHistory }: Readonly<SystemTabProps>) {
+  return (
+    <>
+      <section className={styles.section}>
+        <div className={styles.sectionTitle}>Sidebar applet</div>
+        <div className={styles.sectionDesc}>
+          Compact CPU / memory / DB bar below the history panel. Hover to see sparklines.
+        </div>
+        <label className={styles.toggleRow}>
+          <input
+            type="checkbox"
+            checked={settings.showSysApplet}
+            onChange={(e) => onSetSysApplet?.(e.target.checked)}
+          />
+          <span>Show stats applet in sidebar</span>
+        </label>
+      </section>
+      <div className={styles.columns}>
+        <div className={styles.column}>
+          <section className={styles.section}>
+            <div className={styles.sectionTitle}>CPU</div>
+            <div className={styles.sparklineWrap}>
+              <Sparkline data={cpuHistory} gradId="sg-cpu" color="var(--accent-get)" />
+              <div className={styles.sparklineLabel}>
+                {sysStats ? `${sysStats.cpu_usage.toFixed(1)}%` : '—'}
+                <span className={styles.sparklineSub}>this app · 60s window</span>
+              </div>
+            </div>
+          </section>
+          <section className={styles.section}>
+            <div className={styles.sectionTitle}>Memory</div>
+            <div className={styles.sparklineWrap}>
+              <Sparkline data={ramHistory} gradId="sg-ram" color="var(--accent-post)" />
+              <div className={styles.sparklineLabel}>
+                {sysStats ? formatBytes(sysStats.mem_bytes) : '—'}
+                <span className={styles.sparklineSub}>this app · RSS · 60s window</span>
+              </div>
+            </div>
+          </section>
+        </div>
+        <div className={styles.column}>
+          <section className={styles.section}>
+            <div className={styles.sectionTitle}>Storage</div>
+            {sysStats ? (
+              <div className={styles.statsGrid}>
+                <div className={styles.statCell}>
+                  <span className={styles.statLabel}>Database size</span>
+                  <span className={styles.statValue}>{formatBytes(sysStats.db_size_bytes)}</span>
+                </div>
+              </div>
+            ) : <div className={styles.mutedText}>Loading…</div>}
+          </section>
+          <section className={styles.section}>
+            <div className={styles.sectionTitle}>App</div>
+            {sysStats ? (
+              <div className={styles.statsGrid}>
+                <div className={styles.statCell}>
+                  <span className={styles.statLabel}>Uptime</span>
+                  <span className={styles.statValue}>{formatUptime(sysStats.proc_uptime_secs)}</span>
+                </div>
+              </div>
+            ) : <div className={styles.mutedText}>Loading…</div>}
+          </section>
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetResponseHistoryLimit, onSetHttpTimeout, onSetFormatOnSend, onSetSysApplet, onClearNavHistory, onReset, onResetAll, onClose }: Readonly<SettingsModalProps>) {
   const [tab, setTab] = useState<Tab>('general');
   const [recording, setRecording] = useState<keyof ActionShortcuts | null>(null);
   const [confirmingReset, setConfirmingReset] = useState(false);
@@ -493,16 +570,16 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetRespons
                       Back/forward history of visited requests (session only).
                     </div>
                     <div className={styles.resetRow}>
-                      {!confirmClearNav ? (
-                        <button className={styles.resetBtn} onClick={() => setConfirmClearNav(true)}>
-                          Clear navigation history
-                        </button>
-                      ) : (
+                      {confirmClearNav ? (
                         <div className={styles.dangerConfirmActions}>
                           <span className={styles.mutedText}>Clears the back/forward stack.</span>
                           <button className={styles.dangerCancelBtn} onClick={() => setConfirmClearNav(false)}>Cancel</button>
                           <button className={styles.dangerConfirmBtn} onClick={() => { onClearNavHistory(); setConfirmClearNav(false); }}>Yes, clear</button>
                         </div>
+                      ) : (
+                        <button className={styles.resetBtn} onClick={() => setConfirmClearNav(true)}>
+                          Clear navigation history
+                        </button>
                       )}
                     </div>
                   </section>
@@ -530,15 +607,7 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetRespons
                       ))}
                     </select>
                     <div className={styles.resetRow}>
-                      {!confirmClearHistory ? (
-                        <button
-                          className={styles.resetBtn}
-                          onClick={() => setConfirmClearHistory(true)}
-                          disabled={historyCleared}
-                        >
-                          {historyCleared ? 'Cleared ✓' : 'Clear all history'}
-                        </button>
-                      ) : (
+                      {confirmClearHistory ? (
                         <div className={styles.dangerConfirmActions}>
                           <span className={styles.mutedText}>Deletes all saved responses.</span>
                           <button className={styles.dangerCancelBtn} onClick={() => setConfirmClearHistory(false)}>Cancel</button>
@@ -546,6 +615,14 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetRespons
                             {clearingHistory ? 'Clearing…' : 'Yes, clear'}
                           </button>
                         </div>
+                      ) : (
+                        <button
+                          className={styles.resetBtn}
+                          onClick={() => setConfirmClearHistory(true)}
+                          disabled={historyCleared}
+                        >
+                          {historyCleared ? 'Cleared ✓' : 'Clear all history'}
+                        </button>
                       )}
                     </div>
                   </div>
@@ -622,16 +699,16 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetRespons
                     )}
                   </div>
                   <div className={styles.resetRow}>
-                    {!confirmClearUi ? (
-                      <button className={styles.resetBtn} onClick={() => setConfirmClearUi(true)}>
-                        Clear UI state
-                      </button>
-                    ) : (
+                    {confirmClearUi ? (
                       <div className={styles.dangerConfirmActions}>
                         <span className={styles.mutedText}>Clears all UI state and reloads. Data is not affected.</span>
                         <button className={styles.dangerCancelBtn} onClick={() => setConfirmClearUi(false)}>Cancel</button>
                         <button className={styles.dangerConfirmBtn} onClick={handleClearUiState}>Yes, clear</button>
                       </div>
+                    ) : (
+                      <button className={styles.resetBtn} onClick={() => setConfirmClearUi(true)}>
+                        Clear UI state
+                      </button>
                     )}
                   </div>
                 </section>
@@ -708,70 +785,13 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetRespons
           )}
 
           {tab === 'system' && (
-            <>
-            <section className={styles.section}>
-              <div className={styles.sectionTitle}>Sidebar applet</div>
-              <div className={styles.sectionDesc}>
-                Compact CPU / memory / DB bar below the history panel. Hover to see sparklines.
-              </div>
-              <label className={styles.toggleRow}>
-                <input
-                  type="checkbox"
-                  checked={settings.showSysApplet}
-                  onChange={(e) => onSetSysApplet?.(e.target.checked)}
-                />
-                <span>Show stats applet in sidebar</span>
-              </label>
-            </section>
-            <div className={styles.columns}>
-              <div className={styles.column}>
-                <section className={styles.section}>
-                  <div className={styles.sectionTitle}>CPU</div>
-                  <div className={styles.sparklineWrap}>
-                    <Sparkline data={cpuHistory} gradId="sg-cpu" color="var(--accent-get)" />
-                    <div className={styles.sparklineLabel}>
-                      {sysStats ? `${sysStats.cpu_usage.toFixed(1)}%` : '—'}
-                      <span className={styles.sparklineSub}>this app · 60s window</span>
-                    </div>
-                  </div>
-                </section>
-                <section className={styles.section}>
-                  <div className={styles.sectionTitle}>Memory</div>
-                  <div className={styles.sparklineWrap}>
-                    <Sparkline data={ramHistory} gradId="sg-ram" color="var(--accent-post)" />
-                    <div className={styles.sparklineLabel}>
-                      {sysStats ? formatBytes(sysStats.mem_bytes) : '—'}
-                      <span className={styles.sparklineSub}>this app · RSS · 60s window</span>
-                    </div>
-                  </div>
-                </section>
-              </div>
-              <div className={styles.column}>
-                <section className={styles.section}>
-                  <div className={styles.sectionTitle}>Storage</div>
-                  {sysStats ? (
-                    <div className={styles.statsGrid}>
-                      <div className={styles.statCell}>
-                        <span className={styles.statLabel}>Database size</span>
-                        <span className={styles.statValue}>{formatBytes(sysStats.db_size_bytes)}</span>
-                      </div>
-                    </div>
-                  ) : <div className={styles.mutedText}>Loading…</div>}
-                </section>
-                <section className={styles.section}>
-                  <div className={styles.sectionTitle}>App</div>
-                  {sysStats ? (
-                    <div className={styles.statsGrid}>
-                      <div className={styles.statCell}>
-                        <span className={styles.statLabel}>Uptime</span>
-                        <span className={styles.statValue}>{formatUptime(sysStats.proc_uptime_secs)}</span>
-                      </div>
-                    </div>
-                  ) : <div className={styles.mutedText}>Loading…</div>}
-                </section>
-              </div>
-            </div>
-            </>
+            <SystemTab
+              settings={settings}
+              onSetSysApplet={onSetSysApplet}
+              sysStats={sysStats}
+              cpuHistory={cpuHistory}
+              ramHistory={ramHistory}
+            />
           )}
 
         </div>
