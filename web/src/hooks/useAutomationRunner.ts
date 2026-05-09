@@ -213,6 +213,14 @@ export function useAutomationRunner() {
           const rowData: Record<string, string> = Object.fromEntries(headers.map((h, i) => [h, row[i] ?? '']));
           const rowPushResult = (r: AutomationRequestResult) => pushResult({ ...r, rowIndex: rowIdx + 1, rowData, containerLabel: 'Iterator' });
           const outcome = await executeSteps(step.steps, requestMap, rowEnvRef, emittedVarsRef, collectedResults, rowPushResult, onLog, 'Iterator');
+          for (const key of ['prev.body', 'prev.status', 'prev.statusText']) {
+            const found = rowEnvRef.current.find((v) => v.key === key);
+            if (found) {
+              const idx = envVarsRef.current.findIndex((v) => v.key === key);
+              if (idx >= 0) envVarsRef.current = envVarsRef.current.map((v, i) => (i === idx ? found : v));
+              else envVarsRef.current = [...envVarsRef.current, found];
+            }
+          }
           if (outcome === 'stop' || outcome === 'cancelled') return outcome;
         }
         continue;
