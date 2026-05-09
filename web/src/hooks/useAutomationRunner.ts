@@ -385,6 +385,19 @@ export function useAutomationRunner() {
         }
 
         pushResult(result);
+
+        if (step.captureResponse && result.status > 0) {
+          const prevVars: KeyValue[] = [
+            { key: 'prev.body', value: result.responseBody ?? '', enabled: true },
+            { key: 'prev.status', value: String(result.status), enabled: true },
+            { key: 'prev.statusText', value: result.statusText, enabled: true },
+          ];
+          for (const pv of prevVars) {
+            const idx = envVarsRef.current.findIndex((v) => v.key === pv.key);
+            if (idx >= 0) envVarsRef.current = envVarsRef.current.map((v, i) => (i === idx ? pv : v));
+            else envVarsRef.current = [...envVarsRef.current, pv];
+          }
+        }
       }
     }
 

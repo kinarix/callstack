@@ -227,7 +227,7 @@ export type BranchCondition =
 export type LogScope = 'request' | 'response' | 'env' | 'emitter';
 
 export type AutomationStep =
-  | { id: string; type: 'request'; requestId: number | null }
+  | { id: string; type: 'request'; requestId: number | null; captureResponse?: boolean }
   | { id: string; type: 'delay'; delayMs: number }
   | { id: string; type: 'repeat'; count: number; steps: AutomationStep[] }
   | { id: string; type: 'csv_iterator'; dataFileId: number | null; limit?: number | null; steps: AutomationStep[] }

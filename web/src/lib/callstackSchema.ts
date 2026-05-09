@@ -91,7 +91,7 @@ export type ExportBranchCondition =
   | { type: 'emittedTruthy'; key: string };
 
 export type ExportAutomationStep =
-  | { id: string; type: 'request'; requestRef: string | null }
+  | { id: string; type: 'request'; requestRef: string | null; captureResponse?: boolean }
   | { id: string; type: 'delay'; delayMs: number }
   | { id: string; type: 'repeat'; count: number; steps: ExportAutomationStep[] }
   | { id: string; type: 'branch'; condition: ExportBranchCondition; trueSteps: ExportAutomationStep[]; falseSteps: ExportAutomationStep[] }

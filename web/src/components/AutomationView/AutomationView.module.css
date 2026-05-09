@@ -1679,6 +1679,25 @@
   filter: brightness(1.2);
 }
 
+.captureLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.captureCheck {
+  width: 12px;
+  height: 12px;
+  cursor: pointer;
+  accent-color: var(--accent-post);
+  flex-shrink: 0;
+}
+
 .stepUnit {
   font-size: 12px;
   color: var(--text-secondary);
