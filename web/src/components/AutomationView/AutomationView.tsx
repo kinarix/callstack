@@ -660,6 +660,15 @@ function StepCard({ step, requests, automationProjectId, projectEnvs, onChange, 
           ) : (
             <span className={styles.reqPillMissing}>unknown request</span>
           )}
+          <label className={styles.captureLabel} onClick={(e) => e.stopPropagation()} title="Expose response as {{prev.body}}, {{prev.status}}, {{prev.statusText}} for subsequent steps">
+            <input
+              type="checkbox"
+              className={styles.captureCheck}
+              checked={!!step.captureResponse}
+              onChange={(e) => { e.stopPropagation(); onChange({ ...step, captureResponse: !step.captureResponse }); }}
+            />
+            <span>capture</span>
+          </label>
           {isConfirmingDelete ? (
             <span className={styles.stepConfirm}>
               <button className={styles.stepConfirmYes} onClick={(e) => { e.stopPropagation(); onConfirmDelete(path); }} title="Confirm delete">Yes</button>

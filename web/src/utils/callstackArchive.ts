@@ -34,6 +34,7 @@ function serializeAutomationStep(step: AutomationStep, requestRefMap: Map<number
       id: step.id,
       type: 'request',
       requestRef: step.requestId != null ? (requestRefMap.get(step.requestId) ?? null) : null,
+      ...(step.captureResponse ? { captureResponse: true } : {}),
     };
   }
   if (step.type === 'delay') {
@@ -332,6 +333,7 @@ export function deserializeAutomationStep(
       id: step.id,
       type: 'request',
       requestId: step.requestRef != null ? (requestRefToId.get(step.requestRef) ?? null) : null,
+      ...(step.captureResponse ? { captureResponse: true } : {}),
     };
   }
   if (step.type === 'delay') {

@@ -1471,8 +1471,14 @@
   min-width: 460px;
 }
 
+.stepCard_repeat      { border-left: 3px solid var(--accent-patch); }
+.stepCard_branch      { border-left: 3px solid var(--accent-put); }
+.stepCard_fanout      { border-left: 3px solid var(--accent-options); }
+.stepCard_csv_iterator { border-left: 3px solid var(--accent-get); }
+
 .stepCardNested {
   width: 100%;
+  background: var(--bg-tertiary);
 }
 
 .stepCardNested.stepCard_branch,
@@ -1677,6 +1683,25 @@
 .stepTextInput:focus {
   outline: none;
   filter: brightness(1.2);
+}
+
+.captureLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.captureCheck {
+  width: 12px;
+  height: 12px;
+  cursor: pointer;
+  accent-color: var(--accent-post);
+  flex-shrink: 0;
 }
 
 .stepUnit {
@@ -1930,7 +1955,7 @@
   top: 0;
   bottom: 8px;
   width: 2px;
-  background: var(--border-secondary);
+  background: var(--border-primary);
   border-radius: 1px;
 }
 
@@ -1958,6 +1983,19 @@
 
 .branchColumn:first-child {
   border-right: 1px solid var(--border-secondary);
+  background: color-mix(in srgb, var(--accent-get) 4%, var(--bg-primary));
+}
+
+.branchColumn:last-child {
+  background: color-mix(in srgb, var(--accent-delete) 4%, var(--bg-primary));
+}
+
+.branchColumn:first-child .branchLabel {
+  color: var(--accent-get);
+}
+
+.branchColumn:last-child .branchLabel {
+  color: var(--accent-delete);
 }
 
 .branchLabel {
