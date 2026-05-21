@@ -34,6 +34,9 @@ pub struct Request {
     pub updated_at: String,
     pub imported: bool,
     pub env_id: Option<i64>,
+    pub follow_redirects: bool,
+    pub use_cookie_jar: bool,
+    pub pre_chain: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -280,6 +283,18 @@ impl Database {
             "ALTER TABLE environments ADD COLUMN secrets TEXT NOT NULL DEFAULT '[]'",
             [],
         );
+        let _ = conn.execute(
+            "ALTER TABLE requests ADD COLUMN follow_redirects INTEGER NOT NULL DEFAULT 1",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE requests ADD COLUMN use_cookie_jar INTEGER NOT NULL DEFAULT 1",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE requests ADD COLUMN pre_chain TEXT NOT NULL DEFAULT '[]'",
+            [],
+        );
 
         Ok(Self {
             conn: Mutex::new(conn),
@@ -425,7 +440,7 @@ pub fn list_requests(
 
     let mut stmt = conn
         .prepare(
-            "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id
+            "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain
              FROM requests WHERE project_id = ?1 ORDER BY position ASC",
         )
         .map_err(|e| e.to_string())?;
@@ -451,6 +466,9 @@ pub fn list_requests(
                 pre_script: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
                 post_script: row.get::<_, Option<String>>(16)?.unwrap_or_default(),
                 env_id: row.get(17)?,
+                follow_redirects: row.get::<_, i64>(18)? != 0,
+                use_cookie_jar: row.get::<_, i64>(19)? != 0,
+                pre_chain: row.get::<_, Option<String>>(20)?.unwrap_or_else(|| "[]".to_string()),
             })
         })
         .map_err(|e| e.to_string())?;
@@ -488,7 +506,7 @@ pub fn create_request(
     let id = conn.last_insert_rowid();
 
     conn.query_row(
-        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id FROM requests WHERE id = ?1",
+        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain FROM requests WHERE id = ?1",
         params![id],
         |row| {
             Ok(Request {
@@ -510,6 +528,9 @@ pub fn create_request(
                 pre_script: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
                 post_script: row.get::<_, Option<String>>(16)?.unwrap_or_default(),
                 env_id: row.get(17)?,
+                follow_redirects: row.get::<_, i64>(18)? != 0,
+                use_cookie_jar: row.get::<_, i64>(19)? != 0,
+                pre_chain: row.get::<_, Option<String>>(20)?.unwrap_or_else(|| "[]".to_string()),
             })
         },
     )
@@ -531,6 +552,9 @@ pub fn update_request(
     pre_script: Option<String>,
     post_script: Option<String>,
     env_id: Option<Option<i64>>,
+    follow_redirects: Option<bool>,
+    use_cookie_jar: Option<bool>,
+    pre_chain: Option<String>,
 ) -> Result<Request, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
 
@@ -582,6 +606,18 @@ pub fn update_request(
         sets.push(format!("env_id = ?{}", values.len() + 1));
         values.push(Box::new(v));
     }
+    if let Some(v) = follow_redirects {
+        sets.push(format!("follow_redirects = ?{}", values.len() + 1));
+        values.push(Box::new(if v { 1_i64 } else { 0_i64 }));
+    }
+    if let Some(v) = use_cookie_jar {
+        sets.push(format!("use_cookie_jar = ?{}", values.len() + 1));
+        values.push(Box::new(if v { 1_i64 } else { 0_i64 }));
+    }
+    if let Some(v) = pre_chain {
+        sets.push(format!("pre_chain = ?{}", values.len() + 1));
+        values.push(Box::new(v));
+    }
 
     let id_param_idx = values.len() + 1;
     values.push(Box::new(id));
@@ -597,7 +633,7 @@ pub fn update_request(
         .map_err(|e| e.to_string())?;
 
     conn.query_row(
-        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id FROM requests WHERE id = ?1",
+        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain FROM requests WHERE id = ?1",
         params![id],
         |row| {
             Ok(Request {
@@ -619,6 +655,9 @@ pub fn update_request(
                 pre_script: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
                 post_script: row.get::<_, Option<String>>(16)?.unwrap_or_default(),
                 env_id: row.get(17)?,
+                follow_redirects: row.get::<_, i64>(18)? != 0,
+                use_cookie_jar: row.get::<_, i64>(19)? != 0,
+                pre_chain: row.get::<_, Option<String>>(20)?.unwrap_or_else(|| "[]".to_string()),
             })
         },
     )
@@ -839,7 +878,7 @@ pub fn duplicate_request(db: tauri::State<Database>, id: i64) -> Result<Request,
     let new_id = conn.last_insert_rowid();
 
     conn.query_row(
-        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id FROM requests WHERE id = ?1",
+        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain FROM requests WHERE id = ?1",
         params![new_id],
         |row| {
             Ok(Request {
@@ -861,6 +900,9 @@ pub fn duplicate_request(db: tauri::State<Database>, id: i64) -> Result<Request,
                 pre_script: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
                 post_script: row.get::<_, Option<String>>(16)?.unwrap_or_default(),
                 env_id: row.get(17)?,
+                follow_redirects: row.get::<_, i64>(18)? != 0,
+                use_cookie_jar: row.get::<_, i64>(19)? != 0,
+                pre_chain: row.get::<_, Option<String>>(20)?.unwrap_or_else(|| "[]".to_string()),
             })
         },
     )
@@ -906,7 +948,7 @@ pub fn duplicate_folder(db: tauri::State<Database>, id: i64) -> Result<Duplicate
 
     let mut stmt = conn
         .prepare(
-            "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script
+            "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain
              FROM requests WHERE folder_id = ?1 ORDER BY position ASC",
         )
         .map_err(|e| e.to_string())?;
@@ -932,6 +974,9 @@ pub fn duplicate_folder(db: tauri::State<Database>, id: i64) -> Result<Duplicate
                 pre_script: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
                 post_script: row.get::<_, Option<String>>(16)?.unwrap_or_default(),
                 env_id: row.get(17)?,
+                follow_redirects: row.get::<_, i64>(18)? != 0,
+                use_cookie_jar: row.get::<_, i64>(19)? != 0,
+                pre_chain: row.get::<_, Option<String>>(20)?.unwrap_or_else(|| "[]".to_string()),
             })
         })
         .map_err(|e| e.to_string())?
@@ -979,7 +1024,7 @@ pub fn import_requests(
         let id = conn.last_insert_rowid();
         let request = conn
             .query_row(
-                "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id FROM requests WHERE id = ?1",
+                "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain FROM requests WHERE id = ?1",
                 params![id],
                 |row| {
                     Ok(Request {
@@ -1001,6 +1046,9 @@ pub fn import_requests(
                         pre_script: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
                         post_script: row.get::<_, Option<String>>(16)?.unwrap_or_default(),
                         env_id: row.get(17)?,
+                        follow_redirects: row.get::<_, i64>(18)? != 0,
+                        use_cookie_jar: row.get::<_, i64>(19)? != 0,
+                        pre_chain: row.get::<_, Option<String>>(20)?.unwrap_or_else(|| "[]".to_string()),
                     })
                 },
             )

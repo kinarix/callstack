@@ -1,0 +1,193 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-2);
+  gap: var(--space-1);
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  padding: 0 2px var(--space-1);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+}
+
+.rowMissing {
+  border-color: var(--accent-delete);
+  background: color-mix(in srgb, var(--accent-delete) 8%, var(--bg-secondary));
+}
+
+.order {
+  width: 18px;
+  color: var(--text-tertiary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  text-align: right;
+  user-select: none;
+}
+
+.method {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  min-width: 48px;
+  text-align: center;
+  letter-spacing: 0.3px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.name {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.missing {
+  color: var(--accent-delete);
+  font-style: italic;
+}
+
+.continueLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.continueLabel input {
+  cursor: pointer;
+}
+
+.iconBtn {
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.iconBtn:hover {
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+.iconBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.iconBtn:disabled:hover {
+  background: transparent;
+  color: var(--text-tertiary);
+}
+
+.remove:hover {
+  color: var(--accent-delete);
+}
+
+.addRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--space-1);
+  position: relative;
+}
+
+.addBtn {
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px dashed var(--border-secondary);
+  border-radius: var(--radius-md);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.addBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-primary);
+  background: var(--bg-secondary);
+}
+
+.pickerWrap {
+  position: relative;
+}
+
+.picker {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+  min-width: 280px;
+  max-height: 340px;
+  overflow-y: auto;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  padding: 4px;
+}
+
+.pickerGroup {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+  padding: 6px 8px 2px;
+}
+
+.pickerItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 12px;
+  border-radius: 3px;
+}
+
+.pickerItem:hover {
+  background: var(--bg-secondary);
+}
+
+.empty {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-style: italic;
+  padding: var(--space-2);
+  text-align: center;
+}

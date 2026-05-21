@@ -195,8 +195,8 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
   const [bodyError, setBodyError] = useState<string | null>(null);
   const [urlError, setUrlError] = useState<UrlError | null>(null);
   const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
-  const [followRedirects, setFollowRedirects] = useState(true);
-  const [useCookieJar, setUseCookieJar] = useState(true);
+  const followRedirects = request?.follow_redirects ?? true;
+  const useCookieJar = request?.use_cookie_jar ?? true;
   const [files, setFiles] = useState<FileAttachment[]>(() => request?.files ?? []);
   const [activeEnvId, setActiveEnvId] = useState<number | null>(request?.env_id ?? null);
 
@@ -237,7 +237,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
     (id: number, changes: Partial<Request>) => {
       clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => {
-        const fields: Record<string, string> = {};
+        const fields: Record<string, string | boolean> = {};
         if (changes.name !== undefined) fields.name = changes.name;
         if (changes.method !== undefined) fields.method = changes.method;
         if (changes.url !== undefined) fields.url = changes.url;
@@ -247,6 +247,9 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         if (changes.files !== undefined) fields.attachments = JSON.stringify(changes.files);
         if (changes.pre_script !== undefined) fields.pre_script = changes.pre_script;
         if (changes.post_script !== undefined) fields.post_script = changes.post_script;
+        if (changes.follow_redirects !== undefined) fields.follow_redirects = changes.follow_redirects;
+        if (changes.use_cookie_jar !== undefined) fields.use_cookie_jar = changes.use_cookie_jar;
+        if (changes.pre_chain !== undefined) fields.pre_chain = JSON.stringify(changes.pre_chain);
         updateRequest(id, fields);
       }, 300);
     },
@@ -404,6 +407,9 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
     }
   };
 
+  const setFollowRedirects = (v: boolean) => handleRequestChange({ follow_redirects: v });
+  const setUseCookieJar = (v: boolean) => handleRequestChange({ use_cookie_jar: v });
+
   const handleEnvSelect = (env: Environment | null) => {
     if (!request) return;
     const envId = env?.id ?? null;
@@ -511,6 +517,181 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_EXECUTING_REQUEST', payload: request.id });
 
+    // ── Pre-chain ─────────────────────────────────────────────────────────────
+    // Locally-mutable env/secrets so each step (and the main request) sees env
+    // updates from earlier steps without waiting for the React state to settle.
+    let chainEnv = envVars;
+    let chainSecrets = secrets;
+    const aggEnv: EnvMutations = { set: {}, unset: [] };
+    const aggSecrets: EnvMutations = { set: {}, unset: [] };
+    const appendLog = (line: string) => setConsoleLogs(prev => [...prev, line]);
+
+    const mergeMutations = (which: 'env' | 'secret', mut: EnvMutations | undefined) => {
+      if (!mut) return;
+      const agg = which === 'env' ? aggEnv : aggSecrets;
+      const apply = (val: KeyValue[]): KeyValue[] => {
+        let next = val;
+        for (const [k, v] of Object.entries(mut.set)) {
+          agg.set[k] = v;
+          const idx = next.findIndex(x => x.key === k);
+          next = idx >= 0
+            ? next.map((x, i) => i === idx ? { ...x, value: v, enabled: true } : x)
+            : [...next, { key: k, value: v, enabled: true }];
+        }
+        for (const k of mut.unset) {
+          if (!agg.unset.includes(k)) agg.unset.push(k);
+          next = next.filter(x => x.key !== k);
+        }
+        return next;
+      };
+      if (which === 'env') chainEnv = apply(chainEnv);
+      else chainSecrets = apply(chainSecrets);
+    };
+
+    if (request.pre_chain?.length) {
+      appendLog(`[pre-chain] running ${request.pre_chain.length} setup step${request.pre_chain.length === 1 ? '' : 's'}…`);
+      const requestsById = new Map<number, Request>(
+        state.requests.filter(r => r.project_id === request.project_id).map(r => [r.id, r])
+      );
+
+      const runChainStep = async (req: Request, visited: Set<number>): Promise<{ ok: true } | { ok: false; error: string }> => {
+        // Recurse into nested chain first (with cycle guard)
+        if (req.pre_chain?.length) {
+          for (let i = 0; i < req.pre_chain.length; i++) {
+            const sub = req.pre_chain[i];
+            const subReq = requestsById.get(sub.requestId);
+            if (!subReq) {
+              appendLog(`[pre-chain] nested step #${i + 1} of "${req.name}": request not found`);
+              if (!sub.continueOnError) return { ok: false, error: `Nested pre-step #${sub.requestId} not found` };
+              continue;
+            }
+            if (visited.has(subReq.id)) {
+              appendLog(`[pre-chain] cycle detected on "${subReq.name}", skipping`);
+              continue;
+            }
+            const sr = await runChainStep(subReq, new Set([...visited, subReq.id]));
+            if (!sr.ok && !sub.continueOnError) return sr;
+          }
+        }
+
+        // Execute this step silently
+        const stepStart = Date.now();
+        const allLive = [...chainEnv, ...chainSecrets];
+        let url = resolveTemplate(req.url, allLive);
+        let body = resolveTemplate(req.body, allLive);
+        body = body.replace(/(?<!")\{\{#[\w.$-]+\}\}(?!")/g, '"$&"');
+        let params = req.params.map(p => ({ ...p, value: resolveTemplate(p.value, allLive) }));
+        let headers = req.headers.map(h => ({ ...h, value: resolveTemplate(h.value, allLive) }));
+
+        if (req.pre_script?.trim()) {
+          const pr = runScript(req.pre_script, {
+            request: { method: req.method, url, headers, params, body },
+            envVars: chainEnv, secrets: chainSecrets,
+          });
+          pr.logs.forEach(l => appendLog(l));
+          mergeMutations('env', pr.envMutations);
+          mergeMutations('secret', pr.secretMutations);
+          if (pr.mutatedRequest) {
+            url = pr.mutatedRequest.url;
+            body = pr.mutatedRequest.body;
+            params = pr.mutatedRequest.params;
+            headers = pr.mutatedRequest.headers;
+          }
+        }
+
+        const normalizedStepUrl = normalizeUrl(url);
+        const stepCurl = buildCurl(req.method, normalizedStepUrl, params, headers, body);
+        try {
+          const result = await send({
+            method: req.method, url, params, headers, body,
+            followRedirects: req.follow_redirects ?? true,
+            attachments: req.files ?? [],
+            projectId: state.currentProjectId,
+            useCookieJar: req.use_cookie_jar ?? true,
+            timeoutSecs: httpTimeout ?? settings.httpTimeout,
+          });
+          const ms = Date.now() - stepStart;
+          appendLog(`[pre-chain] ${req.method} ${url} → ${result.status} (${ms}ms)`);
+          dispatch({
+            type: 'ADD_LOG',
+            payload: {
+              id: ++logIdCounter,
+              timestamp: stepStart,
+              method: req.method,
+              url: normalizedStepUrl,
+              curl: stepCurl,
+              status: result.status,
+              statusText: result.statusText,
+              time: result.timeMs,
+              size: result.size,
+            },
+          });
+
+          if (req.post_script?.trim()) {
+            const pr = runScript(req.post_script, {
+              request: { method: req.method, url, headers, params, body },
+              response: { status: result.status, statusText: result.statusText, headers: result.headers, body: result.body, time: result.timeMs },
+              envVars: chainEnv, secrets: chainSecrets,
+            });
+            pr.logs.forEach(l => appendLog(l));
+            mergeMutations('env', pr.envMutations);
+            mergeMutations('secret', pr.secretMutations);
+          }
+
+          if (result.status >= 400) {
+            return { ok: false, error: `${req.method} ${req.name} → ${result.status}` };
+          }
+          return { ok: true };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          appendLog(`[pre-chain] ${req.method} ${req.name} → error: ${msg}`);
+          dispatch({
+            type: 'ADD_LOG',
+            payload: {
+              id: ++logIdCounter,
+              timestamp: stepStart,
+              method: req.method,
+              url: normalizedStepUrl,
+              curl: stepCurl,
+              error: msg,
+            },
+          });
+          return { ok: false, error: msg };
+        }
+      };
+
+      for (let i = 0; i < request.pre_chain.length; i++) {
+        const step = request.pre_chain[i];
+        const target = requestsById.get(step.requestId);
+        if (!target) {
+          appendLog(`[pre-chain] step #${i + 1}: request not found`);
+          if (!step.continueOnError) {
+            dispatch({ type: 'SET_LOADING', payload: false });
+            dispatch({ type: 'SET_EXECUTING_REQUEST', payload: null });
+            dispatch({ type: 'SET_RESPONSE', payload: { status: 0, statusText: 'Pre-chain failed', headers: [], body: `Pre-step #${step.requestId} not found`, timeMs: 0 } });
+            return;
+          }
+          continue;
+        }
+        if (target.id === request.id) {
+          appendLog(`[pre-chain] cycle detected on "${target.name}", skipping`);
+          continue;
+        }
+        const sr = await runChainStep(target, new Set([request.id, target.id]));
+        if (!sr.ok && !step.continueOnError) {
+          dispatch({ type: 'SET_LOADING', payload: false });
+          dispatch({ type: 'SET_EXECUTING_REQUEST', payload: null });
+          dispatch({ type: 'SET_RESPONSE', payload: { status: 0, statusText: 'Pre-chain failed', headers: [], body: sr.error, timeMs: 0 } });
+          return;
+        }
+      }
+
+      // Commit aggregated mutations to the real env state so subsequent runs see them
+      if (Object.keys(aggEnv.set).length || aggEnv.unset.length) await applyEnvMutations(aggEnv);
+      if (Object.keys(aggSecrets.set).length || aggSecrets.unset.length) applySecretMutations(aggSecrets);
+    }
+    // ── End pre-chain ─────────────────────────────────────────────────────────
+
     // Format body before sending if the setting is enabled
     const sendContentType = getContentType(request.headers);
     const isFormattable = sendContentType.includes('json') || sendContentType.includes('xml') || sendContentType.includes('html');
@@ -536,7 +717,8 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
     }
 
     // Apply template resolution using active env variables + secrets
-    const allVars = [...envVars, ...secrets];
+    // (chainEnv/chainSecrets reflect any mutations from the pre-chain above)
+    const allVars = [...chainEnv, ...chainSecrets];
     let resolvedUrl = resolveTemplate(request.url, allVars);
     let resolvedBody = resolveTemplate(rawBody, allVars);
     // Quote any unresolved {{#...}} data-file vars so the JSON body stays valid
@@ -562,10 +744,10 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
           params: resolvedParams,
           body: resolvedBody,
         },
-        envVars,
-        secrets,
+        envVars: chainEnv,
+        secrets: chainSecrets,
       });
-      setConsoleLogs(preResult.logs);
+      setConsoleLogs(prev => [...prev, ...preResult.logs]);
       if (preResult.envMutations) await applyEnvMutations(preResult.envMutations);
       if (preResult.secretMutations) applySecretMutations(preResult.secretMutations);
       if (preResult.mutatedRequest) {
@@ -629,8 +811,8 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         const postResult = runScript(request.post_script, {
           request: { method: request.method, url: normalizedUrl, headers: resolvedHeaders, params: resolvedParams, body: resolvedBody },
           response: { status: result.status, statusText: result.statusText, headers: result.headers, body: result.body, time: result.timeMs },
-          envVars,
-          secrets,
+          envVars: chainEnv,
+          secrets: chainSecrets,
         });
         setConsoleLogs((prev) => [...prev, ...postResult.logs]);
         if (postResult.envMutations) await applyEnvMutations(postResult.envMutations);
@@ -786,6 +968,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
             onUseCookieJarChange={setUseCookieJar}
             projectId={state.currentProjectId}
             bodyEditorViewRef={bodyEditorViewRef}
+            siblingRequests={state.requests.filter(r => r.project_id === request?.project_id)}
           />
         </div>
         <div className={styles.splitHandle} onMouseDown={startPanelResize} />

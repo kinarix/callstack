@@ -5,19 +5,8 @@ import { TemplateInput } from './TemplateInput';
 import { isJwt } from '../../lib/jwt';
 import { JwtBadge } from '../JwtBadge/JwtBadge';
 import { resolveTemplate } from '../../lib/template';
+import { getHeaderPresets } from '../../lib/headerPresets';
 import styles from './KeyValueEditor.module.css';
-
-const USER_AGENT_PRESETS = [
-  { label: 'Callstack', value: 'Callstack/1.0' },
-  { label: 'Chrome (macOS)', value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36' },
-  { label: 'Chrome (Windows)', value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36' },
-  { label: 'Safari (macOS)', value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15' },
-  { label: 'Firefox', value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:125.0) Gecko/20100101 Firefox/125.0' },
-  { label: 'Edge', value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0' },
-  { label: 'curl', value: 'curl/8.7.1' },
-  { label: 'Python requests', value: 'python-requests/2.31.0' },
-  { label: 'Postman', value: 'PostmanRuntime/7.37.0' },
-];
 
 interface KeyValueEditorProps {
   items: KeyValue[];
@@ -30,6 +19,7 @@ interface KeyValueEditorProps {
   envVars?: KeyValue[];
   secrets?: KeyValue[];
   naturalHeight?: boolean;
+  keySuggestions?: string[];
 }
 
 export function KeyValueEditor({
@@ -43,13 +33,20 @@ export function KeyValueEditor({
   envVars = [],
   secrets = [],
   naturalHeight = false,
+  keySuggestions,
 }: KeyValueEditorProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [confirmIndex, setConfirmIndex] = useState<number | null>(null);
-  const [uaPresetsOpen, setUaPresetsOpen] = useState(false);
+  const [presetsOpen, setPresetsOpen] = useState(false);
+  const [justAddedIndex, setJustAddedIndex] = useState<number | null>(null);
   const editRowRef = useRef<HTMLDivElement>(null);
-  const uaDropdownRef = useRef<HTMLDivElement>(null);
+  const presetDropdownRef = useRef<HTMLDivElement>(null);
+  const newKeyInputRef = useRef<HTMLInputElement | null>(null);
   const allVars = useMemo(() => [...envVars, ...secrets], [envVars, secrets]);
+  const datalistId = useMemo(
+    () => keySuggestions && keySuggestions.length > 0 ? `kv-key-suggest-${Math.random().toString(36).slice(2, 9)}` : undefined,
+    [keySuggestions],
+  );
 
   // Pills for all non-readonly cases; hideActions suppresses edit/delete within pills
   const usePills = !readOnly;
@@ -67,6 +64,7 @@ export function KeyValueEditor({
     const newIndex = items.length;
     onChange([...items, { key: '', value: '', enabled: true }]);
     setEditingIndex(newIndex);
+    setJustAddedIndex(newIndex);
   };
 
   const handleRemove = (index: number) => {
@@ -86,21 +84,32 @@ export function KeyValueEditor({
     setTimeout(() => {
       if (editRowRef.current && !editRowRef.current.contains(document.activeElement)) {
         setEditingIndex(null);
-        setUaPresetsOpen(false);
+        setPresetsOpen(false);
       }
     }, 0);
   }, []);
 
   useEffect(() => {
-    if (!uaPresetsOpen) return;
+    if (!presetsOpen) return;
     const onDown = (e: MouseEvent) => {
-      if (uaDropdownRef.current && !uaDropdownRef.current.contains(e.target as Node)) {
-        setUaPresetsOpen(false);
+      if (presetDropdownRef.current && !presetDropdownRef.current.contains(e.target as Node)) {
+        setPresetsOpen(false);
       }
     };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
-  }, [uaPresetsOpen]);
+  }, [presetsOpen]);
+
+  useEffect(() => {
+    setPresetsOpen(false);
+  }, [editingIndex]);
+
+  useEffect(() => {
+    if (justAddedIndex !== null) {
+      newKeyInputRef.current?.focus();
+      setJustAddedIndex(null);
+    }
+  }, [justAddedIndex]);
 
   // For rows mode: auto-focus key input of newly added row
   const newKeyRef = useRef<HTMLInputElement | null>(null);
@@ -228,11 +237,15 @@ export function KeyValueEditor({
                   value={item.key}
                   onChange={(e) => handleKeyChange(index, e.target.value)}
                   disabled={readOnly}
+                  list={datalistId}
                   autoComplete="off"
                   autoCorrect="off"
                   autoCapitalize="off"
                   spellCheck={false}
-                  ref={!usePills && index === items.length - 1 ? newKeyRef : null}
+                  ref={(el) => {
+                    if (index === justAddedIndex) newKeyInputRef.current = el;
+                    if (!usePills && index === items.length - 1) newKeyRef.current = el;
+                  }}
                   onKeyDown={(e) => {
                     if (!usePills) return;
                     if (e.key === 'Escape' || e.key === 'Enter') {
@@ -250,7 +263,7 @@ export function KeyValueEditor({
                   envVars={envVars}
                   secrets={secrets}
                   disabled={readOnly}
-                  autoFocus={usePills && editingIndex === index}
+                  autoFocus={usePills && editingIndex === index && justAddedIndex !== index}
                   onKeyDown={(e) => {
                     if (!usePills) return;
                     if (e.key === 'Escape' || e.key === 'Enter') {
@@ -265,38 +278,42 @@ export function KeyValueEditor({
                     }
                   }}
                 />
-                {usePills && editingIndex === index && item.key.toLowerCase() === 'user-agent' && (
-                  <div className={styles.presetWrap} ref={uaDropdownRef}>
-                    <button
-                      className={`${styles.presetBtn} ${uaPresetsOpen ? styles.presetBtnOpen : ''}`}
-                      onClick={() => setUaPresetsOpen(v => !v)}
-                      title="User-Agent presets"
-                      tabIndex={-1}
-                      type="button"
-                    >
-                      Presets
-                    </button>
-                    {uaPresetsOpen && (
-                      <div className={styles.presetDropdown}>
-                        {USER_AGENT_PRESETS.map((p) => (
-                          <button
-                            key={p.label}
-                            className={styles.presetOption}
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              handleValueChange(index, p.value);
-                              setUaPresetsOpen(false);
-                            }}
-                            type="button"
-                          >
-                            <span className={styles.presetLabel}>{p.label}</span>
-                            <span className={styles.presetValue}>{p.value}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+                {usePills && editingIndex === index && (() => {
+                  const presets = getHeaderPresets(item.key);
+                  if (!presets) return null;
+                  return (
+                    <div className={styles.presetWrap} ref={presetDropdownRef}>
+                      <button
+                        className={`${styles.presetBtn} ${presetsOpen ? styles.presetBtnOpen : ''}`}
+                        onClick={() => setPresetsOpen(v => !v)}
+                        title={`${item.key} presets`}
+                        tabIndex={-1}
+                        type="button"
+                      >
+                        Presets
+                      </button>
+                      {presetsOpen && (
+                        <div className={styles.presetDropdown}>
+                          {presets.map((p) => (
+                            <button
+                              key={p.label}
+                              className={styles.presetOption}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleValueChange(index, p.value);
+                                setPresetsOpen(false);
+                              }}
+                              type="button"
+                            >
+                              <span className={styles.presetLabel}>{p.label}</span>
+                              <span className={styles.presetValue}>{p.value}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
                 {isJwt(resolved) && <JwtBadge token={resolved} />}
                 {!readOnly && !hideActions && (
                   <button
@@ -318,6 +335,11 @@ export function KeyValueEditor({
               + Add
             </button>
           </div>
+        )}
+        {datalistId && (
+          <datalist id={datalistId}>
+            {keySuggestions!.map((name) => <option key={name} value={name} />)}
+          </datalist>
         )}
       </div>
     </div>

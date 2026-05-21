@@ -294,10 +294,10 @@ export function useAutomationRunner() {
             params: effectiveParams.filter((p) => p.enabled !== false),
             headers: effectiveHeaders.filter((h) => h.enabled !== false),
             body: effectiveBody,
-            followRedirects: true,
+            followRedirects: req.follow_redirects ?? true,
             attachments: req.files ?? [],
             projectId: projectIdRef.current,
-            useCookieJar: true,
+            useCookieJar: req.use_cookie_jar ?? true,
             timeoutSecs: httpTimeoutRef.current,
           });
 
