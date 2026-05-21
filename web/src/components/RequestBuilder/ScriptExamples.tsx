@@ -5,7 +5,7 @@ import styles from './ScriptEditor.module.css';
 import { EXAMPLES, CATEGORIES } from '../../data/scriptExamples';
 import type { Example } from '../../data/scriptExamples';
 
-const DOCS_BASE = 'https://velocity.kinarix.com/docs/scripting-examples.html';
+const DOCS_BASE = 'https://callstack.kinarix.com/docs/scripting-examples.html';
 
 function openDocs(id?: string) {
   const url = id ? `${DOCS_BASE}#${encodeURIComponent(id)}` : DOCS_BASE;
