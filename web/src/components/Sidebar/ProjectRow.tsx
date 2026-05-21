@@ -311,6 +311,15 @@ export function ProjectRow({
             onDuplicate={() => onDuplicateRequest(request.id)}
             assignedShortcut={getShortcutForRequest(request.id)}
             onOpenShortcutModal={() => onOpenShortcutModal(request.id)}
+            isNameTaken={(name) => {
+              const target = name.trim().toLowerCase();
+              return projectRequests.some(
+                (r) =>
+                  r.id !== request.id &&
+                  (r.folder_id ?? null) === (request.folder_id ?? null) &&
+                  r.name.trim().toLowerCase() === target,
+              );
+            }}
           />
         </div>
         {dragOver?.id === request.id && dragOver.type === 'request-below' && (

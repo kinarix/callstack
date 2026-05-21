@@ -6,11 +6,14 @@ import type { Request, KeyValue, FileAttachment } from '../../lib/types';
 import { KeyValueEditor } from './KeyValueEditor';
 import { FileUpload } from './FileUpload';
 import { ScriptEditor } from './ScriptEditor';
+import { PreChainEditor } from './PreChainEditor';
 import { ContentTypeSelector } from './ContentTypeSelector';
 import { resolveTemplate, replaceTokensForValidation } from '../../lib/template';
 import { getImplicitDefaults } from '../../lib/utils';
 import { formatBody } from '../../lib/formatBody';
 import { FAKER_TOKENS } from '../../lib/templateTokens';
+import { parseFormUrl, serializeFormUrl } from '../../lib/formUrlBody';
+import { COMMON_HEADER_NAMES } from '../../lib/headerPresets';
 import styles from './TabPanel.module.css';
 
 const BodyEditor = lazy(() => import('./BodyEditor').then(m => ({ default: m.BodyEditor })));
@@ -57,7 +60,7 @@ function validateBody(body: string, contentType: string, envVars: KeyValue[] = [
   return { valid: true };
 }
 
-type TabName = 'params' | 'headers' | 'body' | 'files' | 'script';
+type TabName = 'params' | 'headers' | 'body' | 'files' | 'script' | 'setup';
 type PinnableTab = 'params' | 'headers' | 'files';
 
 const PINNABLE: PinnableTab[] = ['params', 'headers', 'files'];
@@ -92,7 +95,7 @@ function savePinned(requestId: number, pinned: Set<PinnableTab>) {
   localStorage.setItem(key, JSON.stringify([...pinned]));
 }
 
-const VALID_TABS: TabName[] = ['params', 'headers', 'body', 'files', 'script'];
+const VALID_TABS: TabName[] = ['params', 'headers', 'body', 'files', 'script', 'setup'];
 
 const ROW_H     = 28;
 const TOGGLE_H  = 32;
@@ -159,6 +162,32 @@ function PinIcon({ pinned }: { pinned: boolean }) {
   );
 }
 
+interface FormUrlBodyEditorProps {
+  requestId: number;
+  body: string;
+  onChange: (body: string) => void;
+  envVars?: KeyValue[];
+  secrets?: KeyValue[];
+}
+
+function FormUrlBodyEditor({ requestId, body, onChange, envVars, secrets }: Readonly<FormUrlBodyEditorProps>) {
+  const [items, setItems] = useState<KeyValue[]>(() => parseFormUrl(body));
+
+  useEffect(() => {
+    setItems(parseFormUrl(body));
+    // Only re-parse when switching to a different request — otherwise local edits
+    // (empty rows, in-progress keys) round-trip through serialize and would be lost.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestId]);
+
+  const handleChange = (next: KeyValue[]) => {
+    setItems(next);
+    onChange(serializeFormUrl(next));
+  };
+
+  return <KeyValueEditor items={items} onChange={handleChange} envVars={envVars} secrets={secrets} />;
+}
+
 interface TabPanelProps {
   request: Request | null;
   onRequestChange: (changes: Partial<Request>) => void;
@@ -174,9 +203,10 @@ interface TabPanelProps {
   onUseCookieJarChange?: (value: boolean) => void;
   projectId?: number | null;
   bodyEditorViewRef?: React.MutableRefObject<EditorView | null>;
+  siblingRequests?: Request[];
 }
 
-export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, secrets, onScriptTest, copyFlash, useCookieJar = true, onUseCookieJarChange, projectId = null, bodyEditorViewRef }: Readonly<TabPanelProps>) {
+export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, secrets, onScriptTest, copyFlash, useCookieJar = true, onUseCookieJarChange, projectId = null, bodyEditorViewRef, siblingRequests }: Readonly<TabPanelProps>) {
   const [pinned, setPinned] = useState<Set<PinnableTab>>(() => request ? loadPinned(request.id) : new Set());
   const [implicitExpanded, setImplicitExpanded] = useState(true);
   const [userHeadersExpanded, setUserHeadersExpanded] = useState(true);
@@ -227,6 +257,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
   }, [request?.body]);
 
   const currentContentType = getContentType(request?.headers ?? []);
+  const isFormUrlEncoded = currentContentType.includes('x-www-form-urlencoded');
   const isFormattableType = currentContentType.includes('json') || currentContentType.includes('xml') || currentContentType.includes('html');
   const bodyValidation = useMemo(() => validateBody(debouncedBody, currentContentType, envVars), [debouncedBody, currentContentType, envVars]);
   const resolvedUrl = useMemo(
@@ -415,6 +446,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
     { name: 'files', label: 'Files', count: files.length || undefined, warn: hasMissingFiles || undefined },
     { name: 'body', label: 'Body' },
     { name: 'script', label: 'Scripting' },
+    { name: 'setup', label: 'Setup', count: (request.pre_chain?.length || undefined) },
   ];
 
   function renderImplicitSection() {
@@ -433,6 +465,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
               hideAdd
               markedKeys={implicitChangedKeys}
               disabledKeys={implicitDisabledKeys}
+              keySuggestions={COMMON_HEADER_NAMES}
             />
           </div>
         )}
@@ -457,6 +490,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
               envVars={envVars}
               secrets={secrets}
               naturalHeight={naturalHeight}
+              keySuggestions={COMMON_HEADER_NAMES}
             />
           </div>
         )}
@@ -580,23 +614,35 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
         )}
         {activeTab === 'body' && (
           <>
-            {isFormattableType && (
-              <div className={styles.bodyToolbar}>
-                <button className={styles.formatBtn} onClick={handleFormat} disabled={!request.body.trim()}>Format</button>
-              </div>
-            )}
-            <Suspense fallback={null}>
-              <BodyEditor
+            {isFormUrlEncoded ? (
+              <FormUrlBodyEditor
+                requestId={request.id}
                 body={request.body}
-                contentType={currentContentType}
                 onChange={handleBodyChange}
-                copyFlash={copyFlash}
                 envVars={envVars}
                 secrets={secrets}
-                memoryKey={`body:${request.id}`}
-                viewRef={bodyEditorViewRef}
               />
-            </Suspense>
+            ) : (
+              <>
+                {isFormattableType && (
+                  <div className={styles.bodyToolbar}>
+                    <button className={styles.formatBtn} onClick={handleFormat} disabled={!request.body.trim()}>Format</button>
+                  </div>
+                )}
+                <Suspense fallback={null}>
+                  <BodyEditor
+                    body={request.body}
+                    contentType={currentContentType}
+                    onChange={handleBodyChange}
+                    copyFlash={copyFlash}
+                    envVars={envVars}
+                    secrets={secrets}
+                    memoryKey={`body:${request.id}`}
+                    viewRef={bodyEditorViewRef}
+                  />
+                </Suspense>
+              </>
+            )}
           </>
         )}
         {activeTab === 'files' && (
@@ -613,6 +659,13 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
             envVars={envVars}
             secrets={secrets}
             onTest={onScriptTest}
+          />
+        )}
+        {activeTab === 'setup' && (
+          <PreChainEditor
+            currentRequest={request}
+            siblingRequests={siblingRequests ?? []}
+            onChange={(preChain) => onRequestChange({ pre_chain: preChain })}
           />
         )}
       </div>

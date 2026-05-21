@@ -45,6 +45,9 @@ interface RawRequest {
   updatedAt: string;
   imported: boolean;
   envId: number | null;
+  followRedirects: boolean;
+  useCookieJar: boolean;
+  preChain: string;
 }
 
 function parseRequest(raw: RawRequest): Request {
@@ -67,6 +70,11 @@ function parseRequest(raw: RawRequest): Request {
     updated_at: raw.updatedAt,
     imported: raw.imported ?? false,
     env_id: raw.envId ?? null,
+    follow_redirects: raw.followRedirects ?? true,
+    use_cookie_jar: raw.useCookieJar ?? true,
+    pre_chain: (() => {
+      try { return JSON.parse(raw.preChain || '[]'); } catch { return []; }
+    })(),
   };
 }
 
@@ -172,15 +180,21 @@ export function useDatabase() {
         pre_script?: string;
         post_script?: string;
         env_id?: number | null;
+        follow_redirects?: boolean;
+        use_cookie_jar?: boolean;
+        pre_chain?: string;
       }
     ): Promise<Request> => {
-      const { pre_script, post_script, env_id, ...rest } = fields;
+      const { pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain, ...rest } = fields;
       const raw = await invoke<RawRequest>('update_request', {
         id,
         ...rest,
         ...(pre_script !== undefined ? { preScript: pre_script } : {}),
         ...(post_script !== undefined ? { postScript: post_script } : {}),
         ...(env_id !== undefined ? { envId: env_id } : {}),
+        ...(follow_redirects !== undefined ? { followRedirects: follow_redirects } : {}),
+        ...(use_cookie_jar !== undefined ? { useCookieJar: use_cookie_jar } : {}),
+        ...(pre_chain !== undefined ? { preChain: pre_chain } : {}),
       });
       return parseRequest(raw);
     },

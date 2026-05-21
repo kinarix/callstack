@@ -645,6 +645,180 @@ if (response.status === 429) {
   console.log('[warn] Rate limited. Retry-After: ' + (retryAfter?.value ?? 'unknown'));
 }`,
   },
+
+  // Utilities — base64 & response headers
+  {
+    id: 'util-base64-encode',
+    category: 'Utilities',
+    title: 'Base64 encode a string',
+    description: 'Encode any string to Base64 with UTF-8 safety. Plain btoa() only handles Latin-1 — wrap with TextEncoder to support emoji, accents, and other non-ASCII characters. Useful for embedding binary-ish data in headers or query params.',
+    target: 'both',
+    code: `// UTF-8 safe Base64 encode
+function b64encode(text) {
+  const bytes = new TextEncoder().encode(text);
+  let bin = '';
+  bytes.forEach(b => { bin += String.fromCharCode(b); });
+  return btoa(bin);
+}
+
+const encoded = b64encode('hello world — café 🚀');
+console.log(encoded);
+
+// Use in a header
+request.headers.push({
+  key: 'X-Encoded-Payload',
+  value: encoded,
+  enabled: true,
+});`,
+  },
+  {
+    id: 'util-base64-decode',
+    category: 'Utilities',
+    title: 'Base64 decode a string',
+    description: 'Decode a Base64 string back to UTF-8 text. atob() returns Latin-1 bytes — decode them through TextDecoder to recover the original Unicode string.',
+    target: 'both',
+    code: `// UTF-8 safe Base64 decode
+function b64decode(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+const decoded = b64decode('aGVsbG8gd29ybGQ=');
+console.log(decoded);`,
+  },
+  {
+    id: 'util-base64-basic-auth',
+    category: 'Utilities',
+    title: 'Build a Basic auth header',
+    description: 'Compose the Authorization header for HTTP Basic auth from username and password pulled from secrets. Base64-encodes "user:pass" and pushes the header onto the outgoing request.',
+    target: 'pre',
+    code: `// Build Basic auth header from secrets
+const username = secrets.get('basicUser');
+const password = secrets.get('basicPass');
+
+if (!username || !password) {
+  throw new Error('Missing basicUser / basicPass in secrets');
+}
+
+const token = btoa(username + ':' + password);
+request.headers.push({
+  key: 'Authorization',
+  value: 'Basic ' + token,
+  enabled: true,
+});`,
+  },
+  {
+    id: 'util-base64-decode-jwt',
+    category: 'Utilities',
+    title: 'Decode a JWT payload',
+    description: 'Split a JWT, base64url-decode the middle segment, and parse it as JSON. Lets you read claims like sub, exp, scopes. Handles URL-safe characters and missing padding that base64url uses.',
+    target: 'post',
+    code: `// Decode a JWT payload (base64url → JSON)
+function decodeJwt(token) {
+  const part = token.split('.')[1] || '';
+  const b64 = part.replace(/-/g, '+').replace(/_/g, '/').padEnd(part.length + (4 - part.length % 4) % 4, '=');
+  return JSON.parse(atob(b64));
+}
+
+const body = JSON.parse(response.body);
+const token = body.accessToken || env.get('authToken');
+if (token) {
+  const claims = decodeJwt(token);
+  console.log('[info] sub: ' + claims.sub);
+  console.log('[info] expires: ' + new Date(claims.exp * 1000).toISOString());
+  env.set('tokenSub', claims.sub);
+}`,
+  },
+  {
+    id: 'util-parse-url-params',
+    category: 'Utilities',
+    title: 'Parse query params from a URL',
+    description: 'Extract query string parameters from any URL into an object. Uses the built-in URL/URLSearchParams APIs — handles encoding, repeated keys, and missing values. Useful for reading params off a redirect Location header or a callback URL pasted into a secret.',
+    target: 'both',
+    code: `// Parse query params from a URL string
+function parseParams(url) {
+  try {
+    const sp = new URL(url).searchParams;
+    return Object.fromEntries(sp);
+  } catch {
+    return {};
+  }
+}
+
+const target = 'https://api.example.com/users?page=2&limit=20&sort=name';
+const params = parseParams(target);
+console.log(params); // { page: '2', limit: '20', sort: 'name' }
+
+// Repeated keys (?tag=a&tag=b) — use getAll
+const sp = new URL(target).searchParams;
+const tags = sp.getAll('tag');
+console.log('tags: ' + JSON.stringify(tags));
+
+// Common follow-up: persist a value into the env
+if (params.page) env.set('lastPage', params.page);`,
+  },
+  {
+    id: 'util-response-header-lookup',
+    category: 'Utilities',
+    title: 'Read a response header',
+    description: 'Case-insensitive lookup of a single response header. response.headers is an array of { key, value } — wrap the find() call so you can call getHeader("content-type") without worrying about casing.',
+    target: 'post',
+    code: `// Case-insensitive response header lookup
+function getHeader(name) {
+  const lower = name.toLowerCase();
+  return response.headers.find(h => h.key.toLowerCase() === lower)?.value;
+}
+
+const contentType = getHeader('content-type');
+const requestId   = getHeader('x-request-id');
+const etag        = getHeader('etag');
+
+console.log('Content-Type: ' + contentType);
+console.log('X-Request-Id: ' + requestId);
+console.log('ETag: ' + etag);`,
+  },
+  {
+    id: 'util-response-header-capture',
+    category: 'Utilities',
+    title: 'Capture response headers to env',
+    description: 'Persist headers that change between calls — ETag, Location, X-Request-Id, pagination cursors — into the environment so the next request can reuse them. Skip values that did not come back.',
+    target: 'post',
+    code: `// Persist useful response headers into the environment
+function getHeader(name) {
+  const lower = name.toLowerCase();
+  return response.headers.find(h => h.key.toLowerCase() === lower)?.value;
+}
+
+const etag      = getHeader('etag');
+const location  = getHeader('location');
+const requestId = getHeader('x-request-id');
+const nextPage  = getHeader('x-next-cursor');
+
+if (etag)      env.set('lastETag', etag);
+if (location)  env.set('createdLocation', location);
+if (requestId) env.set('lastRequestId', requestId);
+if (nextPage)  env.set('nextCursor', nextPage);
+
+console.log('[info] saved headers to env');`,
+  },
+  {
+    id: 'util-response-headers-all',
+    category: 'Utilities',
+    title: 'List all response headers',
+    description: 'Dump every header the server returned. Helpful when you are not sure what the API actually sends back — run this once on a sample response to discover header names, then narrow to specific ones with getHeader().',
+    target: 'post',
+    code: `// Print every response header
+console.log('--- Response headers (' + response.headers.length + ') ---');
+for (const h of response.headers) {
+  console.log(h.key + ': ' + h.value);
+}
+
+// Filter a related group (e.g. all rate-limit signals)
+const rateLimit = response.headers.filter(h => h.key.toLowerCase().startsWith('x-ratelimit'));
+console.log('Rate-limit headers: ' + JSON.stringify(rateLimit));`,
+  },
 ];
 
 const CATEGORIES = [
@@ -655,6 +829,7 @@ const CATEGORIES = [
   'Request',
   'Chaining',
   'Emitter',
+  'Utilities',
 ];
 
 interface ExampleCardProps {

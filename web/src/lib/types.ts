@@ -25,6 +25,11 @@ export interface Folder {
   imported: boolean;
 }
 
+export interface PreChainStep {
+  requestId: number;
+  continueOnError?: boolean;
+}
+
 export interface Request {
   id: number;
   project_id: number;
@@ -44,6 +49,9 @@ export interface Request {
   updated_at: string;
   imported: boolean;
   env_id: number | null;
+  follow_redirects: boolean;
+  use_cookie_jar: boolean;
+  pre_chain: PreChainStep[];
 }
 
 export interface TestResult {

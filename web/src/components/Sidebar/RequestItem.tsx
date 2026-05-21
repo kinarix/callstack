@@ -71,6 +71,7 @@ interface RequestItemProps {
   onDuplicate?: () => void;
   assignedShortcut?: string | null;
   onOpenShortcutModal?: () => void;
+  isNameTaken?: (name: string) => boolean;
 }
 
 export function RequestItem({
@@ -86,6 +87,7 @@ export function RequestItem({
   onDuplicate,
   assignedShortcut,
   onOpenShortcutModal,
+  isNameTaken,
 }: RequestItemProps) {
   const [draftName, setDraftName] = useState(request.name);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -100,14 +102,25 @@ export function RequestItem({
     }
   }, [isEditing, request.name]);
 
+  const trimmedDraft = draftName.trim();
+  const isDuplicate =
+    isEditing &&
+    !!trimmedDraft &&
+    trimmedDraft.toLowerCase() !== request.name.trim().toLowerCase() &&
+    !!isNameTaken?.(trimmedDraft);
+
   const commit = () => {
-    const trimmed = draftName.trim();
-    onRenameCommit?.(request.id, trimmed || request.name);
+    if (isDuplicate) {
+      onRenameCancel?.();
+      return;
+    }
+    onRenameCommit?.(request.id, trimmedDraft || request.name);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
+      if (isDuplicate) return;
       commit();
     } else if (e.key === 'Escape') {
       e.preventDefault();
@@ -128,12 +141,14 @@ export function RequestItem({
         {isEditing ? (
           <input
             ref={inputRef}
-            className={styles.nameInput}
+            className={`${styles.nameInput} ${isDuplicate ? styles.nameInputInvalid : ''}`}
             value={draftName}
             onChange={(e) => setDraftName(e.target.value)}
             onBlur={commit}
             onKeyDown={handleKeyDown}
             onClick={(e) => e.stopPropagation()}
+            title={isDuplicate ? 'Another request with this name already exists here' : undefined}
+            aria-invalid={isDuplicate || undefined}
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="off"
