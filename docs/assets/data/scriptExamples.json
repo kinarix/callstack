@@ -1,0 +1,326 @@
+{
+  "examples": [
+    {
+      "id": "random-tokens-reference",
+      "category": "Random Data",
+      "title": "Random Data Tokens Reference",
+      "description": "Use {{$randomXxx}} tokens in URL, params, headers, or body to inject realistic fake data. Each send generates fresh values. Perfect for testing with realistic data without hardcoding. Tokens work in templates: {{$randomEmail}}, {{$randomUUID}}, {{$timestamp}}, etc.",
+      "target": "both",
+      "code": "// Use random data tokens in URL, params, headers, or body\n// Each {{$randomXxx}} generates a fresh value on every send\n\n// IDs & Identification\n{{$randomUUID}}        // e.g. 550e8400-e29b-41d4-a716-446655440000\n{{$guid}}              // alias for $randomUUID\n{{$timestamp}}         // e.g. 1713177600 (Unix seconds)\n{{$isoTimestamp}}      // e.g. 2024-04-15T12:00:00.000Z\n\n// Names & People\n{{$randomFirstName}}   // e.g. John\n{{$randomLastName}}    // e.g. Doe\n{{$randomFullName}}    // e.g. John Doe\n{{$randomUserName}}    // e.g. john_doe42\n{{$randomJobTitle}}    // e.g. Product Manager\n{{$randomCompanyName}} // e.g. ACME Corp\n\n// Contact & Web\n{{$randomEmail}}       // e.g. john@example.com\n{{$randomPhoneNumber}} // e.g. (555) 123-4567\n{{$randomUrl}}         // e.g. https://example.com/image\n{{$randomDomainName}}  // e.g. example.com\n{{$randomPassword}}    // e.g. mK9$vL2@xQ\n\n// Network\n{{$randomIP}}          // e.g. 192.168.1.1\n{{$randomIPV6}}        // e.g. 2001:0db8::1\n{{$randomMACAddress}}  // e.g. 00:1A:2B:3C:4D:5E\n\n// Numbers & Colors\n{{$randomInt}}         // e.g. 543 (0-1000)\n{{$randomFloat}}       // e.g. 123.45\n{{$randomColor}}       // e.g. red\n{{$randomHexColor}}    // e.g. #FF5733\n\n// Text & Lorem\n{{$randomLoremWord}}       // e.g. lorem\n{{$randomLoremSentence}}   // e.g. Lorem ipsum dolor sit amet\n{{$randomLoremParagraph}}  // longer paragraph\n\n// Location\n{{$randomCity}}        // e.g. San Francisco\n{{$randomCountry}}     // e.g. United States\n{{$randomStreetAddress}} // e.g. 123 Main St\n{{$randomZipCode}}     // e.g. 94105\n\n// Example URL with multiple tokens:\n// https://api.example.com/users?id={{$randomUUID}}&created={{$timestamp}}\n//\n// Example JSON body:\n// {\n//   \"id\": \"{{$randomUUID}}\",\n//   \"name\": \"{{$randomFullName}}\",\n//   \"email\": \"{{$randomEmail}}\",\n//   \"phone\": \"{{$randomPhoneNumber}}\",\n//   \"registered_at\": \"{{$isoTimestamp}}\"\n// }"
+    },
+    {
+      "id": "test-status",
+      "category": "Tests",
+      "title": "Status Code Assertion",
+      "description": "Verify the HTTP response status matches expectations. Check for 200 (success), 404 (not found), 500 (server error), etc. This is the most basic test—if status is wrong, the request failed.",
+      "target": "post",
+      "code": "test('Status is 200', () => {\n  if (response.status !== 200) {\n    throw new Error(`Expected status 200, got ${response.status}`);\n  }\n});"
+    },
+    {
+      "id": "test-json-field",
+      "category": "Tests",
+      "title": "JSON Body Field Check",
+      "description": "Verify that the response JSON contains a field with the correct type and value. Parse response.body, check field existence, and validate type (string, number, object, etc.). Essential for ensuring APIs return the right data structure.",
+      "target": "post",
+      "code": "test('Response contains userId', () => {\n  const body = JSON.parse(response.body);\n  if (!body.userId) {\n    throw new Error('userId field is missing');\n  }\n  if (typeof body.userId !== 'number') {\n    throw new Error('userId must be a number');\n  }\n});"
+    },
+    {
+      "id": "test-response-time",
+      "category": "Tests",
+      "title": "Response Time Assertion",
+      "description": "Check that the API responds within a performance threshold (milliseconds). Useful for catching slowdowns or detecting N+1 query problems. response.time contains the round-trip time in ms.",
+      "target": "post",
+      "code": "test('Response time under 500ms', () => {\n  if (response.time > 500) {\n    throw new Warn(`Response took ${response.time}ms, expected < 500ms`);\n  }\n});"
+    },
+    {
+      "id": "test-array-length",
+      "category": "Tests",
+      "title": "Array Length Check",
+      "description": "Verify that list/array endpoints return data. Check if response contains an array, validate it's not empty, and optionally check length matches pagination parameters. Common for /list, /search, /filter endpoints.",
+      "target": "post",
+      "code": "test('Response contains items', () => {\n  const body = JSON.parse(response.body);\n  if (!Array.isArray(body.items)) {\n    throw new Error('items is not an array');\n  }\n  if (body.items.length === 0) {\n    throw new Error('items array is empty');\n  }\n});"
+    },
+    {
+      "id": "test-schema",
+      "category": "Tests",
+      "title": "Schema Validation",
+      "description": "Ensure the response JSON has all required fields in the correct structure. Loop through a list of required field names and throw an error if any are missing. Protects against API breaking changes.",
+      "target": "post",
+      "code": "test('Response schema is valid', () => {\n  const body = JSON.parse(response.body);\n  const required = ['id', 'name', 'email', 'createdAt'];\n  const missing = required.filter(field => !(field in body));\n  if (missing.length > 0) {\n    throw new Error(`Missing required fields: ${missing.join(', ')}`);\n  }\n});"
+    },
+    {
+      "id": "env-capture-token",
+      "category": "Environment",
+      "title": "Capture Auth Token from Response",
+      "description": "After login succeeds, extract the auth token from the response and save it to env.authToken. Future requests can read env.authToken to add the Authorization header automatically. This enables request chaining and workflow testing.",
+      "target": "post",
+      "code": "// After login response, save the token for next requests\nconst body = JSON.parse(response.body);\nif (body.token) {\n  env.set('authToken', body.token);\n  console.log('[info] Token saved to env.authToken');\n} else {\n  console.log('[warn] No token in response');\n}"
+    },
+    {
+      "id": "env-capture-id",
+      "category": "Environment",
+      "title": "Extract ID from Response",
+      "description": "After creating a resource (POST), capture its ID from the response and save to environment. Use this ID in subsequent GET/PUT/DELETE requests. Common pattern: Create → Read → Update → Delete (CRUD workflow).",
+      "target": "post",
+      "code": "// After creating a resource, save its ID for updates/deletes\nconst body = JSON.parse(response.body);\nif (body.data && body.data.id) {\n  env.set('resourceId', String(body.data.id));\n  console.log('[info] Resource ID saved: ' + body.data.id);\n}"
+    },
+    {
+      "id": "env-dynamic-timestamp",
+      "category": "Environment",
+      "title": "Generate Dynamic Timestamp",
+      "description": "Generate a fresh timestamp before each request. Useful for APIs requiring timestamps in headers or query parameters, or for testing time-based features. Generates both Unix milliseconds and ISO 8601 format.",
+      "target": "pre",
+      "code": "// Generate a timestamp for the current request\nconst now = Date.now();\nenv.set('timestamp', String(now));\nenv.set('timestampISO', new Date().toISOString());\n\n// Optionally add to request headers\nrequest.headers.push({\n  key: 'X-Request-Time',\n  value: String(now),\n  enabled: true\n});"
+    },
+    {
+      "id": "env-generate-uuid",
+      "category": "Environment",
+      "title": "Generate UUID",
+      "description": "Generate a UUID v4 before each request for correlation IDs, idempotency keys, or request tracing. Each request gets a unique ID for logging and debugging workflows. Store in environment for reuse across multiple headers.",
+      "target": "pre",
+      "code": "// Generate a UUID v4\nfunction uuidv4() {\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n    const r = Math.random() * 16 | 0;\n    const v = c === 'x' ? r : (r & 0x3 | 0x8);\n    return v.toString(16);\n  });\n}\n\nconst requestId = uuidv4();\nenv.set('requestId', requestId);\nenv.set('correlationId', requestId);"
+    },
+    {
+      "id": "env-set-multiple",
+      "category": "Environment",
+      "title": "Store Multiple Values from Response",
+      "description": "Batch-save multiple fields from a response to environment variables in a single loop. Reduces boilerplate for complex responses and makes it easy to reference any field in future requests.",
+      "target": "post",
+      "code": "// Save multiple values from response in one batch\nconst body = JSON.parse(response.body);\nconst toStore = {\n  userId: body.user.id,\n  userName: body.user.name,\n  apiKey: body.credentials.apiKey,\n  expiresAt: body.credentials.expiresAt,\n};\n\nObject.entries(toStore).forEach(([key, value]) => {\n  env.set(key, String(value));\n});\n\nconsole.log('[info] Stored ' + Object.keys(toStore).length + ' values to env');"
+    },
+    {
+      "id": "secrets-read-api-key",
+      "category": "Secrets",
+      "title": "Read a Secret in a Pre-Request Script",
+      "description": "Retrieve a secret value (local only, never exported) and inject it as a request header. Ideal for API keys and tokens you never want to include in exports or share with teammates.",
+      "target": "pre",
+      "code": "// Inject a secret API key as a header\nconst apiKey = env.secret.get('API_KEY');\nif (!apiKey) {\n  console.warn('[warn] API_KEY secret not set — request may fail');\n}\n\nrequest.headers['X-Api-Key'] = apiKey ?? '';"
+    },
+    {
+      "id": "secrets-store-after-login",
+      "category": "Secrets",
+      "title": "Store a Token as a Secret After Login",
+      "description": "After a login request succeeds, save the returned token to the secret store instead of an environment variable. Secrets are local-only — they are never included in exports, making them safe for sensitive credentials.",
+      "target": "post",
+      "code": "// Store the access token as a secret after login\nconst body = JSON.parse(response.body);\nconst token = body.access_token;\nif (token) {\n  env.secret.set('ACCESS_TOKEN', token);\n  console.log('[info] Access token saved to secrets');\n} else {\n  console.error('[error] No access_token in response');\n}"
+    },
+    {
+      "id": "secrets-rotate-token",
+      "category": "Secrets",
+      "title": "Rotate / Remove an Expired Secret",
+      "description": "When a token expires or needs to be refreshed, unset the old secret first, then store the replacement. Using env.secret.unset ensures the old value is fully removed before the new one is written.",
+      "target": "post",
+      "code": "// Replace an expiring token with a fresh one\nconst body = JSON.parse(response.body);\nif (body.access_token) {\n  env.secret.unset('ACCESS_TOKEN');      // clear the old token\n  env.secret.set('ACCESS_TOKEN', body.access_token);\n  if (body.refresh_token) {\n    env.secret.set('REFRESH_TOKEN', body.refresh_token);\n  }\n  console.log('[info] Tokens rotated successfully');\n}"
+    },
+    {
+      "id": "secrets-vs-env",
+      "category": "Secrets",
+      "title": "Secrets vs Environment Variables",
+      "description": "Choose between secrets and env vars based on sensitivity. Use env.secret for credentials and tokens that must never leave the machine. Use env.set for non-sensitive data like base URLs and user IDs that teammates can share.",
+      "target": "both",
+      "code": "// Secrets: local-only, never exported\n//   Use for: API keys, passwords, tokens, private keys\nenv.secret.set('API_KEY', 'sk-...');\nconst apiKey = env.secret.get('API_KEY');\n\n// Env vars: shared with teammates via export/import\n//   Use for: base URLs, user IDs, feature flags\nenv.set('BASE_URL', 'https://api.example.com');\nenv.set('USER_ID', '42');\n\nconsole.log('[info] API key is a secret:', apiKey ? '✓ set' : '✗ missing');\nconsole.log('[info] Base URL from env:', env.get('BASE_URL'));"
+    },
+    {
+      "id": "auth-bearer-token",
+      "category": "Auth",
+      "title": "Add Bearer Token Header",
+      "description": "Read the authToken from environment (saved by a login request) and add it as an Authorization header. This is the standard pattern for OAuth 2.0 and JWT-based APIs. Allows request workflows without hardcoding tokens.",
+      "target": "pre",
+      "code": "// Add Authorization header with token from environment\nconst token = env.get('authToken');\nif (token) {\n  request.headers.push({\n    key: 'Authorization',\n    value: 'Bearer ' + token,\n    enabled: true\n  });\n  console.log('[info] Added Bearer token');\n} else {\n  console.log('[warn] No authToken found in environment');\n}"
+    },
+    {
+      "id": "auth-basic",
+      "category": "Auth",
+      "title": "Basic Authentication",
+      "description": "Encode username and password in Base64 and send as Authorization header. Use for APIs that support HTTP Basic auth. Less secure than Bearer tokens but still widely used for legacy systems.",
+      "target": "pre",
+      "code": "// Basic authentication (username:password in Base64)\nconst username = 'user@example.com';\nconst password = 'secretpassword';\nconst credentials = btoa(username + ':' + password);\n\nrequest.headers.push({\n  key: 'Authorization',\n  value: 'Basic ' + credentials,\n  enabled: true\n});"
+    },
+    {
+      "id": "auth-custom-header",
+      "category": "Auth",
+      "title": "Custom API Key Header",
+      "description": "Add a vendor-specific API key header (X-API-Key, X-Auth-Token, etc.). Many SaaS APIs use custom headers instead of Bearer tokens. Store the key in environment for safe, reusable access across requests.",
+      "target": "pre",
+      "code": "// Custom API key authentication\nconst apiKey = env.get('apiKey');\nif (!apiKey) {\n  throw new Error('apiKey not set in environment');\n}\n\nrequest.headers.push({\n  key: 'X-API-Key',\n  value: apiKey,\n  enabled: true\n});"
+    },
+    {
+      "id": "auth-hmac",
+      "category": "Auth",
+      "title": "HMAC Signature (Advanced)",
+      "description": "Generate a cryptographic signature to prove request authenticity. Some APIs (AWS, Stripe, webhooks) require HMAC signatures. This example shows the pattern; your API docs will specify the signing algorithm.",
+      "target": "pre",
+      "code": "// HMAC signature (requires secret key)\n// Note: This is a simplified example; full HMAC requires crypto library\nconst secret = env.get('hmacSecret');\nif (!secret) {\n  throw new Error('hmacSecret not configured');\n}\n\n// For actual HMAC-SHA256, use your backend to sign\n// Or use a simple timestamp-based signature\nconst timestamp = Date.now();\nconst signature = 'mock-signature-' + timestamp;\n\nrequest.headers.push({\n  key: 'X-Signature',\n  value: signature,\n  enabled: true\n});\nrequest.headers.push({\n  key: 'X-Timestamp',\n  value: String(timestamp),\n  enabled: true\n});"
+    },
+    {
+      "id": "req-inject-headers",
+      "category": "Request",
+      "title": "Inject Dynamic Headers",
+      "description": "Automatically add headers for correlation tracking, versioning, and request metadata. Useful for APIs that require specific headers on every call, or for distributed tracing in microservices.",
+      "target": "pre",
+      "code": "// Inject common headers dynamically\nconst correlationId = env.get('correlationId');\nconst now = new Date().toISOString();\n\nrequest.headers.push(\n  {\n    key: 'X-Correlation-ID',\n    value: correlationId || 'no-id',\n    enabled: true\n  },\n  {\n    key: 'X-Request-Date',\n    value: now,\n    enabled: true\n  },\n  {\n    key: 'X-Client-Version',\n    value: '1.0.0',\n    enabled: true\n  }\n);"
+    },
+    {
+      "id": "req-override-params",
+      "category": "Request",
+      "title": "Override URL Parameters",
+      "description": "Replace query parameters with values from environment. Enables dynamic filtering, pagination, and parameterization without manually editing the URL bar for each request.",
+      "target": "pre",
+      "code": "// Override or add query parameters from environment\nconst resourceId = env.get('resourceId');\nconst filter = env.get('filter');\n\n// Clear existing params and set new ones\nrequest.params = [];\nif (resourceId) {\n  request.params.push({\n    key: 'id',\n    value: resourceId,\n    enabled: true\n  });\n}\nif (filter) {\n  request.params.push({\n    key: 'filter',\n    value: filter,\n    enabled: true\n  });\n}"
+    },
+    {
+      "id": "req-set-body",
+      "category": "Request",
+      "title": "Set Request Body Dynamically",
+      "description": "Build the request body from environment variables saved by previous requests. Essential for workflows like \"create user with token\" or \"update resource with ID from list response\".",
+      "target": "pre",
+      "code": "// Build request body from environment values\nconst userId = env.get('userId');\nconst authToken = env.get('authToken');\n\nif (!userId || !authToken) {\n  throw new Error('Missing userId or authToken in environment');\n}\n\nconst payload = {\n  userId: userId,\n  token: authToken,\n  timestamp: Date.now(),\n  action: 'update'\n};\n\nrequest.body = JSON.stringify(payload);\nrequest.headers.push({\n  key: 'Content-Type',\n  value: 'application/json',\n  enabled: true\n});"
+    },
+    {
+      "id": "chain-login-flow",
+      "category": "Chaining",
+      "title": "Login Flow (Pre + Post)",
+      "description": "Complete workflow: Login endpoint returns a token. Post-request script captures it and saves to environment. Subsequent requests read this token for authentication. Shows the essence of request chaining.",
+      "target": "both",
+      "code": "// LOGIN REQUEST (Pre-request script)\n// Nothing special needed, just send credentials\n\n// LOGIN RESPONSE (Post-request script)\n// Capture the token and save for subsequent requests\n\ntest('Login successful', () => {\n  if (response.status !== 200) {\n    throw new Error('Login failed with status ' + response.status);\n  }\n});\n\nconst body = JSON.parse(response.body);\nif (body.token) {\n  env.set('authToken', body.token);\n  env.set('userId', String(body.user.id));\n  console.log('[info] Logged in as ' + body.user.name);\n}"
+    },
+    {
+      "id": "chain-pagination",
+      "category": "Chaining",
+      "title": "Pagination Loop",
+      "description": "When listing endpoints return a cursor or nextPage token, extract it in post-request and save to environment. Next request uses this cursor in its query parameters to fetch the next batch of results.",
+      "target": "post",
+      "code": "// After listing response, extract cursor for next page\nconst body = JSON.parse(response.body);\n\nif (body.pagination && body.pagination.nextCursor) {\n  env.set('nextCursor', body.pagination.nextCursor);\n  console.log('[info] Next page cursor: ' + body.pagination.nextCursor);\n} else {\n  console.log('[info] No more pages');\n  env.set('nextCursor', '');\n}\n\n// For the next request, use:\n// URL params: cursor={{nextCursor}}\ntest('Has items', () => {\n  if (!body.items || body.items.length === 0) {\n    throw new Error('No items in response');\n  }\n});"
+    },
+    {
+      "id": "chain-ref-injection",
+      "category": "Chaining",
+      "title": "Variable Injection Setup",
+      "description": "Extract multiple fields from a response and save to environment. Use the {{variableName}} syntax in the next request's URL, params, or body to automatically substitute these values. Enables complex multi-step workflows.",
+      "target": "post",
+      "code": "// Extract data and prepare for template substitution in next request\nconst body = JSON.parse(response.body);\n\n// Store values that can be used as {{variableName}} in next request URL/params\nenv.set('lastId', String(body.data.id));\nenv.set('lastEmail', body.data.email);\nenv.set('lastStatus', body.data.status);\n\nconsole.log('[info] Stored values for next request:');\nconsole.log('[debug] lastId = ' + env.get('lastId'));\nconsole.log('[debug] lastEmail = ' + env.get('lastEmail'));\n\n// Use in next request:\n// URL: /api/users/{{lastId}}/profile\n// or Param: email={{lastEmail}}"
+    },
+    {
+      "id": "test-explicit-success",
+      "category": "Tests",
+      "title": "Explicit Success Message",
+      "description": "Use throw new Success(...) to show a test passed with a custom message. Useful for detailed results or multi-step validations that succeed. Different from a regular pass — you control the message shown.",
+      "target": "post",
+      "code": "test('Verify user creation flow', () => {\n  const body = JSON.parse(response.body);\n\n  if (!body.data || !body.data.id) {\n    throw new Error('User ID missing in response');\n  }\n\n  if (body.data.email !== 'test@example.com') {\n    throw new Error('Email does not match');\n  }\n\n  throw new Success(`User created successfully: ID=${body.data.id}, email=${body.data.email}`);\n});"
+    },
+    {
+      "id": "test-severity-levels",
+      "category": "Tests",
+      "title": "Test with All Severity Levels",
+      "description": "Demonstrates all three severity levels: throw new Error(...) for hard failures (red), throw new Warn(...) for warnings (amber), and throw new Success(...) for explicit success (green). Use these to classify test results by severity.",
+      "target": "post",
+      "code": "test('Check status code', () => {\n  if (response.status < 400) {\n    throw new Success(`Request successful: ${response.status}`);\n  }\n  throw new Error(`Request failed: ${response.status}`);\n});\n\ntest('Check deprecated headers', () => {\n  const headers = response.headers;\n  if (headers.some(h => h.key === 'X-Deprecated-Api')) {\n    throw new Warn('Response contains deprecated header: X-Deprecated-Api');\n  }\n});"
+    },
+    {
+      "id": "emit-status-ok",
+      "category": "Emitter",
+      "title": "Emit success flag",
+      "description": "Emit a boolean flag based on the response status. Use \"Emitted key is truthy\" with key isOk in a branch condition to route the automation based on whether this request succeeded.",
+      "target": "post",
+      "code": "// Emit a flag that branch conditions can check\nemit('isOk', response.status >= 200 && response.status < 300);"
+    },
+    {
+      "id": "emit-json-field",
+      "category": "Emitter",
+      "title": "Emit a JSON field",
+      "description": "Parse the response body and emit a specific field value. Use \"Emitted equals\" with key status and value active in a branch condition to take different paths based on the value.",
+      "target": "post",
+      "code": "// Parse response and emit a field for branching\nconst body = JSON.parse(response.body);\nemit('status', body.status);          // e.g. \"active\" / \"inactive\"\nemit('userId', String(body.user.id)); // always emit as string"
+    },
+    {
+      "id": "emit-token-expiry",
+      "category": "Emitter",
+      "title": "Emit token expiry check",
+      "description": "Decode a JWT expiry claim and emit whether the token is expired. Branch on \"Emitted key is truthy\" with key tokenExpired to conditionally refresh the token before continuing.",
+      "target": "post",
+      "code": "// Check if a JWT in the response is already expired\nconst body = JSON.parse(response.body);\nconst token = body.accessToken || env.get('authToken');\n\nif (token) {\n  try {\n    const payload = JSON.parse(atob(token.split('.')[1]));\n    const isExpired = payload.exp * 1000 < Date.now();\n    emit('tokenExpired', isExpired);\n    console.log('[info] Token expires at ' + new Date(payload.exp * 1000).toISOString());\n  } catch {\n    emit('tokenExpired', true); // treat unparseable token as expired\n  }\n}"
+    },
+    {
+      "id": "emit-retry-after",
+      "category": "Emitter",
+      "title": "Emit rate-limit signal",
+      "description": "Detect a 429 Too Many Requests response and emit a flag. Branch on \"Emitted key is truthy\" with key rateLimited to stop the automation or route to a delay step.",
+      "target": "post",
+      "code": "// Detect rate limiting so a branch can pause or stop\nemit('rateLimited', response.status === 429);\n\nif (response.status === 429) {\n  const retryAfter = response.headers.find(h => h.key.toLowerCase() === 'retry-after');\n  console.log('[warn] Rate limited. Retry-After: ' + (retryAfter?.value ?? 'unknown'));\n}"
+    },
+    {
+      "id": "util-base64-encode",
+      "category": "Utilities",
+      "title": "Base64 encode a string",
+      "description": "Encode any string to Base64 with UTF-8 safety. Plain btoa() only handles Latin-1 — wrap with TextEncoder to support emoji, accents, and other non-ASCII characters. Useful for embedding binary-ish data in headers or query params.",
+      "target": "both",
+      "code": "// UTF-8 safe Base64 encode\nfunction b64encode(text) {\n  const bytes = new TextEncoder().encode(text);\n  let bin = '';\n  bytes.forEach(b => { bin += String.fromCharCode(b); });\n  return btoa(bin);\n}\n\nconst encoded = b64encode('hello world — café 🚀');\nconsole.log(encoded);\n\n// Use in a header\nrequest.headers.push({\n  key: 'X-Encoded-Payload',\n  value: encoded,\n  enabled: true,\n});"
+    },
+    {
+      "id": "util-base64-decode",
+      "category": "Utilities",
+      "title": "Base64 decode a string",
+      "description": "Decode a Base64 string back to UTF-8 text. atob() returns Latin-1 bytes — decode them through TextDecoder to recover the original Unicode string.",
+      "target": "both",
+      "code": "// UTF-8 safe Base64 decode\nfunction b64decode(b64) {\n  const bin = atob(b64);\n  const bytes = new Uint8Array(bin.length);\n  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);\n  return new TextDecoder().decode(bytes);\n}\n\nconst decoded = b64decode('aGVsbG8gd29ybGQ=');\nconsole.log(decoded);"
+    },
+    {
+      "id": "util-base64-basic-auth",
+      "category": "Utilities",
+      "title": "Build a Basic auth header",
+      "description": "Compose the Authorization header for HTTP Basic auth from username and password pulled from secrets. Base64-encodes \"user:pass\" and pushes the header onto the outgoing request.",
+      "target": "pre",
+      "code": "// Build Basic auth header from secrets\nconst username = secrets.get('basicUser');\nconst password = secrets.get('basicPass');\n\nif (!username || !password) {\n  throw new Error('Missing basicUser / basicPass in secrets');\n}\n\nconst token = btoa(username + ':' + password);\nrequest.headers.push({\n  key: 'Authorization',\n  value: 'Basic ' + token,\n  enabled: true,\n});"
+    },
+    {
+      "id": "util-base64-decode-jwt",
+      "category": "Utilities",
+      "title": "Decode a JWT payload",
+      "description": "Split a JWT, base64url-decode the middle segment, and parse it as JSON. Lets you read claims like sub, exp, scopes. Handles URL-safe characters and missing padding that base64url uses.",
+      "target": "post",
+      "code": "// Decode a JWT payload (base64url → JSON)\nfunction decodeJwt(token) {\n  const part = token.split('.')[1] || '';\n  const b64 = part.replace(/-/g, '+').replace(/_/g, '/').padEnd(part.length + (4 - part.length % 4) % 4, '=');\n  return JSON.parse(atob(b64));\n}\n\nconst body = JSON.parse(response.body);\nconst token = body.accessToken || env.get('authToken');\nif (token) {\n  const claims = decodeJwt(token);\n  console.log('[info] sub: ' + claims.sub);\n  console.log('[info] expires: ' + new Date(claims.exp * 1000).toISOString());\n  env.set('tokenSub', claims.sub);\n}"
+    },
+    {
+      "id": "util-parse-url-params",
+      "category": "Utilities",
+      "title": "Parse query params from a URL",
+      "description": "Extract query string parameters from any URL into an object. Uses the built-in URL/URLSearchParams APIs — handles encoding, repeated keys, and missing values. Useful for reading params off a redirect Location header or a callback URL pasted into a secret.",
+      "target": "both",
+      "code": "// Parse query params from a URL string\nfunction parseParams(url) {\n  try {\n    const sp = new URL(url).searchParams;\n    return Object.fromEntries(sp);\n  } catch {\n    return {};\n  }\n}\n\nconst target = 'https://api.example.com/users?page=2&limit=20&sort=name';\nconst params = parseParams(target);\nconsole.log(params); // { page: '2', limit: '20', sort: 'name' }\n\n// Repeated keys (?tag=a&tag=b) — use getAll\nconst sp = new URL(target).searchParams;\nconst tags = sp.getAll('tag');\nconsole.log('tags: ' + JSON.stringify(tags));\n\n// Common follow-up: persist a value into the env\nif (params.page) env.set('lastPage', params.page);"
+    },
+    {
+      "id": "util-response-header-lookup",
+      "category": "Utilities",
+      "title": "Read a response header",
+      "description": "Case-insensitive lookup of a single response header. response.headers is an array of { key, value } — wrap the find() call so you can call getHeader(\"content-type\") without worrying about casing.",
+      "target": "post",
+      "code": "// Case-insensitive response header lookup\nfunction getHeader(name) {\n  const lower = name.toLowerCase();\n  return response.headers.find(h => h.key.toLowerCase() === lower)?.value;\n}\n\nconst contentType = getHeader('content-type');\nconst requestId   = getHeader('x-request-id');\nconst etag        = getHeader('etag');\n\nconsole.log('Content-Type: ' + contentType);\nconsole.log('X-Request-Id: ' + requestId);\nconsole.log('ETag: ' + etag);"
+    },
+    {
+      "id": "util-response-header-capture",
+      "category": "Utilities",
+      "title": "Capture response headers to env",
+      "description": "Persist headers that change between calls — ETag, Location, X-Request-Id, pagination cursors — into the environment so the next request can reuse them. Skip values that did not come back.",
+      "target": "post",
+      "code": "// Persist useful response headers into the environment\nfunction getHeader(name) {\n  const lower = name.toLowerCase();\n  return response.headers.find(h => h.key.toLowerCase() === lower)?.value;\n}\n\nconst etag      = getHeader('etag');\nconst location  = getHeader('location');\nconst requestId = getHeader('x-request-id');\nconst nextPage  = getHeader('x-next-cursor');\n\nif (etag)      env.set('lastETag', etag);\nif (location)  env.set('createdLocation', location);\nif (requestId) env.set('lastRequestId', requestId);\nif (nextPage)  env.set('nextCursor', nextPage);\n\nconsole.log('[info] saved headers to env');"
+    },
+    {
+      "id": "util-response-headers-all",
+      "category": "Utilities",
+      "title": "List all response headers",
+      "description": "Dump every header the server returned. Helpful when you are not sure what the API actually sends back — run this once on a sample response to discover header names, then narrow to specific ones with getHeader().",
+      "target": "post",
+      "code": "// Print every response header\nconsole.log('--- Response headers (' + response.headers.length + ') ---');\nfor (const h of response.headers) {\n  console.log(h.key + ': ' + h.value);\n}\n\n// Filter a related group (e.g. all rate-limit signals)\nconst rateLimit = response.headers.filter(h => h.key.toLowerCase().startsWith('x-ratelimit'));\nconsole.log('Rate-limit headers: ' + JSON.stringify(rateLimit));"
+    }
+  ],
+  "categories": [
+    "Tests",
+    "Environment",
+    "Secrets",
+    "Auth",
+    "Request",
+    "Chaining",
+    "Emitter",
+    "Utilities"
+  ]
+}

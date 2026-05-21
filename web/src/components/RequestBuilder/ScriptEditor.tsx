@@ -18,6 +18,24 @@ import {
 } from '@codemirror/autocomplete';
 import { ScriptExamples } from './ScriptExamples';
 import { useEditorMemory } from '../../hooks/useEditorMemory';
+import {
+  MEMBER_MAP,
+  SIGNATURES,
+  REQUEST_MEMBERS,
+  RESPONSE_MEMBERS,
+  ENV_MEMBERS,
+  SECRET_MEMBERS,
+  CONSOLE_MEMBERS,
+  JSON_MEMBERS,
+  ARRAY_MEMBERS,
+  OBJECT_MEMBERS,
+  MATH_MEMBERS,
+  DATE_MEMBERS,
+  PROMISE_MEMBERS,
+  NUMBER_MEMBERS,
+  type MemberDef,
+  type SigDef,
+} from '../../data/scriptingApi';
 import styles from './ScriptEditor.module.css';
 
 type ScriptTab = 'pre' | 'post' | 'examples';
@@ -121,258 +139,7 @@ const editorTheme = EditorView.theme({
   },
 });
 
-// ── Completion data ──────────────────────────────────────────────────────────
-
-interface MemberDef {
-  label: string;
-  detail: string;
-  info?: string;
-  type: 'function' | 'property';
-  snippet?: string;
-}
-
-const REQUEST_MEMBERS: MemberDef[] = [
-  { label: 'method', detail: 'string', info: 'HTTP method, e.g. "GET", "POST".', type: 'property' },
-  { label: 'url', detail: 'string', info: 'Full request URL.', type: 'property' },
-  { label: 'headers', detail: 'KeyValue[]', info: 'Array of { key, value } header pairs. Push to add new headers.', type: 'property' },
-  { label: 'params', detail: 'KeyValue[]', info: 'Array of { key, value } query parameter pairs.', type: 'property' },
-  { label: 'body', detail: 'string', info: 'Request body as a string.', type: 'property' },
-  { label: 'json', detail: 'object | null', info: 'Request body parsed as JSON. Use dot notation to access nested values: request.json.token. Returns null if the body is empty or not valid JSON.', type: 'property' },
-];
-
-const RESPONSE_MEMBERS: MemberDef[] = [
-  { label: 'status', detail: 'number', info: 'HTTP response status code, e.g. 200, 404.', type: 'property' },
-  { label: 'statusText', detail: 'string', info: 'HTTP status text, e.g. "OK", "Not Found".', type: 'property' },
-  { label: 'headers', detail: 'KeyValue[]', info: 'Array of { key, value } response header pairs.', type: 'property' },
-  { label: 'body', detail: 'string', info: 'Response body as a string.', type: 'property' },
-  { label: 'time', detail: 'number', info: 'Response time in milliseconds.', type: 'property' },
-  { label: 'json', detail: 'object | null', info: 'Response body parsed as JSON. Use dot notation to access nested values: response.json.data.id. Returns null if the body is empty or not valid JSON.', type: 'property' },
-];
-
-const ENV_MEMBERS: MemberDef[] = [
-  {
-    label: 'get', detail: '(key: string) → string | undefined',
-    info: 'Get the current value of an environment variable.',
-    type: 'function', snippet: 'get(${1:key})',
-  },
-  {
-    label: 'set', detail: '(key: string, value: string) → void',
-    info: 'Set an environment variable. The new value is available immediately within the script and persisted to the active environment after it runs.',
-    type: 'function', snippet: 'set(${1:key}, ${2:value})',
-  },
-  {
-    label: 'unset', detail: '(key: string) → void',
-    info: 'Remove an environment variable.',
-    type: 'function', snippet: 'unset(${1:key})',
-  },
-  {
-    label: 'secret', detail: 'object',
-    info: 'Secret store (local only, never exported). Methods: get(key), set(key, value), unset(key).',
-    type: 'property',
-  },
-];
-
-const SECRET_MEMBERS: MemberDef[] = [
-  {
-    label: 'get', detail: '(key: string) → string | undefined',
-    info: 'Get the value of a secret (never exported).',
-    type: 'function', snippet: 'get(${1:key})',
-  },
-  {
-    label: 'set', detail: '(key: string, value: string) → void',
-    info: 'Set a secret value. Local only — never included in exports.',
-    type: 'function', snippet: 'set(${1:key}, ${2:value})',
-  },
-  {
-    label: 'unset', detail: '(key: string) → void',
-    info: 'Remove a secret.',
-    type: 'function', snippet: 'unset(${1:key})',
-  },
-];
-
-const CONSOLE_MEMBERS: MemberDef[] = [
-  {
-    label: 'log', detail: '(...args) → void',
-    info: 'Print values to the console panel.', type: 'function', snippet: 'log(${1})',
-  },
-  {
-    label: 'warn', detail: '(...args) → void',
-    info: 'Print a warning to the console panel.', type: 'function', snippet: 'warn(${1})',
-  },
-  {
-    label: 'error', detail: '(...args) → void',
-    info: 'Print an error to the console panel.', type: 'function', snippet: 'error(${1})',
-  },
-];
-
-const JSON_MEMBERS: MemberDef[] = [
-  { label: 'parse',     detail: '(text: string) → any',                     info: 'Parse a JSON string.',                            type: 'function', snippet: 'parse(${1:text})' },
-  { label: 'stringify', detail: '(value, replacer?, space?) → string',       info: 'Serialize a value to a JSON string.',              type: 'function', snippet: 'stringify(${1:value})' },
-];
-
-const ARRAY_MEMBERS: MemberDef[] = [
-  { label: 'isArray', detail: '(value) → boolean', info: 'Returns true if value is an array.', type: 'function', snippet: 'isArray(${1:value})' },
-  { label: 'from',    detail: '(arrayLike, mapFn?) → any[]',                info: 'Create an array from an iterable or array-like.',  type: 'function', snippet: 'from(${1:arrayLike})' },
-  { label: 'of',      detail: '(...items) → any[]',                         info: 'Create an array from the given arguments.',        type: 'function', snippet: 'of(${1})' },
-];
-
-const OBJECT_MEMBERS: MemberDef[] = [
-  { label: 'keys',        detail: '(obj) → string[]',              info: 'Own enumerable property names.',          type: 'function', snippet: 'keys(${1:obj})' },
-  { label: 'values',      detail: '(obj) → any[]',                 info: 'Own enumerable property values.',         type: 'function', snippet: 'values(${1:obj})' },
-  { label: 'entries',     detail: '(obj) → [string, any][]',       info: 'Own enumerable [key, value] pairs.',      type: 'function', snippet: 'entries(${1:obj})' },
-  { label: 'assign',      detail: '(target, ...sources) → object', info: 'Copy properties from sources to target.', type: 'function', snippet: 'assign(${1:target}, ${2:source})' },
-  { label: 'fromEntries', detail: '(entries) → object',            info: 'Build an object from [key, value] pairs.',type: 'function', snippet: 'fromEntries(${1:entries})' },
-  { label: 'freeze',      detail: '(obj) → obj',                   info: 'Prevent mutations on an object.',         type: 'function', snippet: 'freeze(${1:obj})' },
-  { label: 'create',      detail: '(proto, props?) → object',      info: 'Create object with given prototype.',     type: 'function', snippet: 'create(${1:proto})' },
-  { label: 'hasOwn',      detail: '(obj, key) → boolean',          info: 'True if obj has own property key.',       type: 'function', snippet: 'hasOwn(${1:obj}, ${2:key})' },
-];
-
-const MATH_MEMBERS: MemberDef[] = [
-  { label: 'floor',  detail: '(x) → number',           info: 'Round down.',                             type: 'function', snippet: 'floor(${1:x})' },
-  { label: 'ceil',   detail: '(x) → number',           info: 'Round up.',                               type: 'function', snippet: 'ceil(${1:x})' },
-  { label: 'round',  detail: '(x) → number',           info: 'Round to nearest integer.',               type: 'function', snippet: 'round(${1:x})' },
-  { label: 'abs',    detail: '(x) → number',           info: 'Absolute value.',                         type: 'function', snippet: 'abs(${1:x})' },
-  { label: 'max',    detail: '(...values) → number',                                                    type: 'function', snippet: 'max(${1:a}, ${2:b})' },
-  { label: 'min',    detail: '(...values) → number',                                                    type: 'function', snippet: 'min(${1:a}, ${2:b})' },
-  { label: 'random', detail: '() → number',            info: 'Random float in [0, 1).',                 type: 'function', snippet: 'random()' },
-  { label: 'pow',    detail: '(base, exp) → number',                                                    type: 'function', snippet: 'pow(${1:base}, ${2:exp})' },
-  { label: 'sqrt',   detail: '(x) → number',                                                            type: 'function', snippet: 'sqrt(${1:x})' },
-  { label: 'sign',   detail: '(x) → -1 | 0 | 1',                                                       type: 'function', snippet: 'sign(${1:x})' },
-  { label: 'trunc',  detail: '(x) → number',           info: 'Integer part, truncating toward zero.',   type: 'function', snippet: 'trunc(${1:x})' },
-  { label: 'log',    detail: '(x) → number',           info: 'Natural logarithm.',                      type: 'function', snippet: 'log(${1:x})' },
-  { label: 'PI',     detail: 'number (≈ 3.14159)',                                                      type: 'property' },
-  { label: 'E',      detail: 'number (≈ 2.71828)',                                                      type: 'property' },
-];
-
-const DATE_MEMBERS: MemberDef[] = [
-  { label: 'now',   detail: '() → number',            info: 'Current time as Unix milliseconds.',       type: 'function', snippet: 'now()' },
-  { label: 'parse', detail: '(dateString) → number',  info: 'Parse date string to Unix milliseconds.',  type: 'function', snippet: 'parse(${1:dateString})' },
-];
-
-const PROMISE_MEMBERS: MemberDef[] = [
-  { label: 'all',        detail: '(promises) → Promise', info: 'Resolve when all resolve; reject on first failure.', type: 'function', snippet: 'all(${1:promises})' },
-  { label: 'allSettled', detail: '(promises) → Promise', info: 'Resolve when all settle (resolve or reject).',       type: 'function', snippet: 'allSettled(${1:promises})' },
-  { label: 'race',       detail: '(promises) → Promise', info: 'Settle as soon as the first promise settles.',       type: 'function', snippet: 'race(${1:promises})' },
-  { label: 'resolve',    detail: '(value) → Promise',                                                                type: 'function', snippet: 'resolve(${1:value})' },
-  { label: 'reject',     detail: '(reason) → Promise',                                                               type: 'function', snippet: 'reject(${1:reason})' },
-];
-
-const NUMBER_MEMBERS: MemberDef[] = [
-  { label: 'isInteger',          detail: '(value) → boolean',       type: 'function', snippet: 'isInteger(${1:value})' },
-  { label: 'isFinite',           detail: '(value) → boolean',       type: 'function', snippet: 'isFinite(${1:value})' },
-  { label: 'isNaN',              detail: '(value) → boolean',       type: 'function', snippet: 'isNaN(${1:value})' },
-  { label: 'parseInt',           detail: '(str, radix?) → number',  type: 'function', snippet: 'parseInt(${1:str})' },
-  { label: 'parseFloat',         detail: '(str) → number',          type: 'function', snippet: 'parseFloat(${1:str})' },
-  { label: 'MAX_SAFE_INTEGER',   detail: 'number (2^53 − 1)',        type: 'property' },
-  { label: 'MIN_SAFE_INTEGER',   detail: 'number (−(2^53 − 1))',    type: 'property' },
-  { label: 'POSITIVE_INFINITY',  detail: 'number',                  type: 'property' },
-  { label: 'NEGATIVE_INFINITY',  detail: 'number',                  type: 'property' },
-];
-
-const MEMBER_MAP: Record<string, MemberDef[]> = {
-  request: REQUEST_MEMBERS,
-  response: RESPONSE_MEMBERS,
-  env: ENV_MEMBERS,
-  console: CONSOLE_MEMBERS,
-  JSON: JSON_MEMBERS,
-  Array: ARRAY_MEMBERS,
-  Object: OBJECT_MEMBERS,
-  Math: MATH_MEMBERS,
-  Date: DATE_MEMBERS,
-  Promise: PROMISE_MEMBERS,
-  Number: NUMBER_MEMBERS,
-};
-
-// ── Signature help data ──────────────────────────────────────────────────────
-
-interface SigDef {
-  sig: string; // display string, marks active param with «»
-  params: string[];
-  doc: string;
-}
-
-const SIGNATURES: Record<string, SigDef> = {
-  test: {
-    sig: 'test(description, fn)',
-    params: ['description: string', 'fn: () => void'],
-    doc: 'Run a test. Throw inside fn to fail.',
-  },
-  'env.get': {
-    sig: 'env.get(key)',
-    params: ['key: string'],
-    doc: 'Get the value of an environment variable.',
-  },
-  'env.set': {
-    sig: 'env.set(key, value)',
-    params: ['key: string', 'value: string'],
-    doc: 'Set an environment variable.',
-  },
-  'env.unset': {
-    sig: 'env.unset(key)',
-    params: ['key: string'],
-    doc: 'Remove an environment variable.',
-  },
-  'env.secret.get': {
-    sig: 'env.secret.get(key)',
-    params: ['key: string'],
-    doc: 'Get the value of a secret (local only, never exported).',
-  },
-  'env.secret.set': {
-    sig: 'env.secret.set(key, value)',
-    params: ['key: string', 'value: string'],
-    doc: 'Set a secret. Local only — never included in exports.',
-  },
-  'env.secret.unset': {
-    sig: 'env.secret.unset(key)',
-    params: ['key: string'],
-    doc: 'Remove a secret.',
-  },
-  'console.log': {
-    sig: 'console.log(...args)',
-    params: ['...args: any[]'],
-    doc: 'Print to the console panel.',
-  },
-  'console.warn': {
-    sig: 'console.warn(...args)',
-    params: ['...args: any[]'],
-    doc: 'Print a warning to the console panel.',
-  },
-  'console.error': {
-    sig: 'console.error(...args)',
-    params: ['...args: any[]'],
-    doc: 'Print an error to the console panel.',
-  },
-  'JSON.parse': {
-    sig: 'JSON.parse(text)',
-    params: ['text: string'],
-    doc: 'Parse a JSON string into a value.',
-  },
-  'JSON.stringify': {
-    sig: 'JSON.stringify(value, replacer?, space?)',
-    params: ['value: any', 'replacer?: null | Function', 'space?: number | string'],
-    doc: 'Serialize a value to a JSON string.',
-  },
-  emit: {
-    sig: 'emit(key, value)',
-    params: ['key: string', 'value: any'],
-    doc: 'Emit a short-lived run-scoped value for use in automation branch conditions.',
-  },
-  Error: {
-    sig: 'Error(...args)',
-    params: ['...args: any[]'],
-    doc: 'Standard JS error. Throw inside test() to mark it as failed (severity: error).',
-  },
-  Warn: {
-    sig: 'Warn(...args)',
-    params: ['...args: any[]'],
-    doc: 'Callstack warning class. Throw inside test() to mark as failed (severity: warning).',
-  },
-  Success: {
-    sig: 'Success(...args)',
-    params: ['...args: any[]'],
-    doc: 'Callstack success class. Throw inside test() to mark as passed (severity: success).',
-  },
-};
+// MemberDef/SigDef + member tables + SIGNATURES live in ../../data/scriptingApi.ts
 
 // ── Signature help state field ────────────────────────────────────────────────
 

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scripting API Reference — CALLSTACK</title>
+  <meta name="description" content="Complete reference for the JavaScript scripting environment in CALLSTACK pre-request and post-request scripts: request, response, env, secrets, console, test, emit, and supported built-ins (JSON, Math, Date, Promise, Array, Object).">
+  <meta name="theme-color" content="#0d1117">
+
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/images/icon-512.png">
+  <link rel="stylesheet" href="../assets/css/styles.css">
+
+  <style>
+    .api-search {
+      width: 100%;
+      padding: 0.55rem 0.8rem;
+      background: var(--surface-2, #161b22);
+      color: var(--text, #e6edf3);
+      border: 1px solid var(--border, #30363d);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      margin-bottom: var(--sp-3, 1.25rem);
+    }
+    .api-search:focus { outline: none; border-color: var(--accent, #58a6ff); }
+
+    .api-toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: var(--sp-3, 1.25rem);
+    }
+    .api-toc a {
+      padding: 0.25rem 0.7rem;
+      font-size: 0.78rem;
+      border: 1px solid var(--border, #30363d);
+      border-radius: 999px;
+      color: var(--text-muted, #8b949e);
+      text-decoration: none;
+      background: var(--surface-2, #161b22);
+    }
+    .api-toc a:hover { color: var(--accent, #58a6ff); border-color: var(--accent, #58a6ff); }
+
+    .api-group {
+      border: 1px solid var(--border, #30363d);
+      border-radius: 10px;
+      background: var(--surface-1, #0d1117);
+      padding: var(--sp-3, 1.25rem);
+      margin-bottom: var(--sp-3, 1.25rem);
+    }
+    .api-group h3 {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 1.05rem;
+      color: var(--accent, #58a6ff);
+      margin: 0 0 0.4rem;
+    }
+    .api-group p.api-group-desc {
+      color: var(--text-muted, #8b949e);
+      font-size: 0.9rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .api-member {
+      padding: 0.7rem 0;
+      border-top: 1px dashed var(--border, #30363d);
+    }
+    .api-member:first-of-type { border-top: none; padding-top: 0.3rem; }
+
+    .api-member-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.6rem 0.75rem;
+    }
+    .api-member-name {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 0.95rem;
+      color: var(--text, #e6edf3);
+      font-weight: 600;
+    }
+    .api-member-detail {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 0.82rem;
+      color: var(--text-muted, #8b949e);
+    }
+    .api-kind {
+      font-size: 0.65rem;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 0.1rem 0.45rem;
+      border-radius: 999px;
+      border: 1px solid var(--border, #30363d);
+      color: var(--text-muted, #8b949e);
+    }
+    .api-kind.fn   { color: #3fb950; border-color: #3fb95066; background: rgba(63, 185, 80, 0.08); }
+    .api-kind.prop { color: #58a6ff; border-color: #58a6ff66; background: rgba(88, 166, 255, 0.08); }
+    .api-kind.var  { color: #d29922; border-color: #d2992266; background: rgba(210, 153, 34, 0.08); }
+    .api-kind.cls  { color: #bc8cff; border-color: #bc8cff66; background: rgba(188, 140, 255, 0.08); }
+    .api-kind.ns   { color: #f778ba; border-color: #f778ba66; background: rgba(247, 120, 186, 0.08); }
+    .api-kind.posonly {
+      color: #d29922;
+      border-color: #d2992266;
+      background: transparent;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .api-member-info {
+      margin-top: 0.35rem;
+      color: var(--text-muted, #8b949e);
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    .api-signature {
+      margin-top: 0.4rem;
+      padding: 0.4rem 0.6rem;
+      background: var(--surface-2, #161b22);
+      border: 1px solid var(--border, #30363d);
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 0.82rem;
+    }
+    .api-signature .params {
+      color: var(--text-muted, #8b949e);
+      font-size: 0.78rem;
+      margin-top: 0.3rem;
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <div class="header-inner">
+      <a href="../" class="header-logo">
+        <img src="../assets/images/icon-512.png" alt="CALLSTACK">
+        CALLSTACK
+      </a>
+      <ul class="header-nav">
+        <li><a href="../">Home</a></li>
+        <li><a href="./">Docs</a></li>
+        <li>
+          <a href="https://github.com/kinarix/callstack" target="_blank" rel="noopener">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.155-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.741 0 .267.18.578.688.48C19.137 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
+            GitHub
+          </a>
+        </li>
+        <li>
+          <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">☀️</button>
+        </li>
+      </ul>
+    </div>
+  </div>
+</header>
+
+<nav class="docs-breadcrumb" aria-label="Breadcrumb">
+  <a href="../">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+    Home
+  </a>
+  <span>›</span>
+  <a href="./">Documentation</a>
+  <span>›</span>
+  <span>Scripting API</span>
+</nav>
+
+<main class="docs-content" style="max-width: 980px; margin: 0 auto; padding: var(--sp-4) var(--sp-3);">
+  <section class="docs-section">
+    <h2 class="docs-h2"><span class="section-num">⚡</span> Scripting API</h2>
+    <p class="docs-p">
+      Pre-request and post-request scripts run in a sandboxed JavaScript environment. The reference below is the complete public surface exposed to your scripts — globals, namespaces, helper functions, and request/response shapes. It is generated from the same data file (<code>web/src/data/scriptingApi.ts</code>) used by the in-app autocomplete, so what you see here matches what the editor will offer you.
+    </p>
+
+    <div class="callout callout-note">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body">
+        <strong>Looking for ready-made snippets?</strong>
+        <p>See <a href="scripting-examples.html">Scripting Examples</a> for copy-paste recipes covering tests, env capture, auth flows, Base64, JWT decode, response-header parsing, and more.</p>
+      </div>
+    </div>
+
+    <input id="api-search" class="api-search" type="search" placeholder="Search the API (request.json, env.set, JSON.parse, …)" autocomplete="off" spellcheck="false" />
+
+    <div id="api-toc" class="api-toc"><!-- jump links populated by JS --></div>
+
+    <div id="api-content">
+      <p style="text-align:center;color:var(--text-muted,#8b949e);padding:2rem 0;font-style:italic;">Loading API reference…</p>
+    </div>
+  </section>
+</main>
+
+<script src="../assets/js/main.js"></script>
+<script>
+(function () {
+  const contentEl = document.getElementById('api-content');
+  const tocEl     = document.getElementById('api-toc');
+  const searchEl  = document.getElementById('api-search');
+
+  let data = null;
+  let query = '';
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  const KIND_LABEL = {
+    function: 'fn',
+    property: 'prop',
+    variable: 'var',
+    class: 'class',
+    namespace: 'ns',
+  };
+
+  function renderMember(m, sig) {
+    const kindShort = m.type === 'function' ? 'fn'
+      : m.type === 'property' ? 'prop'
+      : m.type === 'variable' ? 'var'
+      : m.type === 'class' ? 'cls'
+      : m.type === 'namespace' ? 'ns'
+      : 'prop';
+    const kindLabel = KIND_LABEL[m.type] || m.type;
+    const sigBlock = sig ? `
+      <div class="api-signature">
+        ${esc(sig.sig)}
+        <div class="params">${sig.params.map(p => esc(p)).join(' · ')}</div>
+      </div>` : '';
+    const postPill = m.postOnly ? '<span class="api-kind posonly">post-only</span>' : '';
+    return `
+      <div class="api-member" id="m-${esc(m.id || m.label)}">
+        <div class="api-member-head">
+          <span class="api-member-name">${esc(m.label)}</span>
+          <span class="api-member-detail">${esc(m.detail || '')}</span>
+          <span class="api-kind ${kindShort}">${kindLabel}</span>
+          ${postPill}
+        </div>
+        ${m.info ? `<div class="api-member-info">${esc(m.info)}</div>` : ''}
+        ${sigBlock}
+      </div>
+    `;
+  }
+
+  function matchesQuery(text) {
+    if (!query) return true;
+    return text.toLowerCase().includes(query.toLowerCase());
+  }
+
+  function memberMatches(m) {
+    return matchesQuery(m.label + ' ' + (m.detail || '') + ' ' + (m.info || ''));
+  }
+
+  function renderGroup(groupKey, members, title, descr) {
+    const sigMap = data.signatures || {};
+    const filtered = members.filter(memberMatches);
+    if (query && filtered.length === 0) return '';
+    const id = 'g-' + groupKey.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+    const body = filtered.map(m => {
+      // signatures may be keyed by "obj.member" — try both
+      const sig = sigMap[`${groupKey}.${m.label}`] || sigMap[m.label] || null;
+      return renderMember(m, sig);
+    }).join('');
+    return `
+      <section class="api-group" id="${id}">
+        <h3>${esc(title)}</h3>
+        ${descr ? `<p class="api-group-desc">${descr}</p>` : ''}
+        ${body || '<p class="api-group-desc" style="font-style:italic;">No members match your search.</p>'}
+      </section>
+    `;
+  }
+
+  const GROUP_META = [
+    { key: '_globals',  title: 'Top-level globals',  descr: 'Variables, helpers, and constructors that are always available inside a script.' },
+    { key: 'request',   title: 'request',            descr: 'The outgoing request. Pre-scripts can mutate it; post-scripts see the request that was actually sent.' },
+    { key: 'response',  title: 'response',           descr: 'The received response. Available only in post-request scripts.' },
+    { key: 'env',       title: 'env',                descr: 'Environment variable store. Mutations persist to the active environment after the script runs.' },
+    { key: 'env.secret',title: 'env.secret',         descr: 'Local-only secrets. Never included in exports. Same shape as <code>env</code>.' },
+    { key: 'console',   title: 'console',            descr: 'Logs print to the panel under the script editor and to the footer Logs.' },
+    { key: 'JSON',      title: 'JSON',               descr: 'Standard JSON namespace.' },
+    { key: 'Array',     title: 'Array',              descr: 'Static helpers on the Array constructor. Instance methods (map, filter, etc.) work normally.' },
+    { key: 'Object',    title: 'Object',             descr: 'Static helpers on the Object constructor.' },
+    { key: 'Math',      title: 'Math',               descr: 'Standard Math namespace.' },
+    { key: 'Date',      title: 'Date',               descr: 'Static helpers on the Date constructor. Use <code>new Date()</code> for instances.' },
+    { key: 'Promise',   title: 'Promise',            descr: 'Standard Promise constructor with static helpers.' },
+    { key: 'Number',    title: 'Number',             descr: 'Standard Number constructor with static helpers and constants.' },
+  ];
+
+  function render() {
+    if (!data) return;
+    const groups = data.memberGroups || {};
+    const globals = data.topLevel || [];
+    const html = GROUP_META.map(g => {
+      if (g.key === '_globals') return renderGroup('_globals', globals, g.title, g.descr);
+      return renderGroup(g.key, groups[g.key] || [], g.title, g.descr);
+    }).join('');
+    contentEl.innerHTML = html || '<p style="text-align:center;color:var(--text-muted,#8b949e);padding:2rem 0;font-style:italic;">No matches.</p>';
+  }
+
+  function renderToc() {
+    tocEl.innerHTML = GROUP_META.map(g => {
+      const id = 'g-' + g.key.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+      return `<a href="#${id}">${esc(g.title)}</a>`;
+    }).join('');
+  }
+
+  searchEl.addEventListener('input', () => {
+    query = searchEl.value.trim();
+    render();
+  });
+
+  fetch('../assets/data/scriptingApi.json')
+    .then(r => {
+      if (!r.ok) throw new Error('Failed to load: ' + r.status);
+      return r.json();
+    })
+    .then(d => {
+      data = d;
+      renderToc();
+      render();
+    })
+    .catch(err => {
+      contentEl.innerHTML = `<p style="text-align:center;color:var(--text-muted,#8b949e);padding:2rem 0;font-style:italic;">Could not load API reference (${esc(err.message)}).</p>`;
+    });
+})();
+</script>
+
+</body>
+</html>

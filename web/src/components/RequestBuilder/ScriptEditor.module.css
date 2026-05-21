@@ -463,9 +463,17 @@
   flex: 1;
   overflow-y: auto;
   padding: var(--space-2);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: min-content;
+  align-items: start;
+  align-content: start;
+  gap: 6px var(--space-1);
+}
+
+/* Single column when the drawer is narrow (resizable response area). */
+@media (max-width: 720px) {
+  .examplesBody { grid-template-columns: 1fr; }
 }
 
 .exampleCard {
@@ -552,4 +560,132 @@
   background: var(--accent-get);
   border-color: var(--accent-get);
   color: white;
+}
+
+/* ── Compact example link list ───────────────────────────── */
+.examplesIntro {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  padding: 0 var(--space-1) var(--space-1);
+  font-family: 'Outfit', sans-serif;
+}
+
+.examplesIntro a {
+  color: var(--accent-post);
+  text-decoration: none;
+}
+
+.examplesIntro a:hover { text-decoration: underline; }
+
+.exampleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  min-height: 0;
+}
+
+/* grid gap on .examplesBody handles spacing between rows */
+
+.exampleRowLink {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  /* Reset <button> user-agent styling */
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.exampleRowLink:hover .exampleRowTitle { color: var(--accent-post); }
+
+.exampleRowTitle {
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: 'Outfit', sans-serif;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.exampleRowDesc {
+  font-size: 11px;
+  font-family: 'Outfit', sans-serif;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.targetPill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border-secondary);
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.targetPillPre  { color: var(--accent-get); border-color: color-mix(in srgb, var(--accent-get) 40%, transparent); background: color-mix(in srgb, var(--accent-get) 10%, transparent); }
+.targetPillPost { color: var(--accent-post); border-color: color-mix(in srgb, var(--accent-post) 40%, transparent); background: color-mix(in srgb, var(--accent-post) 10%, transparent); }
+.targetPillBoth { color: var(--accent-put); border-color: color-mix(in srgb, var(--accent-put) 40%, transparent); background: color-mix(in srgb, var(--accent-put) 10%, transparent); }
+
+.exampleRowActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.exampleRowBtn {
+  padding: 3px 8px;
+  font-size: 10.5px;
+  font-family: 'Outfit', sans-serif;
+  background: transparent;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.exampleRowBtn:hover {
+  background: var(--accent-patch);
+  border-color: var(--accent-patch);
+  color: white;
+}
+
+.exampleRowBtn.copied {
+  background: var(--accent-get);
+  border-color: var(--accent-get);
+  color: white;
+}
+
+.exampleRowExt {
+  padding: 3px 6px;
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.exampleRowExt:hover {
+  color: var(--accent-post);
+  border-color: var(--border-secondary);
 }

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scripting Examples — CALLSTACK</title>
+  <meta name="description" content="Copy-paste scripting examples for pre-request and post-request scripts in CALLSTACK. Tests, environment captures, secrets, auth, request mutation, chaining, emitter, and utilities like Base64 and response headers.">
+  <meta name="theme-color" content="#0d1117">
+
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/images/icon-512.png">
+  <link rel="stylesheet" href="../assets/css/styles.css">
+
+  <style>
+    /* Page-specific bits — kept small; the bulk is shared site CSS. */
+    .examples-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 0.75rem;
+      margin: 0 0 var(--sp-3);
+    }
+    .examples-search {
+      flex: 1 1 240px;
+      min-width: 180px;
+      padding: 0.5rem 0.75rem;
+      background: var(--surface-2, #161b22);
+      color: var(--text, #e6edf3);
+      border: 1px solid var(--border, #30363d);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-family: inherit;
+    }
+    .examples-search:focus {
+      outline: none;
+      border-color: var(--accent, #58a6ff);
+    }
+    .category-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: var(--sp-3);
+    }
+    .category-tab {
+      background: var(--surface-2, #161b22);
+      color: var(--text-muted, #8b949e);
+      border: 1px solid var(--border, #30363d);
+      border-radius: 999px;
+      padding: 0.3rem 0.8rem;
+      font-size: 0.82rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: color 120ms, border-color 120ms, background 120ms;
+    }
+    .category-tab:hover { color: var(--text, #e6edf3); }
+    .category-tab.active {
+      color: var(--accent, #58a6ff);
+      border-color: var(--accent, #58a6ff);
+      background: rgba(88, 166, 255, 0.08);
+    }
+    .category-tab .count {
+      display: inline-block;
+      margin-left: 0.4rem;
+      font-size: 0.7rem;
+      opacity: 0.7;
+    }
+    .example-card {
+      border: 1px solid var(--border, #30363d);
+      border-radius: 10px;
+      padding: var(--sp-3, 1.25rem);
+      background: var(--surface-1, #0d1117);
+      margin-bottom: var(--sp-3, 1.25rem);
+    }
+    .example-card-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.5rem;
+      margin-bottom: 0.4rem;
+    }
+    .example-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text, #e6edf3);
+    }
+    .target-pill {
+      font-size: 0.7rem;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.04em;
+      padding: 0.12rem 0.5rem;
+      border-radius: 999px;
+      border: 1px solid var(--border, #30363d);
+      color: var(--text-muted, #8b949e);
+      text-transform: uppercase;
+    }
+    .target-pill.pre   { color: #3fb950; border-color: #3fb95066; background: rgba(63, 185, 80, 0.08); }
+    .target-pill.post  { color: #58a6ff; border-color: #58a6ff66; background: rgba(88, 166, 255, 0.08); }
+    .target-pill.both  { color: #d29922; border-color: #d2992266; background: rgba(210, 153, 34, 0.08); }
+    .example-desc {
+      color: var(--text-muted, #8b949e);
+      font-size: 0.9rem;
+      margin-bottom: 0.6rem;
+    }
+    .results-empty {
+      text-align: center;
+      color: var(--text-muted, #8b949e);
+      padding: 2rem 0;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ───────────────────────────────────────────────── -->
+<header class="site-header">
+  <div class="container">
+    <div class="header-inner">
+      <a href="../" class="header-logo">
+        <img src="../assets/images/icon-512.png" alt="CALLSTACK">
+        CALLSTACK
+      </a>
+      <ul class="header-nav">
+        <li><a href="../">Home</a></li>
+        <li><a href="./">Docs</a></li>
+        <li>
+          <a href="https://github.com/kinarix/callstack" target="_blank" rel="noopener">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.155-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.741 0 .267.18.578.688.48C19.137 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
+            GitHub
+          </a>
+        </li>
+        <li>
+          <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">☀️</button>
+        </li>
+      </ul>
+    </div>
+  </div>
+</header>
+
+<!-- ── Breadcrumb ────────────────────────────────────────────── -->
+<nav class="docs-breadcrumb" aria-label="Breadcrumb">
+  <a href="../">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+    Home
+  </a>
+  <span>›</span>
+  <a href="./">Documentation</a>
+  <span>›</span>
+  <span>Scripting Examples</span>
+</nav>
+
+<main class="docs-content" style="max-width: 980px; margin: 0 auto; padding: var(--sp-4) var(--sp-3);">
+
+  <section class="docs-section">
+    <h2 class="docs-h2"><span class="section-num">★</span> Scripting Examples</h2>
+    <p class="docs-p">
+      Every example shown inside the app's Scripting tab is also catalogued here so you can copy from a browser. Use the search to find a snippet by keyword, or filter by category. Each card lists whether it belongs in a <strong>pre-request script</strong> (mutates the outgoing request), a <strong>post-request script</strong> (inspects the response), or <strong>both</strong>.
+    </p>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body">
+        <strong>Tip:</strong>
+        <p>Inside the app, open the <em>Scripting</em> tab → <em>Examples</em> drawer to insert any of these in one click. The list rendered here is generated from the same data file (<code>web/src/data/scriptExamples.ts</code>) shipped with the app.</p>
+        <p>For the full set of globals and methods these examples call into, see the <a href="scripting-api.html">Scripting API Reference</a>.</p>
+      </div>
+    </div>
+
+    <div class="examples-toolbar">
+      <input id="example-search" class="examples-search" type="search" placeholder="Search examples (title, description, code)…" autocomplete="off" spellcheck="false" />
+    </div>
+
+    <div id="category-tabs" class="category-tabs">
+      <!-- populated by JS -->
+    </div>
+
+    <div id="examples-list">
+      <p class="results-empty">Loading examples…</p>
+    </div>
+  </section>
+</main>
+
+<script src="../assets/js/main.js"></script>
+<script>
+(function () {
+  const listEl = document.getElementById('examples-list');
+  const tabsEl = document.getElementById('category-tabs');
+  const searchEl = document.getElementById('example-search');
+
+  let examples = [];
+  let categories = [];
+  let activeCategory = null;
+  let query = '';
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function matches(ex) {
+    if (activeCategory && ex.category !== activeCategory) return false;
+    if (!query) return true;
+    const q = query.toLowerCase();
+    return (
+      ex.title.toLowerCase().includes(q) ||
+      ex.description.toLowerCase().includes(q) ||
+      ex.code.toLowerCase().includes(q) ||
+      ex.category.toLowerCase().includes(q)
+    );
+  }
+
+  function render() {
+    const filtered = examples.filter(matches);
+    if (filtered.length === 0) {
+      listEl.innerHTML = '<p class="results-empty">No matching examples.</p>';
+      return;
+    }
+    listEl.innerHTML = filtered.map(ex => {
+      const targetClass = ex.target === 'both' ? 'both' : ex.target;
+      const targetLabel = ex.target === 'both' ? 'pre · post' : ex.target;
+      const codeId = 'code-' + ex.id;
+      return `
+        <article class="example-card" id="${escapeHtml(ex.id)}">
+          <div class="example-card-head">
+            <span class="example-title">${escapeHtml(ex.title)}</span>
+            <span class="target-pill ${targetClass}">${escapeHtml(targetLabel)}</span>
+            <span style="color:var(--text-muted,#8b949e);font-size:0.78rem;">${escapeHtml(ex.category)}</span>
+          </div>
+          <p class="example-desc">${escapeHtml(ex.description)}</p>
+          <div class="code-block">
+            <div class="code-block-header">
+              <span>${escapeHtml(ex.id)}</span>
+              <button class="copy-btn" data-copy-target="${codeId}">Copy</button>
+            </div>
+            <pre id="${codeId}"><code>${escapeHtml(ex.code)}</code></pre>
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    // Wire copy buttons (uses the same pattern as main.js)
+    listEl.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = document.getElementById(btn.dataset.copyTarget);
+        if (!target) return;
+        navigator.clipboard.writeText(target.textContent || '').then(() => {
+          const original = btn.textContent;
+          btn.textContent = '✓ Copied';
+          setTimeout(() => { btn.textContent = original; }, 1500);
+        });
+      });
+    });
+  }
+
+  function renderTabs() {
+    const counts = examples.reduce((acc, ex) => {
+      acc[ex.category] = (acc[ex.category] || 0) + 1;
+      return acc;
+    }, {});
+
+    const allBtn = `<button class="category-tab ${activeCategory === null ? 'active' : ''}" data-cat="">All <span class="count">${examples.length}</span></button>`;
+    const catBtns = categories.map(cat => `
+      <button class="category-tab ${activeCategory === cat ? 'active' : ''}" data-cat="${escapeHtml(cat)}">
+        ${escapeHtml(cat)} <span class="count">${counts[cat] || 0}</span>
+      </button>
+    `).join('');
+
+    tabsEl.innerHTML = allBtn + catBtns;
+
+    tabsEl.querySelectorAll('.category-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeCategory = btn.dataset.cat || null;
+        renderTabs();
+        render();
+      });
+    });
+  }
+
+  searchEl.addEventListener('input', () => {
+    query = searchEl.value.trim();
+    render();
+  });
+
+  fetch('../assets/data/scriptExamples.json')
+    .then(r => {
+      if (!r.ok) throw new Error('Failed to load: ' + r.status);
+      return r.json();
+    })
+    .then(data => {
+      examples = data.examples || [];
+      // Include any category that appears in examples but isn't in the explicit list
+      const fromData = Array.from(new Set(examples.map(e => e.category)));
+      const explicit = data.categories || [];
+      const order = new Map(explicit.map((c, i) => [c, i]));
+      categories = fromData.sort((a, b) => {
+        const ai = order.has(a) ? order.get(a) : 999;
+        const bi = order.has(b) ? order.get(b) : 999;
+        return ai - bi || a.localeCompare(b);
+      });
+      renderTabs();
+      render();
+    })
+    .catch(err => {
+      listEl.innerHTML = `<p class="results-empty">Could not load examples (${escapeHtml(err.message)}).</p>`;
+    });
+})();
+</script>
+
+</body>
+</html>
