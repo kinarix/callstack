@@ -668,7 +668,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
           if (!step.continueOnError) {
             dispatch({ type: 'SET_LOADING', payload: false });
             dispatch({ type: 'SET_EXECUTING_REQUEST', payload: null });
-            dispatch({ type: 'SET_RESPONSE', payload: { status: 0, statusText: 'Pre-chain failed', headers: [], body: `Pre-step #${step.requestId} not found`, timeMs: 0 } });
+            dispatch({ type: 'SET_RESPONSE', payload: { status: 0, statusText: 'Pre-chain failed', headers: [], body: `Pre-step #${step.requestId} not found`, time: 0, size: 0, id: 0, request_id: request.id } });
             return;
           }
           continue;
@@ -681,7 +681,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         if (!sr.ok && !step.continueOnError) {
           dispatch({ type: 'SET_LOADING', payload: false });
           dispatch({ type: 'SET_EXECUTING_REQUEST', payload: null });
-          dispatch({ type: 'SET_RESPONSE', payload: { status: 0, statusText: 'Pre-chain failed', headers: [], body: sr.error, timeMs: 0 } });
+          dispatch({ type: 'SET_RESPONSE', payload: { status: 0, statusText: 'Pre-chain failed', headers: [], body: sr.error, time: 0, size: 0, id: 0, request_id: request.id } });
           return;
         }
       }

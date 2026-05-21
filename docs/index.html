@@ -130,10 +130,29 @@
         <ul class="feature-list">
           <li>GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS</li>
           <li>Query params editor with enable/disable toggles</li>
-          <li>Headers editor with auto Content-Type</li>
+          <li>Header autocomplete + value presets (Authorization, Content-Type, Accept, Cache-Control, User-Agent…)</li>
+          <li>Form URL-encoded body as a key/value editor (no more hand-encoding)</li>
           <li>JSON &amp; XML body validation</li>
           <li>Multipart file attachments</li>
+          <li>Per-request follow-redirects &amp; cookie jar toggles, saved with the request</li>
+          <li>Duplicate-name detection inline as you rename</li>
           <li>Cancel requests mid-flight</li>
+        </ul>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-header">
+          <div class="feature-icon">🔗</div>
+          <h3 class="feature-title">Pre-request Chain</h3>
+        </div>
+        <p class="feature-desc">Any request can declare an ordered list of sibling requests that run silently before it — perfect for login-then-call flows without leaving the request builder.</p>
+        <ul class="feature-list">
+          <li>Configure in the new <strong>Setup</strong> tab inside each request</li>
+          <li>Captured tokens propagate to subsequent steps and the main request</li>
+          <li>Per-step <em>continue on error</em> toggle</li>
+          <li>Recursive (nested chains supported) with built-in cycle detection</li>
+          <li>Silent execution — only the main response renders; chain output streams to the script console + footer logs with copyable curl</li>
+          <li>Skipped automatically when the request runs inside an Automation</li>
         </ul>
       </article>
 
@@ -167,6 +186,7 @@
           <li><code>test()</code> assertions with PASS/FAIL reporting</li>
           <li>Faker data: names, emails, addresses, UUIDs</li>
           <li>CodeMirror editor with JS autocomplete</li>
+          <li><a href="docs/scripting-examples.html">Copy-paste recipes</a> for Base64, JWT decode, response-header capture, URL param parsing, and more</li>
         </ul>
       </article>
 

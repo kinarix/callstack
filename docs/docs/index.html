@@ -234,7 +234,8 @@ Key: sort         Value: created_at
       </div>
 
       <h3 class="docs-h3">Headers</h3>
-      <p class="docs-p">The <strong>Headers</strong> tab lets you add arbitrary HTTP request headers. Each row has an enable/disable toggle. Common patterns:</p>
+      <p class="docs-p">The <strong>Headers</strong> tab lets you add arbitrary HTTP request headers. Each row has an enable/disable toggle. Start typing in the <em>key</em> field and CALLSTACK suggests common header names (Authorization, Content-Type, Accept, Cache-Control, Cookie, Origin, Referer, X-Api-Key, X-Request-ID…). Once a recognised header is selected, a <strong>Presets</strong> button appears next to the value with sensible defaults for that header — Bearer/Basic/Digest/AWS4 for Authorization, JSON/XML/Form/Multipart for Content-Type, gzip/identity for Accept-Encoding, and so on.</p>
+      <p class="docs-p">Common patterns:</p>
       <div class="code-block">
         <div class="code-block-header"><span>Bearer token auth</span><button class="copy-btn">Copy</button></div>
         <pre><code>Authorization: Bearer {{ACCESS_TOKEN}}</code></pre>
@@ -282,7 +283,7 @@ Key: sort         Value: created_at
       </div>
 
       <h3 class="docs-h3">Form Body</h3>
-      <p class="docs-p">In <strong>Form</strong> mode, you enter key-value pairs (similar to Params). These are URL-encoded and sent as the request body. This is the correct format for OAuth 2.0 token endpoints:</p>
+      <p class="docs-p">When you set <strong>Content-Type</strong> to <code>application/x-www-form-urlencoded</code>, the Body tab switches from a CodeMirror text editor to a key/value editor — just like Params. Rows have enable/disable toggles, template tokens are preserved through encoding, and CALLSTACK serialises everything to <code>key=value&amp;key=value</code> on send. No manual URL-encoding required. This is the correct format for OAuth 2.0 token endpoints:</p>
       <div class="code-block">
         <div class="code-block-header"><span>OAuth token request body</span><button class="copy-btn">Copy</button></div>
         <pre><code>grant_type: client_credentials
@@ -303,10 +304,24 @@ scope: read:users write:users</code></pre>
       <p class="docs-p">Click <strong>Send</strong> or use the keyboard shortcut (<kbd>⌘</kbd><kbd>X</kbd> on Mac, <kbd>Ctrl</kbd><kbd>X</kbd> on Windows/Linux) to execute the request. A spinner appears in the Send button while the request is in flight. To abort a running request, click <strong>Cancel</strong>. CALLSTACK enforces a 30-second default timeout — if no response is received within 30 seconds, the request is automatically cancelled with a timeout error.</p>
 
       <h3 class="docs-h3">Redirects</h3>
-      <p class="docs-p">CALLSTACK follows HTTP redirects automatically (up to 10 hops). The final response shown is the one from the last redirect destination. The URL bar does not update to reflect the final redirect URL — to see it, check the <strong>Request Log</strong> entry for the actual URL sent at each hop.</p>
+      <p class="docs-p">Use the <strong>Follow redirects</strong> checkbox in the URL bar to control whether CALLSTACK follows HTTP redirects (up to 10 hops) or returns the first redirect response verbatim. The setting is <em>per request</em> — it's saved with the request and honoured everywhere it runs: interactive Send, Pre-request Chain steps, and Automation steps.</p>
 
       <h3 class="docs-h3">Cookies</h3>
-      <p class="docs-p">CALLSTACK has a built-in cookie jar. Cookies set by <code>Set-Cookie</code> response headers are stored and automatically sent on subsequent requests to the same domain. You can view, edit, and delete stored cookies in <strong>Settings → Cookies</strong>.</p>
+      <p class="docs-p">CALLSTACK has a built-in cookie jar. The <strong>Use cookie jar</strong> checkbox in the URL bar controls whether the request participates in the jar — also per request and persisted with it. When enabled, cookies set by <code>Set-Cookie</code> response headers are stored and automatically sent on subsequent requests to the same domain. You can view, edit, and delete stored cookies in <strong>Settings → Cookies</strong>.</p>
+
+      <h3 class="docs-h3">Setup tab (Pre-request Chain)</h3>
+      <p class="docs-p">The <strong>Setup</strong> tab lets each request declare an ordered list of <em>sibling requests</em> that fire silently before the main request whenever you click Send from the Request Builder. This is ideal for auth-style flows: configure a <code>login</code> request that captures a token via a post-script (<code>env.set('token', …)</code>), reference <code>{{token}}</code> in the main request's Authorization header, then put <code>login</code> as a pre-step on the main request.</p>
+      <ul class="docs-list">
+        <li>Pre-step responses do <em>not</em> replace the main response viewer — only one-line summaries (<code>[pre-chain] GET /login → 200 (84ms)</code>) are appended to the Scripting console.</li>
+        <li>Each pre-step entry also appears in the footer <strong>Logs</strong> panel with a copyable curl command, alongside the main request.</li>
+        <li>Each step has its own <em>continue on error</em> checkbox — toggle it on for best-effort warm-ups, leave it off when the next step depends on the previous step succeeding.</li>
+        <li>Environment mutations from a pre-step's pre/post scripts propagate to subsequent steps and to the main request, so captured tokens are visible immediately.</li>
+        <li>Nested pre-chains are executed recursively with cycle detection — a request listing itself, or two requests pointing at each other, are silently skipped.</li>
+        <li>The pre-chain is <strong>ignored</strong> when the request runs as a step inside an Automation; automations remain self-contained.</li>
+      </ul>
+
+      <h3 class="docs-h3">Renaming requests</h3>
+      <p class="docs-p">Double-click a request in the sidebar to rename it inline. CALLSTACK rejects duplicate names within the same scope (the project root or a single folder) — the input turns red as you type and reverts on blur or Enter if a sibling already has that name.</p>
     </section>
 
     <!-- ── 4. Response Viewer ─────────────────────────────── -->
@@ -528,6 +543,19 @@ USER_DETAIL = {{USERS_URL}}/{{USER_ID}} → https://api.example.com/v2/users/42<
         <li><strong>Pre-request script</strong> — Runs before the request is sent. Use it to generate or inject data, compute headers, or set environment variables that the request body/headers reference.</li>
         <li><strong>Post-response script</strong> — Runs after the response is received. Use it to extract tokens, run assertions, or pass values to downstream automation steps.</li>
       </ul>
+
+      <div class="callout callout-tip">
+        <span class="callout-icon">📚</span>
+        <div class="callout-body">
+          <strong>Browse the full API + copy-paste examples</strong>
+          <p>
+            <a href="scripting-api.html">Scripting API Reference</a> documents every global, namespace, and method exposed to your scripts — request, response, env, secrets, console, test, emit, plus the supported built-ins (JSON, Math, Date, Promise, Array, Object, Number).
+          </p>
+          <p>
+            <a href="scripting-examples.html">Scripting Examples</a> catalogues every snippet shipped with the app: tests, env capture, secrets, auth (Basic/Bearer/Digest/AWS4), request mutation, chaining, emitter signals, Base64 encode/decode, JWT decode, response-header lookup &amp; capture, URL param parsing.
+          </p>
+        </div>
+      </div>
 
       <h3 class="docs-h3">Available APIs</h3>
       <div class="api-grid">
