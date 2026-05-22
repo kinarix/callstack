@@ -37,7 +37,7 @@ interface RequestBuilderProps {
   onResponseFocus?: () => void;
   httpTimeout?: number;
   settings: Settings;
-  onNew?: () => void;
+  onNew?: (initialUrl?: string) => void;
 }
 
 interface UrlError {
@@ -980,6 +980,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
             copyFlash={copyFlashPane === 'response'}
             onClear={() => dispatch({ type: 'SET_RESPONSE', payload: null })}
             onCopy={onCopyResponse}
+            onOpenUrlInNewRequest={onNew ? (url) => onNew(url) : undefined}
           />
         </div>
       </div>

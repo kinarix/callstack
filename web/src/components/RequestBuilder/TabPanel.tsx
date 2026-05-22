@@ -14,6 +14,7 @@ import { formatBody } from '../../lib/formatBody';
 import { FAKER_TOKENS } from '../../lib/templateTokens';
 import { parseFormUrl, serializeFormUrl } from '../../lib/formUrlBody';
 import { COMMON_HEADER_NAMES } from '../../lib/headerPresets';
+import { useWrapBody } from '../../hooks/useWrapBody';
 import styles from './TabPanel.module.css';
 
 const BodyEditor = lazy(() => import('./BodyEditor').then(m => ({ default: m.BodyEditor })));
@@ -207,6 +208,7 @@ interface TabPanelProps {
 }
 
 export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, secrets, onScriptTest, copyFlash, useCookieJar = true, onUseCookieJarChange, projectId = null, bodyEditorViewRef, siblingRequests }: Readonly<TabPanelProps>) {
+  const [wrapBody, setWrapBody] = useWrapBody();
   const [pinned, setPinned] = useState<Set<PinnableTab>>(() => request ? loadPinned(request.id) : new Set());
   const [implicitExpanded, setImplicitExpanded] = useState(true);
   const [userHeadersExpanded, setUserHeadersExpanded] = useState(true);
@@ -446,7 +448,7 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
     { name: 'files', label: 'Files', count: files.length || undefined, warn: hasMissingFiles || undefined },
     { name: 'body', label: 'Body' },
     { name: 'script', label: 'Scripting' },
-    { name: 'setup', label: 'Setup', count: (request.pre_chain?.length || undefined) },
+    { name: 'setup', label: 'Chaining', count: (request.pre_chain?.length || undefined) },
   ];
 
   function renderImplicitSection() {
@@ -624,11 +626,19 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
               />
             ) : (
               <>
-                {isFormattableType && (
-                  <div className={styles.bodyToolbar}>
+                <div className={styles.bodyToolbar}>
+                  {isFormattableType && (
                     <button className={styles.formatBtn} onClick={handleFormat} disabled={!request.body.trim()}>Format</button>
-                  </div>
-                )}
+                  )}
+                  <label className={styles.wrapToggle} title="Wrap long lines (display only)">
+                    <input
+                      type="checkbox"
+                      checked={wrapBody}
+                      onChange={(e) => setWrapBody(e.target.checked)}
+                    />
+                    <span>Wrap</span>
+                  </label>
+                </div>
                 <Suspense fallback={null}>
                   <BodyEditor
                     body={request.body}

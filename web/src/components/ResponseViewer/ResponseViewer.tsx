@@ -14,9 +14,56 @@ import { getStatusColor, formatBytes } from '../../lib/utils';
 import { formatBody, normalizeLineEndings } from '../../lib/formatBody';
 import { isJwt, findJwtsInBody } from '../../lib/jwt';
 import { JwtBadge } from '../JwtBadge/JwtBadge';
+import { CopyIcon } from '../Sidebar/SidebarIcons';
 import { useDatabase } from '../../hooks/useDatabase';
 import { useEditorMemory } from '../../hooks/useEditorMemory';
+import { useWrapBody } from '../../hooks/useWrapBody';
+import { urlLinkExtension, type UrlClickInfo } from '../../lib/cmUrlLinks';
+import { open as openExternal } from '@tauri-apps/plugin-shell';
 import styles from './ResponseViewer.module.css';
+
+function WrapIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden>
+      <path d="M1.5 3h10M1.5 6.5h7.5a2 2 0 0 1 0 4H6M7.5 8.5L6 10l1.5 1.5M1.5 10h2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SaveIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden>
+      <path d="M6.5 1.5v7M4 6L6.5 8.5L9 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M1.5 10v.5a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ClearIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden>
+      <path d="M2 3.5h9M5 3.5V2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M3.5 3.5l.5 7h5l.5-7M5.5 5.5v3.5M7.5 5.5v3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ExternalLinkIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden>
+      <path d="M7.5 1.5h4v4M11.5 1.5L6 7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 8v2.5a1 1 0 0 1-1 1H2.5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1H5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function NewRequestIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden>
+      <path d="M2 6.5h9M8.5 4l2.5 2.5L8.5 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 2.5v8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 function PinIcon({ pinned }: { pinned: boolean }) {
   return (
@@ -54,6 +101,7 @@ interface ResponseViewerProps {
   copyFlash?: boolean;
   onClear?: () => void;
   onCopy?: () => void;
+  onOpenUrlInNewRequest?: (url: string) => void;
 }
 
 function getContentType(headers: { key: string; value: string }[]): string {
@@ -259,9 +307,78 @@ function saveResponseState(requestId: number, patch: Partial<ResponsePanelState>
   } catch {}
 }
 
-export function ResponseViewer({ response, requestId, requestName, copyFlash, onClear, onCopy }: ResponseViewerProps) {
+function UrlPopover({
+  info,
+  onClose,
+  onOpenInBrowser,
+  onOpenInNewRequest,
+}: {
+  info: UrlClickInfo;
+  onClose: () => void;
+  onOpenInBrowser: () => void;
+  onOpenInNewRequest?: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
+  const POPOVER_ESTIMATED_HEIGHT = 90;
+  const POPOVER_MAX_WIDTH = 420;
+  const top = info.rect.bottom + POPOVER_ESTIMATED_HEIGHT > window.innerHeight
+    ? Math.max(8, info.rect.top - POPOVER_ESTIMATED_HEIGHT - 4)
+    : info.rect.bottom + 4;
+  const left = Math.max(8, Math.min(info.rect.left, window.innerWidth - POPOVER_MAX_WIDTH - 8));
+  return (
+    <div
+      ref={ref}
+      className={styles.urlPopover}
+      style={{ position: 'fixed', top, left }}
+    >
+      <div className={styles.urlPopoverHeader}>
+        <span className={styles.urlPopoverDot} />
+        <span className={styles.urlPopoverUrl} title={info.url}>{info.url}</span>
+      </div>
+      <div className={styles.urlPopoverActions}>
+        <button className={styles.urlPopoverBtn} onClick={onOpenInBrowser} title="Open in browser">
+          <ExternalLinkIcon />
+          <span>Browser</span>
+        </button>
+        {onOpenInNewRequest && (
+          <button className={`${styles.urlPopoverBtn} ${styles.urlPopoverBtnPrimary}`} onClick={onOpenInNewRequest} title="Open in new request">
+            <NewRequestIcon />
+            <span>New request</span>
+          </button>
+        )}
+        <button
+          className={styles.urlPopoverBtn}
+          title="Copy URL"
+          onClick={() => {
+            navigator.clipboard.writeText(info.url).catch(() => {});
+            onClose();
+          }}
+        >
+          <CopyIcon />
+          <span>Copy</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function ResponseViewer({ response, requestId, requestName, copyFlash, onClear, onCopy, onOpenUrlInNewRequest }: ResponseViewerProps) {
   const { state, dispatch } = useApp();
   const { getResponseHistory, clearRequestHistory } = useDatabase();
+  const [wrapBody, setWrapBody] = useWrapBody();
+  const [urlPopover, setUrlPopover] = useState<UrlClickInfo | null>(null);
   const [tab, setTab] = useState<'body' | 'headers' | 'preview' | 'tests' | 'cookies' | 'history'>('body');
   const [headersPinned, setHeadersPinned] = useState(false);
   const [testsPinned, setTestsPinned] = useState(false);
@@ -392,12 +509,17 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
   const _ct = getContentType(_r?.headers ?? []);
   const formattedBody = useMemo(() => formatBody(_r?.body ?? '', _ct), [_r?.body, _ct]);
   const bodyLanguage = useMemo(() => getLanguage(_ct), [_ct]);
-  const bodyExtensions = useMemo(() =>
-    bodyLanguage
-      ? [...responseViewerThemeExtension, bodyLanguage, responseMemoryExtension]
-      : [...responseViewerThemeExtension, responseMemoryExtension],
-    [bodyLanguage, responseMemoryExtension]
+  const urlClickExt = useMemo(
+    () => urlLinkExtension((info) => setUrlPopover(info)),
+    [],
   );
+  const bodyExtensions = useMemo(() => {
+    const base = bodyLanguage
+      ? [...responseViewerThemeExtension, bodyLanguage, responseMemoryExtension]
+      : [...responseViewerThemeExtension, responseMemoryExtension];
+    const withWrap = wrapBody ? [...base, EditorView.lineWrapping] : base;
+    return [...withWrap, urlClickExt];
+  }, [bodyLanguage, responseMemoryExtension, wrapBody, urlClickExt]);
   const bodyJwts = useMemo(() => findJwtsInBody(_r?.body ?? ''), [_r?.body]);
   const setCookies = useMemo(() => {
     const headers = _r?.headers?.filter(h => h.key.toLowerCase() === 'set-cookie') ?? [];
@@ -657,9 +779,23 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
         <div className={styles.body}>
           <div className={`${styles.preWrapper}${copyFlash ? ` ${styles.flashCopy}` : ''}`}>
             <div className={styles.floatingButtons}>
-              <button className={styles.floatingBtn} onClick={handleCopy} title="Copy response body">Copy</button>
-              <button className={styles.floatingBtn} onClick={handleSave} title="Save response to file">Save</button>
-              <button className={styles.floatingBtn} onClick={handleClear} title="Clear response">Clear</button>
+              <button
+                className={`${styles.floatingIconBtn} ${styles.iconBtnWrap} ${wrapBody ? styles.wrapIconOn : ''}`}
+                onClick={() => setWrapBody(!wrapBody)}
+                title={wrapBody ? 'Wrap ON — click to disable' : 'Wrap OFF — click to enable'}
+                aria-label={wrapBody ? 'Wrap ON' : 'Wrap OFF'}
+              >
+                <WrapIcon />
+              </button>
+              <button className={`${styles.floatingIconBtn} ${styles.iconBtnCopy}`} onClick={handleCopy} title="Copy response body" aria-label="Copy">
+                <CopyIcon />
+              </button>
+              <button className={`${styles.floatingIconBtn} ${styles.iconBtnSave}`} onClick={handleSave} title="Save response to file" aria-label="Save">
+                <SaveIcon />
+              </button>
+              <button className={`${styles.floatingIconBtn} ${styles.iconBtnClear}`} onClick={handleClear} title="Clear response" aria-label="Clear">
+                <ClearIcon />
+              </button>
             </div>
             <div className={styles.responseEditorWrap}>
               <CodeMirror
@@ -683,6 +819,22 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
             </div>
             {copyFlash && (
               <div className={styles.copyToast}>Copied to clipboard</div>
+            )}
+            {urlPopover && (
+              <UrlPopover
+                info={urlPopover}
+                onClose={() => setUrlPopover(null)}
+                onOpenInBrowser={() => {
+                  openExternal(urlPopover.url).catch(() => {
+                    window.open(urlPopover.url, '_blank', 'noopener,noreferrer');
+                  });
+                  setUrlPopover(null);
+                }}
+                onOpenInNewRequest={onOpenUrlInNewRequest ? () => {
+                  onOpenUrlInNewRequest(urlPopover.url);
+                  setUrlPopover(null);
+                } : undefined}
+              />
             )}
           </div>
           {(() => {

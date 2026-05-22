@@ -222,6 +222,7 @@ export function UrlBar({
           placeholder="https://api.example.com/endpoint"
           envVars={envVars}
           secrets={secrets}
+          showTitle
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               if (isBlocked) { setBlockedToastKey(Date.now()); return; }
