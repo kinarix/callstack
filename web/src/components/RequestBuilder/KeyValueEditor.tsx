@@ -185,11 +185,11 @@ export function KeyValueEditor({
                     title={hideActions ? undefined : (isEnabled ? 'Disable' : 'Enable')}
                     tabIndex={-1}
                   />
-                  <span className={styles.pillKey}>
+                  <span className={styles.pillKey} title={item.key || undefined}>
                     {item.key || <em className={styles.pillPlaceholder}>key</em>}
                   </span>
                   <span className={styles.pillSep}>:</span>
-                  <span className={styles.pillValue}>
+                  <span className={styles.pillValue} title={item.value || undefined}>
                     {item.value || <em className={styles.pillPlaceholder}>empty</em>}
                   </span>
                   {hasJwt && <JwtBadge token={resolved} />}
@@ -235,7 +235,12 @@ export function KeyValueEditor({
                   className={styles.input}
                   placeholder="Key"
                   value={item.key}
+                  title={item.key || undefined}
                   onChange={(e) => handleKeyChange(index, e.target.value)}
+                  onFocus={(e) => {
+                    const el = e.currentTarget;
+                    setTimeout(() => el.select(), 0);
+                  }}
                   disabled={readOnly}
                   list={datalistId}
                   autoComplete="off"
@@ -263,6 +268,8 @@ export function KeyValueEditor({
                   envVars={envVars}
                   secrets={secrets}
                   disabled={readOnly}
+                  selectOnFocus
+                  showTitle
                   autoFocus={usePills && editingIndex === index && justAddedIndex !== index}
                   onKeyDown={(e) => {
                     if (!usePills) return;

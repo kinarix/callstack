@@ -11,8 +11,11 @@ interface TemplateInputProps {
   secrets?: KeyValue[];
   disabled?: boolean;
   autoFocus?: boolean;
+  selectOnFocus?: boolean;
+  showTitle?: boolean;
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
 }
 
 interface Suggestion {
@@ -30,8 +33,11 @@ export function TemplateInput({
   secrets = [],
   disabled = false,
   autoFocus = false,
+  selectOnFocus = false,
+  showTitle = false,
   onKeyDown: onKeyDownProp,
   onBlur: onBlurProp,
+  onFocus: onFocusProp,
 }: TemplateInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -175,9 +181,17 @@ export function TemplateInput({
         type="text"
         className={styles.input}
         value={value}
+        title={showTitle ? value || undefined : undefined}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         onBlur={onBlurProp}
+        onFocus={(e) => {
+          if (selectOnFocus) {
+            const el = e.currentTarget;
+            setTimeout(() => el.select(), 0);
+          }
+          onFocusProp?.(e);
+        }}
         placeholder={placeholder}
         disabled={disabled}
         autoFocus={autoFocus}

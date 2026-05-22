@@ -8,6 +8,7 @@ import { tags } from '@lezer/highlight';
 import type { KeyValue } from '../../lib/types';
 import { templateCompletion, replaceTokensForValidation } from '../../lib/template';
 import { useEditorMemory } from '../../hooks/useEditorMemory';
+import { useWrapBody } from '../../hooks/useWrapBody';
 import styles from './BodyEditor.module.css';
 
 interface JsonTemplateState {
@@ -226,6 +227,7 @@ export function BodyEditor({
 
   const hasCsvTokens = /\{\{\s*#[\w.-]+\s*\}\}/.test(body);
   const { memoryExtension, onCreateEditor: onCreateEditorFromMemory } = useEditorMemory(memoryKey);
+  const [wrap] = useWrapBody();
 
   const handleCreateEditor = useCallback((view: EditorView) => {
     if (viewRef) viewRef.current = view;
@@ -239,9 +241,10 @@ export function BodyEditor({
     return [
       ...baseExtensions,
       autocompletion({ override: [templateCompletion(envVarKeys, secretKeys)], activateOnTyping: true }),
+      ...(wrap ? [EditorView.lineWrapping] : []),
       memoryExtension,
     ];
-  }, [contentType, envVars, secrets, memoryExtension]);
+  }, [contentType, envVars, secrets, memoryExtension, wrap]);
 
   useEffect(() => {
     setValidation(validateBodyContent(body, contentType));

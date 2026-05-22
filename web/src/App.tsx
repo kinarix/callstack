@@ -26,7 +26,7 @@ function clearUIState() {
 
 function AppContent() {
   const { state, dispatch } = useApp();
-  const { loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations, listDataFiles, createRequest, createProject, duplicateRequest, getLastResponse, updateEnvironmentSecrets } = useDatabase();
+  const { loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations, listDataFiles, createRequest, createProject, duplicateRequest, getLastResponse, updateEnvironmentSecrets, updateRequest } = useDatabase();
   const { settings, setZoom, setShortcut, setResponseHistoryLimit, setHttpTimeout, setFormatOnSend, setSysApplet, resetSettings } = useSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [displayZoom, setDisplayZoom] = useState(settings.zoom);
@@ -384,7 +384,7 @@ function AppContent() {
     return () => window.removeEventListener('keydown', onKey, true);
   }, [state.error, dispatch]);
 
-  const handleNewRequest = useCallback(async () => {
+  const handleNewRequest = useCallback(async (initialUrl?: string) => {
     let scratchId = state.scratchProjectId;
     if (scratchId == null) {
       const project = await createProject(null, SCRATCH_PROJECT_NAME, null);
@@ -392,10 +392,14 @@ function AppContent() {
       dispatch({ type: 'SET_SCRATCH_PROJECT', payload: project.id });
       scratchId = project.id;
     }
-    const req = await createRequest(scratchId, null, 'New Request', null);
+    let req = await createRequest(scratchId, null, 'New Request', null);
+    if (initialUrl) {
+      const updated = await updateRequest(req.id, { url: initialUrl });
+      req = updated;
+    }
     dispatch({ type: 'ADD_REQUEST', payload: req });
     dispatch({ type: 'SET_CURRENT_REQUEST', payload: req.id });
-  }, [state.scratchProjectId, createProject, createRequest, dispatch]);
+  }, [state.scratchProjectId, createProject, createRequest, updateRequest, dispatch]);
 
   const currentRequest = state.requests.find((r) => r.id === state.currentRequestId) || null;
 

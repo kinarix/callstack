@@ -494,6 +494,193 @@
   transform: scale(0.95);
 }
 
+.floatingBtnActive {
+  color: var(--accent-post);
+  border-color: color-mix(in srgb, var(--accent-post) 55%, var(--border-secondary));
+  background: color-mix(in srgb, var(--accent-post) 10%, var(--bg-secondary));
+}
+
+/* Icon-only floating buttons (Wrap / Copy / Save / Clear) */
+.floatingIconBtn {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, transform 0.08s;
+}
+
+.floatingIconBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-primary);
+  background: var(--bg-tertiary, var(--bg-primary));
+}
+
+.floatingIconBtn:active {
+  transform: scale(0.92);
+}
+
+/* Per-action accent colours (idle state — colored icon on neutral chrome) */
+.iconBtnWrap   { color: var(--accent-post); }
+.iconBtnCopy   { color: var(--accent-options); }
+.iconBtnSave   { color: var(--accent-get); }
+.iconBtnClear  { color: var(--accent-delete); }
+
+.iconBtnWrap:hover {
+  color: var(--accent-post);
+  border-color: color-mix(in srgb, var(--accent-post) 55%, transparent);
+  background: color-mix(in srgb, var(--accent-post) 12%, var(--bg-secondary));
+}
+.iconBtnCopy:hover {
+  color: var(--accent-options);
+  border-color: color-mix(in srgb, var(--accent-options) 55%, transparent);
+  background: color-mix(in srgb, var(--accent-options) 12%, var(--bg-secondary));
+}
+.iconBtnSave:hover {
+  color: var(--accent-get);
+  border-color: color-mix(in srgb, var(--accent-get) 55%, transparent);
+  background: color-mix(in srgb, var(--accent-get) 12%, var(--bg-secondary));
+}
+.iconBtnClear:hover {
+  color: var(--accent-delete);
+  border-color: color-mix(in srgb, var(--accent-delete) 55%, transparent);
+  background: color-mix(in srgb, var(--accent-delete) 12%, var(--bg-secondary));
+}
+
+/* Wrap ON — filled, makes the toggled state unmistakable */
+.wrapIconOn {
+  color: var(--bg-primary);
+  background: var(--accent-post);
+  border-color: var(--accent-post);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-post) 22%, transparent);
+}
+
+.wrapIconOn:hover {
+  color: var(--bg-primary);
+  background: color-mix(in srgb, var(--accent-post) 88%, white);
+  border-color: color-mix(in srgb, var(--accent-post) 88%, white);
+}
+
+/* URL link decoration inside response body editor */
+.responseEditorWrap :global(.cm-url-link) {
+  color: var(--accent-post);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent-post) 50%, transparent);
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.responseEditorWrap :global(.cm-url-link:hover) {
+  text-decoration-color: var(--accent-post);
+  background: color-mix(in srgb, var(--accent-post) 12%, transparent);
+  border-radius: 2px;
+}
+
+.urlPopover {
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 260px;
+  max-width: 420px;
+  padding: 10px 12px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-post) 6%, transparent) 0%, transparent 70%),
+    var(--bg-elevated, var(--bg-secondary));
+  border: 1px solid color-mix(in srgb, var(--accent-post) 35%, var(--border-primary));
+  border-radius: 10px;
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.5),
+    0 2px 6px rgba(0, 0, 0, 0.25),
+    0 0 0 1px color-mix(in srgb, var(--accent-post) 18%, transparent);
+  animation: urlPopoverIn 120ms ease-out;
+}
+
+@keyframes urlPopoverIn {
+  from { opacity: 0; transform: translateY(-2px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.urlPopoverHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.urlPopoverDot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-post);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-post) 22%, transparent);
+}
+
+.urlPopoverUrl {
+  flex: 1;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.urlPopoverActions {
+  display: flex;
+  gap: 6px;
+}
+
+.urlPopoverBtn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 10px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, background 0.15s, color 0.15s, transform 0.08s;
+}
+
+.urlPopoverBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-primary);
+  background: var(--bg-tertiary, var(--bg-secondary));
+}
+
+.urlPopoverBtn:active {
+  transform: scale(0.97);
+}
+
+.urlPopoverBtnPrimary {
+  color: var(--bg-primary);
+  background: var(--accent-post);
+  border-color: var(--accent-post);
+}
+
+.urlPopoverBtnPrimary:hover {
+  color: var(--bg-primary);
+  background: color-mix(in srgb, var(--accent-post) 88%, white);
+  border-color: color-mix(in srgb, var(--accent-post) 88%, white);
+}
+
 /* Preview pane */
 .preview {
   flex: 1;

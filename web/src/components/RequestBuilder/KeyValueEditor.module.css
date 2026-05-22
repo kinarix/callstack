@@ -303,6 +303,9 @@
   padding: 5px 9px;
   min-width: 0;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition: border-color var(--transition-base), background var(--transition-base), box-shadow var(--transition-base);
 }
 
@@ -315,6 +318,8 @@
   border-color: var(--accent-post);
   background: var(--bg-secondary);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-post) 18%, transparent);
+  overflow-x: auto;
+  text-overflow: clip;
 }
 
 .input:disabled {
