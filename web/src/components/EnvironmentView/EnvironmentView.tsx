@@ -14,18 +14,23 @@ interface Props {
 
 function SecretRow({
   secret,
+  isDup,
   onChangeKey,
   onChangeValue,
   onDelete,
 }: {
   secret: KeyValue;
+  isDup?: boolean;
   onChangeKey: (key: string) => void;
   onChangeValue: (value: string) => void;
   onDelete: () => void;
 }) {
   const [revealing, setRevealing] = useState(false);
   return (
-    <div className={modalStyles.secretRow}>
+    <div
+      className={`${modalStyles.secretRow}${isDup ? ` ${modalStyles.secretRowDup}` : ''}`}
+      title={isDup ? `Duplicate key — "${secret.key}" is already defined` : undefined}
+    >
       <span className={modalStyles.secretLock} aria-label="secret">
         <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden>
           <rect x="2" y="5" width="7" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
@@ -128,6 +133,19 @@ export default function EnvironmentView({ environmentId, showExpandBtn, onExpand
     }
   }, [editingName]);
 
+  const findDuplicateKeys = (rows: KeyValue[]): Set<string> => {
+    const seen = new Map<string, number>();
+    for (const r of rows) {
+      const k = r.key.trim().toLowerCase();
+      if (!k) continue;
+      seen.set(k, (seen.get(k) ?? 0) + 1);
+    }
+    return new Set([...seen.entries()].filter(([, n]) => n > 1).map(([k]) => k));
+  };
+
+  const varDups = useMemo(() => findDuplicateKeys(variables), [variables]);
+  const secretDups = useMemo(() => findDuplicateKeys(secrets), [secrets]);
+
   // Debounced autosave of name + variables to DB
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
@@ -136,6 +154,7 @@ export default function EnvironmentView({ environmentId, showExpandBtn, onExpand
     const nameChanged = trimmed !== env.name;
     const varsChanged = JSON.stringify(variables) !== JSON.stringify(env.variables);
     if (!nameChanged && !varsChanged) return;
+    if (varDups.size > 0) return; // refuse to persist while duplicates exist
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       const updated = await updateEnvironment(env.id, trimmed, variables);
@@ -144,20 +163,21 @@ export default function EnvironmentView({ environmentId, showExpandBtn, onExpand
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [name, variables, env?.id]);
+  }, [name, variables, env?.id, varDups]);
 
   // Persist secrets to DB as user types (filter empty keys)
   const secretsSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!env) return;
     if (secretsSaveTimer.current) clearTimeout(secretsSaveTimer.current);
+    if (secretDups.size > 0) return; // refuse to persist while duplicates exist
     secretsSaveTimer.current = setTimeout(async () => {
       const filtered = secrets.filter((s) => s.key);
       await updateEnvironmentSecrets(env.id, filtered);
       dispatch({ type: 'UPDATE_ENVIRONMENT', payload: { ...env, secrets: filtered } });
     }, 400);
     return () => { if (secretsSaveTimer.current) clearTimeout(secretsSaveTimer.current); };
-  }, [secrets, env?.id]);
+  }, [secrets, env?.id, secretDups]);
 
   if (!env) {
     return (
@@ -229,7 +249,7 @@ export default function EnvironmentView({ environmentId, showExpandBtn, onExpand
             </svg>
             Variables
           </div>
-          <KeyValueEditor items={variables} onChange={setVariables} envVars={variables} secrets={secrets} />
+          <KeyValueEditor items={variables} onChange={setVariables} envVars={variables} secrets={secrets} disallowDuplicateKeys />
         </div>
 
         <div className={modalStyles.secretsSection}>
@@ -246,11 +266,17 @@ export default function EnvironmentView({ environmentId, showExpandBtn, onExpand
               <SecretRow
                 key={i}
                 secret={s}
+                isDup={secretDups.has(s.key.trim().toLowerCase())}
                 onChangeKey={(key) => updateSecretKey(i, key)}
                 onChangeValue={(value) => updateSecretValue(i, value)}
                 onDelete={() => deleteSecret(i)}
               />
             ))}
+            {secretDups.size > 0 && (
+              <div className={modalStyles.secretsDupNotice}>
+                Duplicate keys not allowed: {[...secretDups].join(', ')}
+              </div>
+            )}
             <button className={modalStyles.addSecretBtn} onClick={addSecret} type="button">
               + Add Secret
             </button>
