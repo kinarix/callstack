@@ -20,6 +20,7 @@ interface KeyValueEditorProps {
   secrets?: KeyValue[];
   naturalHeight?: boolean;
   keySuggestions?: string[];
+  disallowDuplicateKeys?: boolean;
 }
 
 export function KeyValueEditor({
@@ -34,6 +35,7 @@ export function KeyValueEditor({
   secrets = [],
   naturalHeight = false,
   keySuggestions,
+  disallowDuplicateKeys = false,
 }: KeyValueEditorProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [confirmIndex, setConfirmIndex] = useState<number | null>(null);
@@ -47,6 +49,16 @@ export function KeyValueEditor({
     () => keySuggestions && keySuggestions.length > 0 ? `kv-key-suggest-${Math.random().toString(36).slice(2, 9)}` : undefined,
     [keySuggestions],
   );
+  const dupKeys = useMemo(() => {
+    if (!disallowDuplicateKeys) return new Set<string>();
+    const seen = new Map<string, number>();
+    for (const it of items) {
+      const k = it.key.trim().toLowerCase();
+      if (!k) continue;
+      seen.set(k, (seen.get(k) ?? 0) + 1);
+    }
+    return new Set([...seen.entries()].filter(([, n]) => n > 1).map(([k]) => k));
+  }, [items, disallowDuplicateKeys]);
 
   // Pills for all non-readonly cases; hideActions suppresses edit/delete within pills
   const usePills = !readOnly;
@@ -133,7 +145,8 @@ export function KeyValueEditor({
           {items.map((item, index) => {
             const lKey = item.key.toLowerCase();
             const isDisabled = !!(disabledKeys?.has(lKey));
-            const isMarked = !isDisabled && !!(markedKeys?.has(lKey));
+            const isDup = !isDisabled && dupKeys.has(item.key.trim().toLowerCase());
+            const isMarked = !isDup && !isDisabled && !!(markedKeys?.has(lKey));
             const isEnabled = item.enabled ?? true;
 
             if (usePills && editingIndex !== index) {
@@ -176,7 +189,9 @@ export function KeyValueEditor({
                     !isEnabled ? styles.pillOff : '',
                     isMarked ? styles.pillMarked : '',
                     isDisabled ? styles.pillDisabled : '',
+                    isDup ? styles.pillDup : '',
                   ].filter(Boolean).join(' ')}
+                  title={isDup ? `Duplicate key — "${item.key}" is already defined` : undefined}
                   onClick={() => { if (!hideActions) { setConfirmIndex(null); setEditingIndex(index); } }}
                 >
                   <button
@@ -217,7 +232,9 @@ export function KeyValueEditor({
                   usePills ? styles.editRow : styles.row,
                   isMarked ? styles.rowMarked : '',
                   isDisabled ? styles.rowDisabled : '',
+                  isDup ? styles.rowDup : '',
                 ].filter(Boolean).join(' ')}
+                title={isDup ? `Duplicate key — "${item.key}" is already defined` : undefined}
                 onBlur={usePills ? handleEditBlur : undefined}
               >
                 {!readOnly && (
@@ -336,6 +353,11 @@ export function KeyValueEditor({
             );
           })}
         </div>
+        {disallowDuplicateKeys && dupKeys.size > 0 && (
+          <div className={styles.dupNotice}>
+            Duplicate keys not allowed: {[...dupKeys].join(', ')}
+          </div>
+        )}
         {!readOnly && !hideActions && !hideAdd && (
           <div className={styles.addRow}>
             <button className={styles.addBtn} onClick={handleAdd}>
