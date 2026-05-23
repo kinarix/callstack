@@ -52,6 +52,22 @@ export interface Request {
   follow_redirects: boolean;
   use_cookie_jar: boolean;
   pre_chain: PreChainStep[];
+  documentation: DocumentationFields;
+}
+
+export interface DocumentationFields {
+  summary?: string;
+  description?: string;
+  tags?: string[];
+  externalDocsUrl?: string;
+  externalDocsDescription?: string;
+  deprecated?: boolean;
+  operationId?: string;
+  sampleRequestBody?: string;
+  sampleResponseBody?: string;
+  sampleResponseStatus?: number;
+  sampleResponseContentType?: string;
+  yamlOverride?: string;
 }
 
 export interface TestResult {

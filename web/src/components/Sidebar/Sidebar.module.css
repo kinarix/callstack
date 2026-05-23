@@ -464,6 +464,62 @@
   flex-shrink: 0;
 }
 
+.sidebarFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2px;
+  padding: 6px var(--space-1);
+  border-top: 1px solid var(--border-primary);
+  flex-shrink: 0;
+}
+
+.helpBtn {
+  color: var(--accent-put);
+}
+
+.helpBtn:hover {
+  color: var(--accent-put);
+  background: color-mix(in srgb, var(--accent-put) 14%, transparent);
+}
+
+.sidebarFooter .collapseBtn {
+  margin-left: auto;
+}
+
+.newProjectBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% - 12px);
+  margin: 6px;
+  padding: 6px 8px;
+  background: transparent;
+  border: 1px dashed var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.newProjectBtn:hover {
+  color: var(--accent-get);
+  border-color: color-mix(in srgb, var(--accent-get) 55%, var(--border-primary));
+  background: color-mix(in srgb, var(--accent-get) 8%, transparent);
+}
+
+.newProjectBtn svg {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.newProjectBtn:hover svg {
+  color: var(--accent-get);
+}
+
 .iconAction {
   background: transparent;
   border: none;
@@ -509,7 +565,11 @@
 
 .searchIcon {
   flex-shrink: 0;
-  color: var(--text-tertiary);
+  color: var(--accent-options);
+}
+
+.searchWrap:focus-within .searchIcon {
+  color: var(--accent-post);
 }
 
 .searchInput {

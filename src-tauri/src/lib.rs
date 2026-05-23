@@ -362,6 +362,7 @@ pub fn run() {
             cancel_request,
             database::save_response,
             database::get_last_response,
+            database::get_last_responses_for_project,
             database::get_response_history,
             database::clear_response_history,
             database::clear_request_history,

@@ -13,6 +13,7 @@ import { ExportModal } from '../ExportModal/ExportModal';
 import type { ExportItem, ExportResult } from '../ExportModal/ExportModal';
 import type { ParsedCollection, ParsedRequest } from '../../utils/postmanParser';
 import { exportFolderAsPostman, exportProjectAsPostman } from '../../utils/postmanParser';
+import { exportProjectAsOpenAPIYAML } from '../../utils/openapiExport';
 import { exportProject as exportCallstackProject, exportProjectPlain, importArchive, deserializeAutomationStep } from '../../utils/callstackArchive';
 import type { ArchivePreview } from '../../lib/callstackSchema';
 import { invoke } from '@tauri-apps/api/core';
@@ -160,6 +161,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     duplicateFolder,
     importRequests,
     getLastResponse,
+    getLastResponsesForProject,
     saveResponse,
     listCookies,
     clearCookies,
@@ -858,6 +860,21 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
           const filename = `${project.name}.callstack`;
           await invoke('save_binary_file', { filename, data });
         }
+      } else if (result.format === 'openapi-yaml') {
+        // ── OpenAPI 3.1 YAML export ──
+        const project = state.projects.find((p) => p.id === state.currentProjectId);
+        if (!project) return;
+        const selectedIds = new Set(result.items.map((i) => i.request.id));
+        const selectedRequests = state.requests.filter((r) => selectedIds.has(r.id));
+        const lastResponses = await getLastResponsesForProject(project.id);
+        const content = exportProjectAsOpenAPIYAML({
+          project,
+          requests: selectedRequests,
+          lastResponses: lastResponses.filter((r) => selectedIds.has(r.request_id)),
+          environments: state.environments.filter((e) => e.project_id === project.id),
+        });
+        const safe = project.name.replace(/[^A-Za-z0-9_.-]+/g, '_');
+        await invoke('save_file', { filename: `${safe}.openapi.yaml`, content });
       } else {
         // ── Postman export (existing) ──
         let content: string;
@@ -880,7 +897,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
       console.error('Failed to export:', err);
       dispatch({ type: 'SHOW_ERROR', payload: { message: `Failed to export: ${String(err)}`, showReset: true } });
     }
-  }, [exportModalState, state, getLastResponse]);
+  }, [exportModalState, state, getLastResponse, getLastResponsesForProject]);
 
   // ─── Native DnD handlers ────────────────────────────────────────────────────
 
@@ -1164,32 +1181,19 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
           </div>
         </div>
 
-        <div className={styles.sidebarIcons}>
-          <button className={`${styles.iconAction} ${styles.settingsBtn}`} onClick={onOpenSettings} title="Settings">
-            <GearIcon />
-          </button>
-          <button className={styles.iconAction} onClick={() => invoke('open_system_url', { url: 'https://callstack.kinarix.com/docs/' })} title="Help & Docs">
-            <HelpIcon />
-          </button>
-          <ThemeToggle />
-          <AccentToggle />
-          <button className={styles.iconAction} onClick={() => setShowNewProjectModal(true)} title="New Project">
-            <svg width="18" height="18" viewBox="0 0 13 13" fill="none">
-              <rect x="1.5" y="3.5" width="10" height="7.5" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
-              <path d="M4.5 3.5V2.5C4.5 2.22 4.72 2 5 2H8C8.28 2 8.5 2.22 8.5 2.5V3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-              <path d="M6.5 5.75V9.25M4.75 7.5H8.25" stroke="var(--accent-get)" strokeWidth="1.4" strokeLinecap="round" />
-            </svg>
-          </button>
-          <button className={`${styles.iconAction} ${styles.collapseBtn}`} onClick={onToggleCollapse} title="Collapse navigator">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <rect x="1.5" y="1.5" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="1.3"/>
-              <path d="M5.5 3.5V12.5" stroke="var(--accent-post)" strokeWidth="1.3" strokeLinecap="round"/>
-              <path d="M9.5 6L7.5 8L9.5 10" stroke="var(--accent-post)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-        </div>
-
-        <div className={styles.treeDivider} />
+        <button
+          type="button"
+          className={styles.newProjectBtn}
+          onClick={() => setShowNewProjectModal(true)}
+          title="New project"
+        >
+          <svg width="14" height="14" viewBox="0 0 13 13" fill="none" aria-hidden>
+            <rect x="1.5" y="3.5" width="10" height="7.5" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
+            <path d="M4.5 3.5V2.5C4.5 2.22 4.72 2 5 2H8C8.28 2 8.5 2.22 8.5 2.5V3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            <path d="M6.5 5.75V9.25M4.75 7.5H8.25" stroke="var(--accent-get)" strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+          <span>New project</span>
+        </button>
 
         <div className={styles.searchWrap}>
           <svg className={styles.searchIcon} width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden>
@@ -1367,6 +1371,24 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
           }}
           refreshSignal={state.currentResponse?.id}
         />
+        <div className={styles.sidebarFooter}>
+          <button className={`${styles.iconAction} ${styles.settingsBtn}`} onClick={onOpenSettings} title="Settings">
+            <GearIcon />
+          </button>
+          <button className={`${styles.iconAction} ${styles.helpBtn}`} onClick={() => invoke('open_system_url', { url: 'https://callstack.kinarix.com/docs/' })} title="Help & Docs">
+            <HelpIcon />
+          </button>
+          <ThemeToggle />
+          <AccentToggle />
+          <button className={`${styles.iconAction} ${styles.collapseBtn}`} onClick={onToggleCollapse} title="Collapse navigator">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <rect x="1.5" y="1.5" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="1.3"/>
+              <path d="M5.5 3.5V12.5" stroke="var(--accent-post)" strokeWidth="1.3" strokeLinecap="round"/>
+              <path d="M9.5 6L7.5 8L9.5 10" stroke="var(--accent-post)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </div>
+
         {showSysApplet && <SysApplet />}
       </div>
     </>

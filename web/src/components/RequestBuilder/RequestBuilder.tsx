@@ -1,10 +1,11 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { ExternalChange } from '@uiw/react-codemirror';
-import type { Request, KeyValue, LogEntry, FileAttachment, Environment } from '../../lib/types';
+import type { Request, KeyValue, LogEntry, FileAttachment, Environment, DocumentationFields } from '../../lib/types';
 import { UrlBar } from './UrlBar';
 import { TabPanel } from './TabPanel';
 import { ResponseViewer } from '../ResponseViewer/ResponseViewer';
+import DocsModal from './DocsEditor/DocsModal';
 import styles from './RequestBuilder.module.css';
 import { useApp } from '../../context/AppContext';
 import { useHttpClient } from '../../hooks/useHttpClient';
@@ -195,6 +196,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
   const [bodyError, setBodyError] = useState<string | null>(null);
   const [urlError, setUrlError] = useState<UrlError | null>(null);
   const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
+  const [docsOpen, setDocsOpen] = useState(false);
   const followRedirects = request?.follow_redirects ?? true;
   const useCookieJar = request?.use_cookie_jar ?? true;
   const [files, setFiles] = useState<FileAttachment[]>(() => request?.files ?? []);
@@ -250,6 +252,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         if (changes.follow_redirects !== undefined) fields.follow_redirects = changes.follow_redirects;
         if (changes.use_cookie_jar !== undefined) fields.use_cookie_jar = changes.use_cookie_jar;
         if (changes.pre_chain !== undefined) fields.pre_chain = JSON.stringify(changes.pre_chain);
+        if (changes.documentation !== undefined) fields.documentation = JSON.stringify(changes.documentation);
         updateRequest(id, fields);
       }, 300);
     },
@@ -935,6 +938,8 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         onNew={onNew}
         envDisabled={isScratchRequest}
         onCurlImport={handleCurlImport}
+        onOpenDocs={request ? () => setDocsOpen(true) : undefined}
+        hasDocs={!!request && hasDocumentation(request.documentation)}
       />
       {urlError && (
         <div className={styles.bodyError}>
@@ -984,6 +989,32 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
           />
         </div>
       </div>
+      {docsOpen && request && (
+        <DocsModal
+          request={request}
+          response={state.currentResponse}
+          envVars={envVars}
+          onSave={(docs: DocumentationFields) => handleRequestChange({ documentation: docs })}
+          onClose={() => setDocsOpen(false)}
+        />
+      )}
     </div>
+  );
+}
+
+function hasDocumentation(docs: DocumentationFields | undefined | null): boolean {
+  if (!docs) return false;
+  return Boolean(
+    docs.summary ||
+    docs.description ||
+    (docs.tags && docs.tags.length > 0) ||
+    docs.externalDocsUrl ||
+    docs.externalDocsDescription ||
+    docs.operationId ||
+    docs.sampleRequestBody ||
+    docs.sampleResponseBody ||
+    docs.sampleResponseStatus ||
+    docs.yamlOverride ||
+    docs.deprecated
   );
 }

@@ -3,7 +3,7 @@ import type { Request, Environment } from '../../lib/types';
 import { getMethodColor } from '../../lib/utils';
 import styles from './ExportModal.module.css';
 
-export type ExportFormat = 'postman' | 'callstack' | 'callstack-plain';
+export type ExportFormat = 'postman' | 'callstack' | 'callstack-plain' | 'openapi-yaml';
 
 export interface ExportItem {
   request: Request;
@@ -178,6 +178,19 @@ export function ExportModal({ title, items, environments, onExport, onCancel }: 
               <span className={styles.formatText}>
                 <span className={styles.formatName}>Postman Collection</span>
                 <span className={styles.formatDesc}>Compatible with Postman v2.1</span>
+              </span>
+            </label>
+            <label className={styles.formatOption}>
+              <input
+                type="radio"
+                name="format"
+                value="openapi-yaml"
+                checked={format === 'openapi-yaml'}
+                onChange={() => setFormat('openapi-yaml')}
+              />
+              <span className={styles.formatText}>
+                <span className={styles.formatName}>OpenAPI 3.1 (YAML)</span>
+                <span className={styles.formatDesc}>Aggregates all requests; uses latest captured response for each</span>
               </span>
             </label>
           </div>
