@@ -37,6 +37,7 @@ pub struct Request {
     pub follow_redirects: bool,
     pub use_cookie_jar: bool,
     pub pre_chain: String,
+    pub documentation: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -295,6 +296,10 @@ impl Database {
             "ALTER TABLE requests ADD COLUMN pre_chain TEXT NOT NULL DEFAULT '[]'",
             [],
         );
+        let _ = conn.execute(
+            "ALTER TABLE requests ADD COLUMN documentation TEXT NOT NULL DEFAULT '{}'",
+            [],
+        );
 
         Ok(Self {
             conn: Mutex::new(conn),
@@ -440,7 +445,7 @@ pub fn list_requests(
 
     let mut stmt = conn
         .prepare(
-            "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain
+            "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain, documentation
              FROM requests WHERE project_id = ?1 ORDER BY position ASC",
         )
         .map_err(|e| e.to_string())?;
@@ -469,6 +474,7 @@ pub fn list_requests(
                 follow_redirects: row.get::<_, i64>(18)? != 0,
                 use_cookie_jar: row.get::<_, i64>(19)? != 0,
                 pre_chain: row.get::<_, Option<String>>(20)?.unwrap_or_else(|| "[]".to_string()),
+                documentation: row.get::<_, Option<String>>(21)?.unwrap_or_else(|| "{}".to_string()),
             })
         })
         .map_err(|e| e.to_string())?;
@@ -506,7 +512,7 @@ pub fn create_request(
     let id = conn.last_insert_rowid();
 
     conn.query_row(
-        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain FROM requests WHERE id = ?1",
+        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain, documentation FROM requests WHERE id = ?1",
         params![id],
         |row| {
             Ok(Request {
@@ -531,6 +537,7 @@ pub fn create_request(
                 follow_redirects: row.get::<_, i64>(18)? != 0,
                 use_cookie_jar: row.get::<_, i64>(19)? != 0,
                 pre_chain: row.get::<_, Option<String>>(20)?.unwrap_or_else(|| "[]".to_string()),
+                documentation: row.get::<_, Option<String>>(21)?.unwrap_or_else(|| "{}".to_string()),
             })
         },
     )
@@ -555,6 +562,7 @@ pub fn update_request(
     follow_redirects: Option<bool>,
     use_cookie_jar: Option<bool>,
     pre_chain: Option<String>,
+    documentation: Option<String>,
 ) -> Result<Request, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
 
@@ -614,6 +622,10 @@ pub fn update_request(
         sets.push(format!("use_cookie_jar = ?{}", values.len() + 1));
         values.push(Box::new(if v { 1_i64 } else { 0_i64 }));
     }
+    if let Some(v) = documentation {
+        sets.push(format!("documentation = ?{}", values.len() + 1));
+        values.push(Box::new(v));
+    }
     if let Some(v) = pre_chain {
         sets.push(format!("pre_chain = ?{}", values.len() + 1));
         values.push(Box::new(v));
@@ -633,7 +645,7 @@ pub fn update_request(
         .map_err(|e| e.to_string())?;
 
     conn.query_row(
-        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain FROM requests WHERE id = ?1",
+        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain, documentation FROM requests WHERE id = ?1",
         params![id],
         |row| {
             Ok(Request {
@@ -658,6 +670,7 @@ pub fn update_request(
                 follow_redirects: row.get::<_, i64>(18)? != 0,
                 use_cookie_jar: row.get::<_, i64>(19)? != 0,
                 pre_chain: row.get::<_, Option<String>>(20)?.unwrap_or_else(|| "[]".to_string()),
+                documentation: row.get::<_, Option<String>>(21)?.unwrap_or_else(|| "{}".to_string()),
             })
         },
     )
@@ -878,7 +891,7 @@ pub fn duplicate_request(db: tauri::State<Database>, id: i64) -> Result<Request,
     let new_id = conn.last_insert_rowid();
 
     conn.query_row(
-        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain FROM requests WHERE id = ?1",
+        "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain, documentation FROM requests WHERE id = ?1",
         params![new_id],
         |row| {
             Ok(Request {
@@ -903,6 +916,7 @@ pub fn duplicate_request(db: tauri::State<Database>, id: i64) -> Result<Request,
                 follow_redirects: row.get::<_, i64>(18)? != 0,
                 use_cookie_jar: row.get::<_, i64>(19)? != 0,
                 pre_chain: row.get::<_, Option<String>>(20)?.unwrap_or_else(|| "[]".to_string()),
+                documentation: row.get::<_, Option<String>>(21)?.unwrap_or_else(|| "{}".to_string()),
             })
         },
     )
@@ -948,7 +962,7 @@ pub fn duplicate_folder(db: tauri::State<Database>, id: i64) -> Result<Duplicate
 
     let mut stmt = conn
         .prepare(
-            "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain
+            "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain, documentation
              FROM requests WHERE folder_id = ?1 ORDER BY position ASC",
         )
         .map_err(|e| e.to_string())?;
@@ -977,6 +991,7 @@ pub fn duplicate_folder(db: tauri::State<Database>, id: i64) -> Result<Duplicate
                 follow_redirects: row.get::<_, i64>(18)? != 0,
                 use_cookie_jar: row.get::<_, i64>(19)? != 0,
                 pre_chain: row.get::<_, Option<String>>(20)?.unwrap_or_else(|| "[]".to_string()),
+                documentation: row.get::<_, Option<String>>(21)?.unwrap_or_else(|| "{}".to_string()),
             })
         })
         .map_err(|e| e.to_string())?
@@ -1024,7 +1039,7 @@ pub fn import_requests(
         let id = conn.last_insert_rowid();
         let request = conn
             .query_row(
-                "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain FROM requests WHERE id = ?1",
+                "SELECT id, project_id, folder_id, user_email, name, method, url, params, headers, body, attachments, position, created_at, updated_at, imported, pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain, documentation FROM requests WHERE id = ?1",
                 params![id],
                 |row| {
                     Ok(Request {
@@ -1049,6 +1064,7 @@ pub fn import_requests(
                         follow_redirects: row.get::<_, i64>(18)? != 0,
                         use_cookie_jar: row.get::<_, i64>(19)? != 0,
                         pre_chain: row.get::<_, Option<String>>(20)?.unwrap_or_else(|| "[]".to_string()),
+                documentation: row.get::<_, Option<String>>(21)?.unwrap_or_else(|| "{}".to_string()),
                     })
                 },
             )
@@ -1215,6 +1231,48 @@ pub fn get_last_response(
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
         Err(e) => Err(e.to_string()),
     }
+}
+
+#[tauri::command]
+pub fn get_last_responses_for_project(
+    db: tauri::State<Database>,
+    project_id: i64,
+) -> Result<Vec<StoredResponse>, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT r.id, r.request_id, r.status, r.status_text, r.headers, r.body, r.time_ms, r.size, r.timestamp_ms, r.request_headers, r.request_params, r.request_body
+             FROM responses r
+             INNER JOIN (
+                 SELECT request_id, MAX(id) AS max_id
+                 FROM responses
+                 GROUP BY request_id
+             ) latest ON r.id = latest.max_id
+             INNER JOIN requests req ON req.id = r.request_id
+             WHERE req.project_id = ?1",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let rows = stmt
+        .query_map(params![project_id], |row| {
+            Ok(StoredResponse {
+                id: row.get(0)?,
+                request_id: row.get(1)?,
+                status: row.get(2)?,
+                status_text: row.get(3)?,
+                headers: row.get(4)?,
+                body: row.get(5)?,
+                time_ms: row.get(6)?,
+                size: row.get(7)?,
+                timestamp_ms: row.get(8)?,
+                request_headers: row.get::<_, Option<String>>(9)?.unwrap_or_default(),
+                request_params: row.get::<_, Option<String>>(10)?.unwrap_or_default(),
+                request_body: row.get::<_, Option<String>>(11)?.unwrap_or_default(),
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
 }
 
 // Environment commands

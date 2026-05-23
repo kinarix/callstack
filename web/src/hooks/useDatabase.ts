@@ -48,6 +48,7 @@ interface RawRequest {
   followRedirects: boolean;
   useCookieJar: boolean;
   preChain: string;
+  documentation: string;
 }
 
 function parseRequest(raw: RawRequest): Request {
@@ -74,6 +75,9 @@ function parseRequest(raw: RawRequest): Request {
     use_cookie_jar: raw.useCookieJar ?? true,
     pre_chain: (() => {
       try { return JSON.parse(raw.preChain || '[]'); } catch { return []; }
+    })(),
+    documentation: (() => {
+      try { return JSON.parse(raw.documentation || '{}'); } catch { return {}; }
     })(),
   };
 }
@@ -183,9 +187,10 @@ export function useDatabase() {
         follow_redirects?: boolean;
         use_cookie_jar?: boolean;
         pre_chain?: string;
+        documentation?: string;
       }
     ): Promise<Request> => {
-      const { pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain, ...rest } = fields;
+      const { pre_script, post_script, env_id, follow_redirects, use_cookie_jar, pre_chain, documentation, ...rest } = fields;
       const raw = await invoke<RawRequest>('update_request', {
         id,
         ...rest,
@@ -195,6 +200,7 @@ export function useDatabase() {
         ...(follow_redirects !== undefined ? { followRedirects: follow_redirects } : {}),
         ...(use_cookie_jar !== undefined ? { useCookieJar: use_cookie_jar } : {}),
         ...(pre_chain !== undefined ? { preChain: pre_chain } : {}),
+        ...(documentation !== undefined ? { documentation } : {}),
       });
       return parseRequest(raw);
     },
@@ -457,6 +463,41 @@ export function useDatabase() {
     []
   );
 
+  const getLastResponsesForProject = useCallback(
+    async (projectId: number): Promise<Response[]> => {
+      interface RawStoredResponse {
+        id: number;
+        requestId: number;
+        status: number;
+        statusText: string;
+        headers: string;
+        body: string;
+        timeMs: number;
+        size: number;
+        timestampMs: number;
+        requestHeaders: string;
+        requestParams: string;
+        requestBody: string;
+      }
+      const rows = await invoke<RawStoredResponse[]>('get_last_responses_for_project', { projectId });
+      return rows.map((raw) => ({
+        id: raw.id,
+        request_id: raw.requestId,
+        status: raw.status,
+        statusText: raw.statusText,
+        headers: JSON.parse(raw.headers || '[]'),
+        body: raw.body,
+        time: raw.timeMs,
+        size: raw.size,
+        timestamp: raw.timestampMs || undefined,
+        requestHeaders: JSON.parse(raw.requestHeaders || '[]'),
+        requestParams: JSON.parse(raw.requestParams || '[]'),
+        requestBody: raw.requestBody || undefined,
+      }));
+    },
+    []
+  );
+
   const getResponseHistory = useCallback(
     async (requestId: number): Promise<Response[]> => {
       interface RawStoredResponse {
@@ -622,6 +663,7 @@ export function useDatabase() {
     duplicateFolder,
     saveResponse,
     getLastResponse,
+    getLastResponsesForProject,
     getResponseHistory,
     clearRequestHistory,
     getAllResponseHistory,

@@ -39,6 +39,8 @@ interface UrlBarProps {
   onNew?: () => void;
   envDisabled?: boolean;
   onCurlImport?: (data: CurlImport) => void;
+  onOpenDocs?: () => void;
+  hasDocs?: boolean;
 }
 
 const METHODS: HTTPMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
@@ -129,6 +131,8 @@ export function UrlBar({
   onNew,
   envDisabled,
   onCurlImport,
+  onOpenDocs,
+  hasDocs,
 }: UrlBarProps) {
   const [blockedToastKey, setBlockedToastKey] = useState<number | null>(null);
   const [curlToastKey, setCurlToastKey] = useState<number | null>(null);
@@ -189,6 +193,29 @@ export function UrlBar({
         autoCapitalize="off"
         spellCheck={false}
       />
+      {onOpenDocs && (
+        <button
+          type="button"
+          className={`${styles.docsBtn} ${hasDocs ? styles.docsBtnActive : ''}`}
+          onClick={onOpenDocs}
+          title={hasDocs ? 'Edit OpenAPI documentation' : 'Add OpenAPI documentation'}
+          aria-label="Open documentation"
+          style={{ color: getMethodColor(method) }}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path
+              d="M3 2.5h7.5L13 5v8.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1Z"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinejoin="round"
+              fill="none"
+            />
+            <path d="M10 2.5V5h3" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" fill="none" />
+            <path d="M4.5 8h6M4.5 10.5h6M4.5 13h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+          </svg>
+          {hasDocs && <span className={styles.docsDot} style={{ background: getMethodColor(method) }} />}
+        </button>
+      )}
       <EnvSelector
         environments={environments}
         activeEnvId={activeEnvId}
