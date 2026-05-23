@@ -1,21 +1,21 @@
-/* Dark theme (default) */
+/* Dark theme (default) — true black background, neutral greys */
 :root {
   color-scheme: dark;
 
-  /* Background */
-  --bg-primary: #0f0f13;
-  --bg-secondary: #1a1a21;
-  --bg-tertiary: #25252e;
-  --bg-hover: #2f2f3a;
+  /* Background — absolute black canvas, neutral lifts for layered surfaces */
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0a;
+  --bg-tertiary: #141414;
+  --bg-hover: #1f1f1f;
 
-  /* Text */
-  --text-primary: #e8e8eb;
-  --text-secondary: #a8a8b0;
-  --text-tertiary: #6b6b76;
+  /* Text — neutral greys (no blue tint) */
+  --text-primary: #e8e8e8;
+  --text-secondary: #a8a8a8;
+  --text-tertiary: #6b6b6b;
 
-  /* Borders */
-  --border-primary: #3a3a47;
-  --border-secondary: #2f2f3a;
+  /* Borders — slight blue tint to give controls definition against pure black */
+  --border-primary: #2b3245;
+  --border-secondary: #1b212e;
 
   /* Generic accent (UI highlights, focus rings, drag targets) */
   --accent: #3b82f6;

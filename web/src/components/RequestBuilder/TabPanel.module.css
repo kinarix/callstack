@@ -30,78 +30,79 @@
   font-family: 'JetBrains Mono', monospace;
 }
 
-.bodyToolbar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-1);
-  padding: 4px var(--space-2);
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--border-primary);
-  background: var(--bg-secondary);
-}
-
-.formatBtn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid color-mix(in srgb, var(--accent-patch) 35%, transparent);
-  background: color-mix(in srgb, var(--accent-patch) 10%, transparent);
-  color: var(--accent-patch);
-  font-size: 11px;
-  font-weight: 600;
-  font-family: 'Outfit', sans-serif;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.formatBtn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent-patch) 20%, transparent);
-  border-color: color-mix(in srgb, var(--accent-patch) 55%, transparent);
-}
-
-.formatBtn:active:not(:disabled) {
-  transform: scale(0.96);
-}
-
-.formatBtn:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.wrapToggle {
+/* Icon-only buttons floating over the request body editor.
+   Wrap / Copy / Save / Clear + Format. State is independent
+   of the response side floating buttons. */
+.iconBtn {
+  width: 26px;
+  height: 26px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-family: 'Outfit', sans-serif;
-  font-size: 11px;
-  font-weight: 600;
+  justify-content: center;
+  padding: 0;
   color: var(--text-secondary);
-  cursor: pointer;
-  user-select: none;
-  padding: 3px 8px;
-  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
   border: 1px solid var(--border-secondary);
-  background: var(--bg-primary);
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, transform 0.08s;
 }
 
-.wrapToggle:hover {
+.iconBtn:hover:not(:disabled) {
   color: var(--text-primary);
   border-color: var(--border-primary);
+  background: var(--bg-tertiary, var(--bg-primary));
 }
 
-.wrapToggle input[type="checkbox"] {
-  margin: 0;
-  width: 12px;
-  height: 12px;
-  cursor: pointer;
-  accent-color: var(--accent-post);
+.iconBtn:active:not(:disabled) { transform: scale(0.92); }
+.iconBtn:disabled { opacity: 0.4; cursor: default; }
+
+.iconBtnFormat { color: var(--accent-patch); }
+.iconBtnWrap   { color: var(--accent-post); }
+.iconBtnCopy   { color: var(--accent-options); }
+.iconBtnSave   { color: var(--accent-get); }
+.iconBtnClear  { color: var(--accent-delete); }
+
+.iconBtnFormat:hover:not(:disabled) {
+  color: var(--accent-patch);
+  border-color: color-mix(in srgb, var(--accent-patch) 55%, transparent);
+  background: color-mix(in srgb, var(--accent-patch) 12%, var(--bg-secondary));
 }
+
+.iconBtnWrap:hover:not(:disabled) {
+  color: var(--accent-post);
+  border-color: color-mix(in srgb, var(--accent-post) 55%, transparent);
+  background: color-mix(in srgb, var(--accent-post) 12%, var(--bg-secondary));
+}
+.iconBtnCopy:hover:not(:disabled) {
+  color: var(--accent-options);
+  border-color: color-mix(in srgb, var(--accent-options) 55%, transparent);
+  background: color-mix(in srgb, var(--accent-options) 12%, var(--bg-secondary));
+}
+.iconBtnSave:hover:not(:disabled) {
+  color: var(--accent-get);
+  border-color: color-mix(in srgb, var(--accent-get) 55%, transparent);
+  background: color-mix(in srgb, var(--accent-get) 12%, var(--bg-secondary));
+}
+.iconBtnClear:hover:not(:disabled) {
+  color: var(--accent-delete);
+  border-color: color-mix(in srgb, var(--accent-delete) 55%, transparent);
+  background: color-mix(in srgb, var(--accent-delete) 12%, var(--bg-secondary));
+}
+
+.wrapIconOn {
+  color: var(--bg-primary);
+  background: var(--accent-post);
+  border-color: var(--accent-post);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-post) 22%, transparent);
+}
+
+.wrapIconOn:hover:not(:disabled) {
+  color: var(--bg-primary);
+  background: color-mix(in srgb, var(--accent-post) 88%, white);
+  border-color: color-mix(in srgb, var(--accent-post) 88%, white);
+}
+
 
 .validationTag {
   font-size: 11px;

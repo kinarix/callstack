@@ -8,7 +8,7 @@ import { tags } from '@lezer/highlight';
 import type { KeyValue } from '../../lib/types';
 import { templateCompletion, replaceTokensForValidation } from '../../lib/template';
 import { useEditorMemory } from '../../hooks/useEditorMemory';
-import { useWrapBody } from '../../hooks/useWrapBody';
+import { useWrapToggle } from '../../hooks/useWrapBody';
 import styles from './BodyEditor.module.css';
 
 interface JsonTemplateState {
@@ -210,6 +210,7 @@ interface BodyEditorProps {
   secrets?: KeyValue[];
   memoryKey?: string;
   viewRef?: React.MutableRefObject<EditorView | null>;
+  floatingButtons?: React.ReactNode;
 }
 
 export function BodyEditor({
@@ -222,12 +223,13 @@ export function BodyEditor({
   secrets = [],
   memoryKey,
   viewRef,
+  floatingButtons,
 }: Readonly<BodyEditorProps>) {
   const [validation, setValidation] = useState<{ valid: boolean; error?: string }>({ valid: true });
 
   const hasCsvTokens = /\{\{\s*#[\w.-]+\s*\}\}/.test(body);
   const { memoryExtension, onCreateEditor: onCreateEditorFromMemory } = useEditorMemory(memoryKey);
-  const [wrap] = useWrapBody();
+  const [wrap] = useWrapToggle('callstack.wrapBody.request');
 
   const handleCreateEditor = useCallback((view: EditorView) => {
     if (viewRef) viewRef.current = view;
@@ -271,6 +273,7 @@ export function BodyEditor({
           onCreateEditor={handleCreateEditor}
         />
         {copyFlash && <div className={styles.copyToast}>Copied to clipboard</div>}
+        {floatingButtons && <div className={styles.floatingButtons}>{floatingButtons}</div>}
       </div>
       {hasCsvTokens && (
         <div className={styles.csvInfo}>

@@ -84,7 +84,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 cursor: 'pointer',
               }}
             >
-              Clear UI State &amp; Reload
+              Reset and reload
             </button>
           </div>
         </div>
