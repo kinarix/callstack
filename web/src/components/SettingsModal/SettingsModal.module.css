@@ -269,15 +269,21 @@
   justify-content: space-between;
   padding: 0 var(--space-2);
   height: 40px;
-  border-bottom: 1px solid var(--border-primary);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent-post) 22%, var(--bg-secondary)) 0%,
+    color-mix(in srgb, var(--accent-post) 10%, var(--bg-secondary)) 100%
+  );
+  border-bottom: 1px solid color-mix(in srgb, var(--accent-post) 40%, var(--border-primary));
   flex-shrink: 0;
 }
 
 .title {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: 0.2px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
 }
 
 .closeBtn {

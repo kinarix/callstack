@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import styles from './ConfirmModal.module.css';
 
 interface ConfirmModalProps {
@@ -9,9 +10,28 @@ interface ConfirmModalProps {
 }
 
 export function ConfirmModal({ title, children, confirmLabel = 'Delete', onConfirm, onCancel }: ConfirmModalProps) {
+  const confirmBtnRef = useRef<HTMLButtonElement>(null);
+
   const handleOverlay = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onCancel();
   };
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        onCancel();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        onConfirm();
+      }
+    };
+    window.addEventListener('keydown', handler, true);
+    confirmBtnRef.current?.focus();
+    return () => window.removeEventListener('keydown', handler, true);
+  }, [onCancel, onConfirm]);
 
   return (
     <div className={styles.overlay} onMouseDown={handleOverlay}>
@@ -27,7 +47,7 @@ export function ConfirmModal({ title, children, confirmLabel = 'Delete', onConfi
         <div className={styles.body}>{children}</div>
         <div className={styles.footer}>
           <button className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-          <button className={styles.confirmBtn} onClick={onConfirm}>{confirmLabel}</button>
+          <button ref={confirmBtnRef} className={styles.confirmBtn} onClick={onConfirm}>{confirmLabel}</button>
         </div>
       </div>
     </div>

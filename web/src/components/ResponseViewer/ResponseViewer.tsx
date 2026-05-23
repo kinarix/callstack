@@ -15,37 +15,14 @@ import { formatBody, normalizeLineEndings } from '../../lib/formatBody';
 import { isJwt, findJwtsInBody } from '../../lib/jwt';
 import { JwtBadge } from '../JwtBadge/JwtBadge';
 import { CopyIcon } from '../Sidebar/SidebarIcons';
+import { WrapIcon, SaveIcon, ClearIcon } from '../RequestBuilder/editorIcons';
+import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 import { useDatabase } from '../../hooks/useDatabase';
 import { useEditorMemory } from '../../hooks/useEditorMemory';
 import { useWrapBody } from '../../hooks/useWrapBody';
 import { urlLinkExtension, type UrlClickInfo } from '../../lib/cmUrlLinks';
 import { open as openExternal } from '@tauri-apps/plugin-shell';
 import styles from './ResponseViewer.module.css';
-
-function WrapIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden>
-      <path d="M1.5 3h10M1.5 6.5h7.5a2 2 0 0 1 0 4H6M7.5 8.5L6 10l1.5 1.5M1.5 10h2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function SaveIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden>
-      <path d="M6.5 1.5v7M4 6L6.5 8.5L9 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M1.5 10v.5a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function ClearIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden>
-      <path d="M2 3.5h9M5 3.5V2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M3.5 3.5l.5 7h5l.5-7M5.5 5.5v3.5M7.5 5.5v3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 function ExternalLinkIcon() {
   return (
@@ -379,6 +356,7 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
   const { getResponseHistory, clearRequestHistory } = useDatabase();
   const [wrapBody, setWrapBody] = useWrapBody();
   const [urlPopover, setUrlPopover] = useState<UrlClickInfo | null>(null);
+  const [confirmClearResp, setConfirmClearResp] = useState(false);
   const [tab, setTab] = useState<'body' | 'headers' | 'preview' | 'tests' | 'cookies' | 'history'>('body');
   const [headersPinned, setHeadersPinned] = useState(false);
   const [testsPinned, setTestsPinned] = useState(false);
@@ -482,7 +460,13 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
   };
 
   const handleClear = () => {
+    if (!response) return;
+    setConfirmClearResp(true);
+  };
+
+  const performClearResp = () => {
     onClear?.();
+    setConfirmClearResp(false);
   };
 
   const handleSave = async () => {
@@ -583,7 +567,7 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
     <div className={styles.viewer}>
       <div className={styles.header}>
         <span className={styles.sectionLabel}>Response</span>
-        <div className={styles.status} style={{ backgroundColor: statusColor }}>
+        <div className={styles.status} style={{ ['--status-bg' as string]: statusColor }}>
           {displayedResponse.status}{displayedResponse.statusText ? ` ${displayedResponse.statusText}` : ''}
         </div>
         <div className={styles.info}>
@@ -1092,6 +1076,16 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
             </>
           )}
         </div>
+      )}
+      {confirmClearResp && (
+        <ConfirmModal
+          title="Clear response?"
+          confirmLabel="Clear"
+          onConfirm={performClearResp}
+          onCancel={() => setConfirmClearResp(false)}
+        >
+          This will remove the currently displayed response. History entries are not affected.
+        </ConfirmModal>
       )}
     </div>
   );

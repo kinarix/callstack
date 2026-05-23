@@ -14,7 +14,11 @@ import { formatBody } from '../../lib/formatBody';
 import { FAKER_TOKENS } from '../../lib/templateTokens';
 import { parseFormUrl, serializeFormUrl } from '../../lib/formUrlBody';
 import { COMMON_HEADER_NAMES } from '../../lib/headerPresets';
-import { useWrapBody } from '../../hooks/useWrapBody';
+import { useWrapToggle } from '../../hooks/useWrapBody';
+import { invoke } from '@tauri-apps/api/core';
+import { CopyIcon } from '../Sidebar/SidebarIcons';
+import { WrapIcon, SaveIcon, ClearIcon, FormatIcon } from './editorIcons';
+import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 import styles from './TabPanel.module.css';
 
 const BodyEditor = lazy(() => import('./BodyEditor').then(m => ({ default: m.BodyEditor })));
@@ -208,7 +212,9 @@ interface TabPanelProps {
 }
 
 export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, secrets, onScriptTest, copyFlash, useCookieJar = true, onUseCookieJarChange, projectId = null, bodyEditorViewRef, siblingRequests }: Readonly<TabPanelProps>) {
-  const [wrapBody, setWrapBody] = useWrapBody();
+  const [wrapBody, setWrapBody] = useWrapToggle('callstack.wrapBody.request');
+  const [bodyCopyFlash, setBodyCopyFlash] = useState(false);
+  const [confirmClearBody, setConfirmClearBody] = useState(false);
   const [pinned, setPinned] = useState<Set<PinnableTab>>(() => request ? loadPinned(request.id) : new Set());
   const [implicitExpanded, setImplicitExpanded] = useState(true);
   const [userHeadersExpanded, setUserHeadersExpanded] = useState(true);
@@ -369,6 +375,38 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
       });
     }
     handleBodyChange(formatted);
+  };
+
+  const bodyHasContent = !!request.body.trim();
+
+  const handleBodyCopy = async () => {
+    if (!bodyHasContent) return;
+    const text = formatBody(request.body, currentContentType);
+    try { await navigator.clipboard.writeText(text); }
+    catch { try { await invoke('write_clipboard', { text }); } catch {} }
+    setBodyCopyFlash(true);
+    setTimeout(() => setBodyCopyFlash(false), 1200);
+  };
+
+  const handleBodySave = async () => {
+    if (!bodyHasContent) return;
+    try {
+      await invoke('save_file', { filename: 'request-body.txt', content: request.body });
+    } catch (err) {
+      console.error('Failed to save request body:', err);
+    }
+  };
+
+  const performBodyClear = () => {
+    handleBodyChange('');
+    const view = bodyEditorViewRef?.current;
+    if (view) {
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: '' },
+        annotations: [ExternalChange.of(true)],
+      });
+    }
+    setConfirmClearBody(false);
   };
 
   const handleBodyChange = (body: string) => {
@@ -625,33 +663,84 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
                 secrets={secrets}
               />
             ) : (
-              <>
-                <div className={styles.bodyToolbar}>
-                  {isFormattableType && (
-                    <button className={styles.formatBtn} onClick={handleFormat} disabled={!request.body.trim()}>Format</button>
-                  )}
-                  <label className={styles.wrapToggle} title="Wrap long lines (display only)">
-                    <input
-                      type="checkbox"
-                      checked={wrapBody}
-                      onChange={(e) => setWrapBody(e.target.checked)}
-                    />
-                    <span>Wrap</span>
-                  </label>
-                </div>
-                <Suspense fallback={null}>
-                  <BodyEditor
-                    body={request.body}
-                    contentType={currentContentType}
-                    onChange={handleBodyChange}
-                    copyFlash={copyFlash}
-                    envVars={envVars}
-                    secrets={secrets}
-                    memoryKey={`body:${request.id}`}
-                    viewRef={bodyEditorViewRef}
-                  />
-                </Suspense>
-              </>
+              <Suspense fallback={null}>
+                <BodyEditor
+                  body={request.body}
+                  contentType={currentContentType}
+                  onChange={handleBodyChange}
+                  copyFlash={copyFlash || bodyCopyFlash}
+                  envVars={envVars}
+                  secrets={secrets}
+                  memoryKey={`body:${request.id}`}
+                  viewRef={bodyEditorViewRef}
+                  floatingButtons={
+                    <>
+                      {isFormattableType && (
+                        <button
+                          className={`${styles.iconBtn} ${styles.iconBtnFormat}`}
+                          onClick={handleFormat}
+                          disabled={!bodyHasContent}
+                          title="Format JSON/XML body"
+                          aria-label="Format"
+                          type="button"
+                        >
+                          <FormatIcon />
+                        </button>
+                      )}
+                      <button
+                        className={`${styles.iconBtn} ${styles.iconBtnWrap} ${wrapBody ? styles.wrapIconOn : ''}`}
+                        onClick={() => setWrapBody(!wrapBody)}
+                        disabled={!bodyHasContent}
+                        title={wrapBody ? 'Wrap ON — click to disable' : 'Wrap OFF — click to enable'}
+                        aria-label={wrapBody ? 'Wrap ON' : 'Wrap OFF'}
+                        type="button"
+                      >
+                        <WrapIcon />
+                      </button>
+                      <button
+                        className={`${styles.iconBtn} ${styles.iconBtnCopy}`}
+                        onClick={handleBodyCopy}
+                        disabled={!bodyHasContent}
+                        title="Copy request body"
+                        aria-label="Copy"
+                        type="button"
+                      >
+                        <CopyIcon />
+                      </button>
+                      <button
+                        className={`${styles.iconBtn} ${styles.iconBtnSave}`}
+                        onClick={handleBodySave}
+                        disabled={!bodyHasContent}
+                        title="Save request body to file"
+                        aria-label="Save"
+                        type="button"
+                      >
+                        <SaveIcon />
+                      </button>
+                      <button
+                        className={`${styles.iconBtn} ${styles.iconBtnClear}`}
+                        onClick={() => setConfirmClearBody(true)}
+                        disabled={!bodyHasContent}
+                        title="Clear request body"
+                        aria-label="Clear"
+                        type="button"
+                      >
+                        <ClearIcon />
+                      </button>
+                    </>
+                  }
+                />
+              </Suspense>
+            )}
+            {confirmClearBody && (
+              <ConfirmModal
+                title="Clear request body?"
+                confirmLabel="Clear"
+                onConfirm={performBodyClear}
+                onCancel={() => setConfirmClearBody(false)}
+              >
+                This will erase the current request body. This action cannot be undone.
+              </ConfirmModal>
             )}
           </>
         )}

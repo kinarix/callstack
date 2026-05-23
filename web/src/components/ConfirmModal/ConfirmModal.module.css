@@ -23,8 +23,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 16px 20px 12px;
-  border-bottom: 1px solid var(--border-subtle);
+  padding: 10px 16px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--status-error) 28%, var(--bg-secondary)) 0%,
+    color-mix(in srgb, var(--status-error) 14%, var(--bg-secondary)) 100%
+  );
+  border-bottom: 1px solid color-mix(in srgb, var(--status-error) 45%, var(--border-subtle));
+  border-radius: 7px 7px 0 0;
 }
 
 .warnIcon {
@@ -34,9 +40,11 @@
 
 .title {
   font-family: 'Outfit', sans-serif;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   color: var(--text-primary);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
 }
 
 .body {

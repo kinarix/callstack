@@ -385,6 +385,9 @@ function AppContent() {
   }, [state.error, dispatch]);
 
   const handleNewRequest = useCallback(async (initialUrl?: string) => {
+    // Guard against being wired straight to a click handler — the MouseEvent
+    // would otherwise be passed in as `initialUrl` and break updateRequest.
+    const url = typeof initialUrl === 'string' && initialUrl.trim() ? initialUrl : null;
     let scratchId = state.scratchProjectId;
     if (scratchId == null) {
       const project = await createProject(null, SCRATCH_PROJECT_NAME, null);
@@ -393,8 +396,8 @@ function AppContent() {
       scratchId = project.id;
     }
     let req = await createRequest(scratchId, null, 'New Request', null);
-    if (initialUrl) {
-      const updated = await updateRequest(req.id, { url: initialUrl });
+    if (url) {
+      const updated = await updateRequest(req.id, { url });
       req = updated;
     }
     dispatch({ type: 'ADD_REQUEST', payload: req });
@@ -506,7 +509,7 @@ function AppContent() {
             <div className={styles.confirmActions}>
               {state.error.showReset && (
                 <button className={styles.confirmReset} onClick={clearUIState}>
-                  Clear UI State &amp; Reload
+                  Reset and reload
                 </button>
               )}
               <button className={styles.confirmCancel} onClick={() => dispatch({ type: 'CLEAR_ERROR' })}>
