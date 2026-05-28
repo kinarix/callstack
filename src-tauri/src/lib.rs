@@ -1,5 +1,6 @@
 mod database;
 mod http_client;
+mod replay_server;
 
 use database::Database;
 use serde::Serialize;
@@ -339,6 +340,7 @@ pub fn run() {
         .manage(db)
         .manage(cancel_handle)
         .manage(sys_info)
+        .manage(replay_server::ReplayServers::default())
         .invoke_handler(tauri::generate_handler![
             http_client::send_request,
             database::list_projects,
@@ -376,6 +378,15 @@ pub fn run() {
             database::create_automation,
             database::update_automation,
             database::delete_automation,
+            database::list_replays,
+            database::create_replay,
+            database::update_replay,
+            database::delete_replay,
+            database::list_replay_hits,
+            database::clear_replay_hits,
+            replay_server::start_replay,
+            replay_server::stop_replay,
+            replay_server::list_running_replays,
             database::save_automation_run,
             database::list_automation_runs,
             database::clear_automation_runs,

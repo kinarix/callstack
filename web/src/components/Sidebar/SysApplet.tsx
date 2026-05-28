@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import styles from './SysApplet.module.css';
 
@@ -74,6 +74,24 @@ export function SysApplet() {
   const [cpuHistory, setCpuHistory] = useState<number[]>([]);
   const [memHistory, setMemHistory] = useState<number[]>([]);
   const [hovered, setHovered] = useState(false);
+  const hoverTimer = useRef<number | null>(null);
+
+  const cancelHoverTimer = () => {
+    if (hoverTimer.current !== null) {
+      window.clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+  };
+  const showAfterDelay = () => {
+    cancelHoverTimer();
+    hoverTimer.current = window.setTimeout(() => setHovered(true), 1200);
+  };
+  const hideNow = () => {
+    cancelHoverTimer();
+    setHovered(false);
+  };
+
+  useEffect(() => cancelHoverTimer, []);
 
   useEffect(() => {
     const poll = async () => {
@@ -93,10 +111,10 @@ export function SysApplet() {
     <div
       className={styles.applet}
       tabIndex={0}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={showAfterDelay}
+      onMouseLeave={hideNow}
       onFocus={() => setHovered(true)}
-      onBlur={() => setHovered(false)}
+      onBlur={hideNow}
     >
       {hovered && (
         <div className={styles.popover}>

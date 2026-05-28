@@ -14,10 +14,12 @@ import { getStatusColor, formatBytes } from '../../lib/utils';
 import { formatBody, normalizeLineEndings } from '../../lib/formatBody';
 import { isJwt, findJwtsInBody } from '../../lib/jwt';
 import { JwtBadge } from '../JwtBadge/JwtBadge';
-import { CopyIcon } from '../Sidebar/SidebarIcons';
+import { CopyIcon, ReplayIcon } from '../Sidebar/SidebarIcons';
 import { WrapIcon, SaveIcon, ClearIcon } from '../RequestBuilder/editorIcons';
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 import { useDatabase } from '../../hooks/useDatabase';
+import { useReplayServer } from '../../hooks/useReplayServer';
+import { useSettings } from '../../hooks/useSettings';
 import { useEditorMemory } from '../../hooks/useEditorMemory';
 import { useWrapBody } from '../../hooks/useWrapBody';
 import { urlLinkExtension, type UrlClickInfo } from '../../lib/cmUrlLinks';
@@ -353,7 +355,9 @@ function UrlPopover({
 
 export function ResponseViewer({ response, requestId, requestName, copyFlash, onClear, onCopy, onOpenUrlInNewRequest }: ResponseViewerProps) {
   const { state, dispatch } = useApp();
-  const { getResponseHistory, clearRequestHistory } = useDatabase();
+  const { getResponseHistory, clearRequestHistory, createReplay } = useDatabase();
+  const { startReplay } = useReplayServer();
+  const { settings } = useSettings();
   const [wrapBody, setWrapBody] = useWrapBody();
   const [urlPopover, setUrlPopover] = useState<UrlClickInfo | null>(null);
   const [confirmClearResp, setConfirmClearResp] = useState(false);
@@ -482,6 +486,27 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
     } catch (err) {
       console.error('Failed to save response:', err);
       dispatch({ type: 'SHOW_ERROR', payload: { message: `Failed to save response: ${String(err)}`, showReset: true } });
+    }
+  };
+
+  const handleStartReplay = async () => {
+    if (requestId == null) return;
+    const req = state.requests.find((r) => r.id === requestId);
+    if (!req) return;
+    try {
+      const name = requestName?.trim() || req.name || 'Replay';
+      const replay = await createReplay(req.project_id, requestId, name, settings.replayDefaultPort);
+      dispatch({ type: 'ADD_REPLAY', payload: replay });
+      try {
+        await startReplay(replay.id, requestId, replay.port, settings.replayHitLimit);
+        dispatch({ type: 'SET_REPLAY_RUNNING', payload: { id: replay.id, running: true } });
+      } catch (err) {
+        dispatch({ type: 'SHOW_ERROR', payload: { message: `Replay created but failed to start: ${String(err)}`, showReset: false } });
+      }
+      dispatch({ type: 'SET_ACTIVE_REPLAY', payload: replay.id });
+      dispatch({ type: 'SET_VIEW', payload: 'replay' });
+    } catch (err) {
+      dispatch({ type: 'SHOW_ERROR', payload: { message: `Failed to create replay: ${String(err)}`, showReset: false } });
     }
   };
 
@@ -697,6 +722,11 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
             )}
           </button>
         )}
+        {displayedResponse.fromReplay && (
+          <span className={styles.replayBadge} title="This response was served by a local replay server (not a live endpoint)">
+            <ReplayIcon /> Replayed
+          </span>
+        )}
       </div>
 
 
@@ -780,6 +810,11 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
               <button className={`${styles.floatingIconBtn} ${styles.iconBtnClear}`} onClick={handleClear} title="Clear response" aria-label="Clear">
                 <ClearIcon />
               </button>
+              {requestId != null && !displayedResponse.fromReplay && (
+                <button className={`${styles.floatingIconBtn} ${styles.iconBtnReplay}`} onClick={handleStartReplay} title="Start a local replay server for this request" aria-label="Start replay">
+                  <ReplayIcon />
+                </button>
+              )}
             </div>
             <div className={styles.responseEditorWrap}>
               <CodeMirror

@@ -97,6 +97,7 @@ export interface Response {
   requestHeaders?: KeyValue[];
   requestParams?: KeyValue[];
   requestBody?: string;
+  fromReplay?: boolean;
 }
 
 export interface FileAttachment {
@@ -170,8 +171,11 @@ export interface AppState {
   expandedFolders: Set<number>;
   logs: LogEntry[];
   automations: Automation[];
-  activeView: 'request' | 'automation' | 'environment' | 'dataFile' | 'cookies';
+  replays: Replay[];
+  runningReplayIds: Set<number>;
+  activeView: 'request' | 'automation' | 'environment' | 'dataFile' | 'cookies' | 'replay';
   activeAutomationId: number | null;
+  activeReplayId: number | null;
   activeEnvironmentId: number | null;
   activeDataFileId: number | null;
   activeCookieDomain: string | null;
@@ -221,7 +225,13 @@ export type AppAction =
   | { type: 'ADD_AUTOMATION'; payload: Automation }
   | { type: 'UPDATE_AUTOMATION'; payload: Automation }
   | { type: 'DELETE_AUTOMATION'; payload: number }
-  | { type: 'SET_VIEW'; payload: 'request' | 'automation' | 'environment' | 'dataFile' | 'cookies' }
+  | { type: 'SET_REPLAYS'; payload: Replay[] }
+  | { type: 'ADD_REPLAY'; payload: Replay }
+  | { type: 'UPDATE_REPLAY'; payload: Replay }
+  | { type: 'DELETE_REPLAY'; payload: number }
+  | { type: 'SET_ACTIVE_REPLAY'; payload: number | null }
+  | { type: 'SET_REPLAY_RUNNING'; payload: { id: number; running: boolean } }
+  | { type: 'SET_VIEW'; payload: 'request' | 'automation' | 'environment' | 'dataFile' | 'cookies' | 'replay' }
   | { type: 'SET_ACTIVE_COOKIE_DOMAIN'; payload: string | null }
   | { type: 'BUMP_COOKIE_JAR_VERSION' }
   | { type: 'SET_DATA_FILES'; payload: DataFile[] }
@@ -269,6 +279,29 @@ export interface Automation {
   createdAt: string;
   updatedAt: string;
   envId: number | null;
+}
+
+export interface Replay {
+  id: number;
+  projectId: number;
+  requestId: number;
+  name: string;
+  port: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReplayHit {
+  replayId: number;
+  method: string;
+  path: string;
+  matched: boolean;
+  status: number;
+  requestHeaders: [string, string][];
+  requestBody: string;
+  responseHeaders: [string, string][];
+  responseBody: string;
+  ts: number;
 }
 
 export interface AutomationRequestResult {

@@ -3,6 +3,7 @@ import { ThemeToggle } from '../Header/ThemeToggle';
 import { AccentToggle } from '../Header/AccentToggle';
 import { useApp } from '../../context/AppContext';
 import { useDatabase } from '../../hooks/useDatabase';
+import { useReplayServer } from '../../hooks/useReplayServer';
 import { useShortcuts } from '../../hooks/useShortcuts';
 import { ShortcutModal } from '../ShortcutModal/ShortcutModal';
 import { NewProjectModal } from './NewProjectModal';
@@ -17,7 +18,7 @@ import { exportProjectAsOpenAPIYAML } from '../../utils/openapiExport';
 import { exportProject as exportCallstackProject, exportProjectPlain, importArchive, deserializeAutomationStep } from '../../utils/callstackArchive';
 import type { ArchivePreview } from '../../lib/callstackSchema';
 import { invoke } from '@tauri-apps/api/core';
-import type { AppAction, AppState, Automation, Cookie, DataFile, Environment, Request } from '../../lib/types';
+import type { AppAction, AppState, Automation, Cookie, DataFile, Environment, Replay, Request } from '../../lib/types';
 import { isScratchProject } from '../../lib/utils';
 import { FilePickerModal } from '../FilePickerModal/FilePickerModal';
 import { ProjectRow } from './ProjectRow';
@@ -57,7 +58,8 @@ type PendingDelete =
   | { type: 'request'; id: number; name: string; method: string }
   | { type: 'env'; id: number; name: string }
   | { type: 'automation'; id: number; name: string }
-  | { type: 'dataFile'; id: number; name: string };
+  | { type: 'dataFile'; id: number; name: string }
+  | { type: 'replay'; id: number; name: string };
 
 interface SidebarProps {
   collapsed: boolean;
@@ -135,6 +137,7 @@ function getLogoGradient(): string {
 
 export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, onOpenSettings, showSysApplet }: Readonly<SidebarProps>) {
   const { state, dispatch } = useApp();
+  const { stopReplay } = useReplayServer();
   const {
     createProject,
     createRequest,
@@ -154,6 +157,8 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     createDataFile,
     updateDataFile,
     deleteDataFile,
+    updateReplay,
+    deleteReplay,
     moveRequest,
     moveFolder,
     reorderRequests,
@@ -198,6 +203,15 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     catch { return new Set<number>(); }
   });
   const [editingDataFileId, setEditingDataFileId] = useState<number | null>(null);
+  const [editingReplayId, setEditingReplayId] = useState<number | null>(null);
+  const [confirmStopReplays, setConfirmStopReplays] = useState(false);
+  const [expandedReplaySections, setExpandedReplaySections] = useState<Set<number>>(() => {
+    try { return new Set<number>(JSON.parse(localStorage.getItem('callstack.expandedReplaySections') || '[]')); }
+    catch { return new Set<number>(); }
+  });
+  useEffect(() => {
+    localStorage.setItem('callstack.expandedReplaySections', JSON.stringify([...expandedReplaySections]));
+  }, [expandedReplaySections]);
   useEffect(() => {
     localStorage.setItem('callstack.expandedDataFileSections', JSON.stringify([...expandedDataFileSections]));
   }, [expandedDataFileSections]);
@@ -355,6 +369,36 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     dispatch({ type: 'SET_ACTIVE_AUTOMATION', payload: automation.id });
   };
 
+  const requestDeleteReplay = (id: number, name: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPendingDelete({ type: 'replay', id, name });
+  };
+
+  const handleOpenReplay = (replay: Replay) => {
+    dispatch({ type: 'SET_VIEW', payload: 'replay' });
+    dispatch({ type: 'SET_ACTIVE_REPLAY', payload: replay.id });
+  };
+
+  const handleStopReplays = () => setConfirmStopReplays(true);
+
+  const doStopReplays = async () => {
+    // All-or-nothing: stop every running replay (they share servers by port).
+    const ids = [...state.runningReplayIds];
+    await Promise.all(ids.map((id) => stopReplay(id).catch(() => {})));
+    ids.forEach((id) => dispatch({ type: 'SET_REPLAY_RUNNING', payload: { id, running: false } }));
+    setConfirmStopReplays(false);
+  };
+
+  const handleReplayRenameCommit = async (id: number, name: string) => {
+    setEditingReplayId(null);
+    const replay = state.replays.find((r) => r.id === id);
+    if (!replay) return;
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === replay.name) return;
+    const updated = await updateReplay(id, trimmed, replay.port);
+    dispatch({ type: 'UPDATE_REPLAY', payload: updated });
+  };
+
   const handleCreateDataFile = async (projectId: number, e: React.MouseEvent) => {
     e.stopPropagation();
     const dataFile = await createDataFile(projectId, 'New Data File', '');
@@ -447,12 +491,19 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     setPendingDelete(null);
     try {
       if (pd.type === 'project') {
+        const affected = state.replays.filter((r) => r.projectId === pd.id);
+        await Promise.all(affected.filter((r) => state.runningReplayIds.has(r.id)).map((r) => stopReplay(r.id).catch(() => {})));
         await deleteProject(pd.id);
         dispatch({ type: 'DELETE_PROJECT', payload: pd.id });
       } else if (pd.type === 'folder') {
+        const folderReqIds = new Set(state.requests.filter((r) => r.folder_id === pd.id).map((r) => r.id));
+        const affected = state.replays.filter((r) => folderReqIds.has(r.requestId));
+        await Promise.all(affected.filter((r) => state.runningReplayIds.has(r.id)).map((r) => stopReplay(r.id).catch(() => {})));
         await deleteFolder(pd.id);
         dispatch({ type: 'DELETE_FOLDER', payload: pd.id });
       } else if (pd.type === 'request') {
+        const affected = state.replays.filter((r) => r.requestId === pd.id);
+        await Promise.all(affected.filter((r) => state.runningReplayIds.has(r.id)).map((r) => stopReplay(r.id).catch(() => {})));
         await deleteRequest(pd.id);
         removeShortcut(pd.id);
         dispatch({ type: 'DELETE_REQUEST', payload: pd.id });
@@ -465,13 +516,17 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
       } else if (pd.type === 'dataFile') {
         await deleteDataFile(pd.id);
         dispatch({ type: 'DELETE_DATA_FILE', payload: pd.id });
+      } else if (pd.type === 'replay') {
+        await stopReplay(pd.id).catch(() => {});
+        await deleteReplay(pd.id);
+        dispatch({ type: 'DELETE_REPLAY', payload: pd.id });
       }
     } catch (error) {
       console.error('Delete failed:', error);
       dispatch({ type: 'SHOW_ERROR', payload: { message: `Delete failed: ${String(error)}`, showReset: true } });
       setPendingDelete(pd);
     }
-  }, [pendingDelete, deleteProject, deleteFolder, deleteRequest, deleteEnvironment, deleteAutomation, deleteDataFile, removeShortcut, dispatch]);
+  }, [pendingDelete, state.replays, state.requests, state.runningReplayIds, deleteProject, deleteFolder, deleteRequest, deleteEnvironment, deleteAutomation, deleteDataFile, deleteReplay, stopReplay, removeShortcut, dispatch]);
 
   const handleCreateFolder = (projectId: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1078,6 +1133,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
             pendingDelete.type === 'folder' ? `Delete folder "${pendingDelete.name}"?` :
             pendingDelete.type === 'request' ? `Delete request "${pendingDelete.name}"?` :
             pendingDelete.type === 'dataFile' ? `Delete data file "${pendingDelete.name}"?` :
+            pendingDelete.type === 'replay' ? `Delete replay "${pendingDelete.name}"?` :
             `Delete environment "${pendingDelete.name}"?`
           }
           onConfirm={handleConfirmDelete}
@@ -1138,6 +1194,12 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
               <p>This action cannot be undone.</p>
             </>
           )}
+          {pendingDelete.type === 'replay' && (
+            <>
+              <p>Permanently delete replay <strong>{pendingDelete.name}</strong>? The local server will be stopped.</p>
+              <p>This action cannot be undone.</p>
+            </>
+          )}
         </ConfirmModal>
       )}
 
@@ -1153,6 +1215,18 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
           ) : (
             <p>This will permanently delete all cookies for <strong>{pendingCookieClear.domain}</strong>. This action cannot be undone.</p>
           )}
+        </ConfirmModal>
+      )}
+
+      {confirmStopReplays && (
+        <ConfirmModal
+          title="Stop replay servers"
+          confirmLabel="Stop all"
+          tone="warning"
+          onConfirm={doStopReplays}
+          onCancel={() => setConfirmStopReplays(false)}
+        >
+          <p>Stop all running replay servers? Any local clients pointed at them will stop receiving responses.</p>
         </ConfirmModal>
       )}
 
@@ -1295,6 +1369,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
                 activeAutomationId={state.activeAutomationId}
                 activeEnvironmentId={state.activeEnvironmentId}
                 activeDataFileId={state.activeDataFileId}
+                activeReplayId={state.activeReplayId}
                 executingRequestId={state.executingRequestId}
                 dragOver={dragOver}
                 dragging={dragging}
@@ -1325,6 +1400,16 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
                 editingAutomationId={editingAutomationId}
                 onStartEditAutomation={setEditingAutomationId}
                 onAutomationRenameCommit={handleAutomationRenameCommit}
+                projectReplays={state.replays.filter((r) => r.projectId === project.id)}
+                expandedReplaySections={expandedReplaySections}
+                setExpandedReplaySections={setExpandedReplaySections}
+                runningReplayIds={state.runningReplayIds}
+                onStopReplays={handleStopReplays}
+                onOpenReplay={handleOpenReplay}
+                onDeleteReplay={requestDeleteReplay}
+                editingReplayId={editingReplayId}
+                onStartEditReplay={setEditingReplayId}
+                onReplayRenameCommit={handleReplayRenameCommit}
                 projectDataFiles={dataFiles.filter((d) => d.project_id === project.id)}
                 expandedDataFileSections={expandedDataFileSections}
                 setExpandedDataFileSections={setExpandedDataFileSections}
@@ -1371,6 +1456,8 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
           }}
           refreshSignal={state.currentResponse?.id}
         />
+        {showSysApplet && <SysApplet />}
+
         <div className={styles.sidebarFooter}>
           <button className={`${styles.iconAction} ${styles.settingsBtn}`} onClick={onOpenSettings} title="Settings">
             <GearIcon />
@@ -1388,8 +1475,6 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
             </svg>
           </button>
         </div>
-
-        {showSysApplet && <SysApplet />}
       </div>
     </>
   );

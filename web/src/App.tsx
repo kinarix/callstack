@@ -8,10 +8,12 @@ import AutomationView from './components/AutomationView/AutomationView';
 import EnvironmentView from './components/EnvironmentView/EnvironmentView';
 import DataFileView from './components/DataFileView/DataFileView';
 import CookieView from './components/CookieView/CookieView';
+import ReplayView from './components/ReplayView/ReplayView';
 import { Footer } from './components/Footer/Footer';
 import { SettingsModal } from './components/SettingsModal/SettingsModal';
 import styles from './App.module.css';
 import { useDatabase } from './hooks/useDatabase';
+import { useReplayServer } from './hooks/useReplayServer';
 import { useSettings, matchesShortcut } from './hooks/useSettings';
 import { formatBody } from './lib/formatBody';
 import { isScratchProject, SCRATCH_PROJECT_NAME } from './lib/utils';
@@ -26,8 +28,9 @@ function clearUIState() {
 
 function AppContent() {
   const { state, dispatch } = useApp();
-  const { loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations, listDataFiles, createRequest, createProject, duplicateRequest, getLastResponse, updateEnvironmentSecrets, updateRequest } = useDatabase();
-  const { settings, setZoom, setShortcut, setResponseHistoryLimit, setHttpTimeout, setFormatOnSend, setSysApplet, resetSettings } = useSettings();
+  const { loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations, listDataFiles, listReplays, createRequest, createProject, duplicateRequest, getLastResponse, updateEnvironmentSecrets, updateRequest } = useDatabase();
+  const { listRunningReplays } = useReplayServer();
+  const { settings, setZoom, setShortcut, setResponseHistoryLimit, setReplayHitLimit, setReplayDefaultPort, setHttpTimeout, setFormatOnSend, setSysApplet, resetSettings } = useSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [displayZoom, setDisplayZoom] = useState(settings.zoom);
   const displayZoomRef = useRef(settings.zoom);
@@ -105,12 +108,14 @@ function AppContent() {
 
       // Load all child data BEFORE dispatching anything, so the first render with projects
       // also has requests/automations — eliminates the "blank intermediate state" flash.
-      const [allRequests, allFolders, allEnvs, allAutomations, allDataFiles] = await Promise.all([
+      const [allRequests, allFolders, allEnvs, allAutomations, allDataFiles, allReplays, runningReplayIds] = await Promise.all([
         Promise.all(projects.map((p) => loadUserRequests(p.id))).then((r) => r.flat()),
         Promise.all(projects.map((p) => loadFolders(p.id))).then((r) => r.flat()),
         Promise.all(projects.map((p) => listEnvironments(p.id))).then((r) => r.flat()),
         Promise.all(projects.map((p) => listAutomations(p.id))).then((r) => r.flat()),
         Promise.all(projects.map((p) => listDataFiles(p.id))).then((r) => r.flat()),
+        Promise.all(projects.map((p) => listReplays(p.id))).then((r) => r.flat()),
+        listRunningReplays().catch(() => [] as number[]),
       ]);
 
       // Pick initial project from non-scratch projects only (LS pref → first)
@@ -170,6 +175,8 @@ function AppContent() {
       dispatch({ type: 'SET_FOLDERS', payload: allFolders });
       dispatch({ type: 'SET_ENVIRONMENTS', payload: allEnvs });
       dispatch({ type: 'SET_AUTOMATIONS', payload: allAutomations });
+      dispatch({ type: 'SET_REPLAYS', payload: allReplays });
+      runningReplayIds.forEach((id) => dispatch({ type: 'SET_REPLAY_RUNNING', payload: { id, running: true } }));
       dispatch({ type: 'SET_DATA_FILES', payload: allDataFiles });
       dispatch({ type: 'SET_CURRENT_PROJECT', payload: initialProjectId });
       if (restoredReqId != null) {
@@ -445,6 +452,12 @@ function AppContent() {
                 showExpandBtn={sidebarCollapsed}
                 onExpand={() => setSidebarCollapsed(false)}
               />
+            ) : state.activeView === 'replay' && state.activeReplayId !== null ? (
+              <ReplayView
+                replayId={state.activeReplayId}
+                showExpandBtn={sidebarCollapsed}
+                onExpand={() => setSidebarCollapsed(false)}
+              />
             ) : state.activeView === 'cookies' ? (
               <CookieView
                 showExpandBtn={sidebarCollapsed}
@@ -493,6 +506,8 @@ function AppContent() {
           onSetZoom={setZoom}
           onSetShortcut={setShortcut}
           onSetResponseHistoryLimit={setResponseHistoryLimit}
+          onSetReplayHitLimit={setReplayHitLimit}
+          onSetReplayDefaultPort={setReplayDefaultPort}
           onSetHttpTimeout={setHttpTimeout}
           onSetFormatOnSend={setFormatOnSend}
           onSetSysApplet={setSysApplet}

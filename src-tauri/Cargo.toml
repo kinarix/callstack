@@ -29,6 +29,7 @@ flate2 = "1"
 brotli = "3"
 base64 = "0.22"
 rusqlite = { version = "0.39", features = ["bundled"] }
+tiny_http = "0.12"
 tokio = { version = "1", features = ["full"] }
 dirs = "6"
 rfd = "0.17"

@@ -206,6 +206,31 @@ impl Database {
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
                 UNIQUE(project_id, domain, path, name) ON CONFLICT REPLACE
+            );
+            CREATE TABLE IF NOT EXISTS replays (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id INTEGER NOT NULL,
+                request_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                port INTEGER NOT NULL DEFAULT 9090,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+                FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE
+            );
+            CREATE TABLE IF NOT EXISTS replay_hits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                replay_id INTEGER NOT NULL,
+                method TEXT NOT NULL,
+                path TEXT NOT NULL,
+                matched INTEGER NOT NULL DEFAULT 0,
+                status INTEGER NOT NULL DEFAULT 0,
+                request_headers TEXT NOT NULL DEFAULT '[]',
+                request_body TEXT NOT NULL DEFAULT '',
+                response_headers TEXT NOT NULL DEFAULT '[]',
+                response_body TEXT NOT NULL DEFAULT '',
+                ts INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY (replay_id) REFERENCES replays(id) ON DELETE CASCADE
             );",
         )
         .map_err(|e| format!("Cannot create tables: {e}"))?;
@@ -237,6 +262,14 @@ impl Database {
         );
         let _ = conn.execute(
             "ALTER TABLE responses ADD COLUMN request_body TEXT NOT NULL DEFAULT ''",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE replay_hits ADD COLUMN response_body TEXT NOT NULL DEFAULT ''",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE replay_hits ADD COLUMN response_headers TEXT NOT NULL DEFAULT '[]'",
             [],
         );
 
@@ -1524,6 +1557,160 @@ pub fn update_automation(
 pub fn delete_automation(db: tauri::State<Database>, id: i64) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM automations WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Replay {
+    pub id: i64,
+    pub project_id: i64,
+    pub request_id: i64,
+    pub name: String,
+    pub port: i64,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+// --- Replay commands ---
+
+#[tauri::command]
+pub fn list_replays(db: tauri::State<Database>, project_id: i64) -> Result<Vec<Replay>, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT id, project_id, request_id, name, port, created_at, updated_at FROM replays WHERE project_id = ?1 ORDER BY created_at ASC")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![project_id], |row| {
+            Ok(Replay {
+                id: row.get(0)?,
+                project_id: row.get(1)?,
+                request_id: row.get(2)?,
+                name: row.get(3)?,
+                port: row.get(4)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn create_replay(
+    db: tauri::State<Database>,
+    project_id: i64,
+    request_id: i64,
+    name: String,
+    port: i64,
+) -> Result<Replay, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT INTO replays (project_id, request_id, name, port) VALUES (?1, ?2, ?3, ?4)",
+        params![project_id, request_id, name, port],
+    )
+    .map_err(|e| e.to_string())?;
+    let id = conn.last_insert_rowid();
+    conn.query_row(
+        "SELECT id, project_id, request_id, name, port, created_at, updated_at FROM replays WHERE id = ?1",
+        params![id],
+        |row| Ok(Replay {
+            id: row.get(0)?,
+            project_id: row.get(1)?,
+            request_id: row.get(2)?,
+            name: row.get(3)?,
+            port: row.get(4)?,
+            created_at: row.get(5)?,
+            updated_at: row.get(6)?,
+        }),
+    )
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn update_replay(
+    db: tauri::State<Database>,
+    id: i64,
+    name: String,
+    port: i64,
+) -> Result<Replay, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE replays SET name = ?1, port = ?2, updated_at = CURRENT_TIMESTAMP WHERE id = ?3",
+        params![name, port, id],
+    )
+    .map_err(|e| e.to_string())?;
+    conn.query_row(
+        "SELECT id, project_id, request_id, name, port, created_at, updated_at FROM replays WHERE id = ?1",
+        params![id],
+        |row| Ok(Replay {
+            id: row.get(0)?,
+            project_id: row.get(1)?,
+            request_id: row.get(2)?,
+            name: row.get(3)?,
+            port: row.get(4)?,
+            created_at: row.get(5)?,
+            updated_at: row.get(6)?,
+        }),
+    )
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_replay(db: tauri::State<Database>, id: i64) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM replays WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayHit {
+    pub replay_id: i64,
+    pub method: String,
+    pub path: String,
+    pub matched: bool,
+    pub status: i64,
+    pub request_headers: Vec<(String, String)>,
+    pub request_body: String,
+    pub response_headers: Vec<(String, String)>,
+    pub response_body: String,
+    pub ts: i64,
+}
+
+#[tauri::command]
+pub fn list_replay_hits(db: tauri::State<Database>, replay_id: i64) -> Result<Vec<ReplayHit>, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT replay_id, method, path, matched, status, request_headers, request_body, response_headers, response_body, ts FROM replay_hits WHERE replay_id = ?1 ORDER BY id DESC")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![replay_id], |row| {
+            let req_headers_json: String = row.get(5)?;
+            let resp_headers_json: String = row.get(7)?;
+            Ok(ReplayHit {
+                replay_id: row.get(0)?,
+                method: row.get(1)?,
+                path: row.get(2)?,
+                matched: row.get::<_, i64>(3)? != 0,
+                status: row.get(4)?,
+                request_headers: serde_json::from_str(&req_headers_json).unwrap_or_default(),
+                request_body: row.get(6)?,
+                response_headers: serde_json::from_str(&resp_headers_json).unwrap_or_default(),
+                response_body: row.get(8)?,
+                ts: row.get(9)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn clear_replay_hits(db: tauri::State<Database>, replay_id: i64) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM replay_hits WHERE replay_id = ?1", params![replay_id])
         .map_err(|e| e.to_string())?;
     Ok(())
 }

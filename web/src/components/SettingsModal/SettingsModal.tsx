@@ -151,6 +151,8 @@ interface SettingsModalProps {
   onSetZoom: (zoom: number) => void;
   onSetShortcut: (action: keyof ActionShortcuts, value: string) => void;
   onSetResponseHistoryLimit: (limit: number) => void;
+  onSetReplayHitLimit: (limit: number) => void;
+  onSetReplayDefaultPort: (port: number) => void;
   onSetHttpTimeout: (secs: number) => void;
   onSetFormatOnSend: (v: boolean) => void;
   onSetSysApplet?: (v: boolean) => void;
@@ -237,7 +239,7 @@ function SystemTab({ settings, onSetSysApplet, sysStats, cpuHistory, ramHistory 
   );
 }
 
-export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetResponseHistoryLimit, onSetHttpTimeout, onSetFormatOnSend, onSetSysApplet, onClearNavHistory, onReset, onResetAll, onClose }: Readonly<SettingsModalProps>) {
+export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetResponseHistoryLimit, onSetReplayHitLimit, onSetReplayDefaultPort, onSetHttpTimeout, onSetFormatOnSend, onSetSysApplet, onClearNavHistory, onReset, onResetAll, onClose }: Readonly<SettingsModalProps>) {
   const [tab, setTab] = useState<Tab>('general');
   const [recording, setRecording] = useState<keyof ActionShortcuts | null>(null);
   const [confirmingReset, setConfirmingReset] = useState(false);
@@ -625,6 +627,44 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetRespons
                         </button>
                       )}
                     </div>
+                  </div>
+                </section>
+
+                <section className={styles.section}>
+                  <div className={styles.sectionTitle}>Replay Hits</div>
+                  <div className={styles.sectionDesc}>
+                    Number of incoming hits to keep per replay. Older hits are automatically removed as new requests arrive. Applies to replays started after changing this.
+                  </div>
+                  <div className={styles.historyLimitRow}>
+                    <select
+                      className={styles.historySelect}
+                      value={settings.replayHitLimit}
+                      onChange={(e) => onSetReplayHitLimit(Number(e.target.value))}
+                    >
+                      {HISTORY_LIMIT_OPTIONS.map(({ label, value }) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </section>
+
+                <section className={styles.section}>
+                  <div className={styles.sectionTitle}>Replay Server Port</div>
+                  <div className={styles.sectionDesc}>
+                    Default port used when starting a new replay. Replays sharing a port reuse the same local server.
+                  </div>
+                  <div className={styles.historyLimitRow}>
+                    <input
+                      type="number"
+                      min={1}
+                      max={65535}
+                      className={styles.historySelect}
+                      value={settings.replayDefaultPort}
+                      onChange={(e) => {
+                        const p = Number(e.target.value);
+                        if (Number.isFinite(p) && p >= 1 && p <= 65535) onSetReplayDefaultPort(p);
+                      }}
+                    />
                   </div>
                 </section>
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Automation, DataFile, Environment, Folder, Project, Request } from '../../lib/types';
+import type { Automation, DataFile, Environment, Folder, Project, Replay, Request } from '../../lib/types';
 import { RequestItem } from './RequestItem';
 import {
   AutomationIcon,
@@ -23,6 +23,9 @@ import {
   NewFolderIcon,
   PenIcon,
   ProjectIcon,
+  ReplayIcon,
+  StopIcon,
+  ReplaysFolderIcon,
 } from './SidebarIcons';
 import styles from './Sidebar.module.css';
 
@@ -98,10 +101,11 @@ export interface ProjectRowProps {
   editingRequestId: number | null;
   onEditRequest: (id: number | null) => void;
   currentRequestId: number | null;
-  activeView: 'request' | 'automation' | 'environment' | 'dataFile' | 'cookies';
+  activeView: 'request' | 'automation' | 'environment' | 'dataFile' | 'cookies' | 'replay';
   activeAutomationId: number | null;
   activeEnvironmentId: number | null;
   activeDataFileId: number | null;
+  activeReplayId: number | null;
   executingRequestId: number | null;
   dragOver: DragOver;
   dragging: React.MutableRefObject<{ kind: 'request' | 'folder'; id: number } | null>;
@@ -132,6 +136,16 @@ export interface ProjectRowProps {
   editingAutomationId: number | null;
   onStartEditAutomation: (id: number) => void;
   onAutomationRenameCommit: (id: number, name: string) => void;
+  projectReplays: Replay[];
+  expandedReplaySections: Set<number>;
+  setExpandedReplaySections: React.Dispatch<React.SetStateAction<Set<number>>>;
+  runningReplayIds: Set<number>;
+  onStopReplays: () => void;
+  onOpenReplay: (replay: Replay) => void;
+  onDeleteReplay: (id: number, name: string, e: React.MouseEvent) => void;
+  editingReplayId: number | null;
+  onStartEditReplay: (id: number) => void;
+  onReplayRenameCommit: (id: number, name: string) => void;
   projectDataFiles: DataFile[];
   expandedDataFileSections: Set<number>;
   setExpandedDataFileSections: React.Dispatch<React.SetStateAction<Set<number>>>;
@@ -187,6 +201,7 @@ export function ProjectRow({
   activeAutomationId,
   activeEnvironmentId,
   activeDataFileId,
+  activeReplayId,
   executingRequestId,
   dragOver,
   dragging,
@@ -217,6 +232,16 @@ export function ProjectRow({
   editingAutomationId,
   onStartEditAutomation,
   onAutomationRenameCommit,
+  projectReplays,
+  expandedReplaySections,
+  setExpandedReplaySections,
+  runningReplayIds,
+  onStopReplays,
+  onOpenReplay,
+  onDeleteReplay,
+  editingReplayId,
+  onStartEditReplay,
+  onReplayRenameCommit,
   projectDataFiles,
   expandedDataFileSections,
   setExpandedDataFileSections,
@@ -266,6 +291,7 @@ export function ProjectRow({
   const visibleEnvs = !filtering || projectHit ? projectEnvs : projectEnvs.filter((e) => hit(e.name));
   const visibleAutomations = !filtering || projectHit ? projectAutomations : projectAutomations.filter((a) => hit(a.name));
   const visibleDataFiles = !filtering || projectHit ? projectDataFiles : projectDataFiles.filter((d) => hit(d.name));
+  const visibleReplays = !filtering || projectHit ? projectReplays : projectReplays.filter((r) => hit(r.name));
   const visibleCookieDomains = !filtering || projectHit ? cookieDomains : cookieDomains.filter((d) => hit(d));
 
   const isProjectDragOver = dragOver?.type === 'project' && dragOver.id === project.id;
@@ -273,6 +299,7 @@ export function ProjectRow({
   const cookiesExpanded = expandedCookieSections.has(project.id) || (filtering && visibleCookieDomains.length > 0);
   const automationsExpanded = expandedAutomationSections.has(project.id) || (filtering && visibleAutomations.length > 0);
   const dataFilesExpanded = expandedDataFileSections.has(project.id) || (filtering && visibleDataFiles.length > 0);
+  const replaysExpanded = expandedReplaySections.has(project.id) || (filtering && visibleReplays.length > 0);
 
   function renderRequestRow(request: Request) {
     return (
@@ -710,6 +737,78 @@ export function ProjectRow({
                         className={`${styles.iconBtn} ${styles.deleteBtn}`}
                         onClick={(e) => onDeleteAutomation(automation.id, automation.name, e)}
                         title="Delete automation"
+                      >
+                        <BinIcon />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>}
+
+          {/* Replays group */}
+          {(!filtering || visibleReplays.length > 0) && <div className={styles.folder}>
+            <div
+              className={styles.folderRow}
+              onClick={() => setExpandedReplaySections((prev) => {
+                const next = new Set(prev);
+                if (next.has(project.id)) next.delete(project.id);
+                else next.add(project.id);
+                return next;
+              })}
+            >
+              <Chevron expanded={replaysExpanded} />
+              <ReplaysFolderIcon />
+              <span className={styles.folderName}>Replays</span>
+              {projectReplays.length > 0 && (
+                <span className={styles.countBadge}>{projectReplays.length}</span>
+              )}
+              {projectReplays.some((r) => runningReplayIds.has(r.id)) && (
+                <button
+                  className={`${styles.iconBtn} ${styles.replayStopBtn}`}
+                  onClick={(e) => { e.stopPropagation(); onStopReplays(); }}
+                  title="Stop replay server (stops all replays)"
+                >
+                  <StopIcon />
+                </button>
+              )}
+            </div>
+            {replaysExpanded && (
+              <div className={styles.folderChildren}>
+                {visibleReplays.length === 0 ? (
+                  !filtering && <div className={`${styles.treeRow} ${styles.emptyRow}`}>No replays</div>
+                ) : (
+                  visibleReplays.map((replay) => (
+                    <div
+                      key={replay.id}
+                      className={`${styles.treeRow} ${styles.automationRow} ${activeView === 'replay' && activeReplayId === replay.id ? styles.selected : ''}`}
+                      onClick={() => editingReplayId !== replay.id && onOpenReplay(replay)}
+                    >
+                      <span className={runningReplayIds.has(replay.id) ? styles.replayRunning : undefined}>
+                        <ReplayIcon />
+                      </span>
+                      {editingReplayId === replay.id ? (
+                        <InlineNameInput
+                          initialValue={replay.name}
+                          className={styles.folderNameInput}
+                          onCommit={(name) => onReplayRenameCommit(replay.id, name)}
+                          onCancel={() => onReplayRenameCommit(replay.id, replay.name)}
+                        />
+                      ) : (
+                        <span className={styles.automationName}>{replay.name}</span>
+                      )}
+                      <button
+                        className={`${styles.iconBtn} ${styles.renameBtn}`}
+                        onClick={(e) => { e.stopPropagation(); onStartEditReplay(replay.id); }}
+                        title="Rename replay"
+                      >
+                        <PenIcon />
+                      </button>
+                      <button
+                        className={`${styles.iconBtn} ${styles.deleteBtn}`}
+                        onClick={(e) => onDeleteReplay(replay.id, replay.name, e)}
+                        title="Delete replay"
                       >
                         <BinIcon />
                       </button>

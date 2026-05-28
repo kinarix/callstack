@@ -76,6 +76,30 @@
   text-align: center;
 }
 
+.replayBadge {
+  margin-left: auto;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--accent-get);
+  background: color-mix(in srgb, var(--accent-get) 16%, transparent);
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: default;
+  user-select: none;
+}
+.replayBadge svg {
+  width: 11px;
+  height: 11px;
+}
+
 .info {
   display: flex;
   gap: var(--space-2);
@@ -533,6 +557,7 @@
 .iconBtnCopy   { color: var(--accent-options); }
 .iconBtnSave   { color: var(--accent-get); }
 .iconBtnClear  { color: var(--accent-delete); }
+.iconBtnReplay { color: var(--accent-get); }
 
 .iconBtnWrap:hover {
   color: var(--accent-post);
@@ -548,6 +573,9 @@
   color: var(--accent-get);
   border-color: color-mix(in srgb, var(--accent-get) 55%, transparent);
   background: color-mix(in srgb, var(--accent-get) 12%, var(--bg-secondary));
+}
+.iconBtnReplay:hover {
+  background: color-mix(in srgb, var(--accent-get) 14%, transparent);
 }
 .iconBtnClear:hover {
   color: var(--accent-delete);
