@@ -124,3 +124,19 @@
 .confirmBtn:hover {
   filter: brightness(1.1);
 }
+
+/* Amber (warning) variant — non-destructive confirmations like stopping servers */
+.warningTone .header {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent-put) 28%, var(--bg-secondary)) 0%,
+    color-mix(in srgb, var(--accent-put) 14%, var(--bg-secondary)) 100%
+  );
+  border-bottom: 1px solid color-mix(in srgb, var(--accent-put) 45%, var(--border-subtle));
+}
+.warningTone .warnIcon {
+  color: var(--accent-put);
+}
+.warningTone .confirmBtn {
+  background: var(--accent-put);
+}

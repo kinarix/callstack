@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import type { Project, Request, Folder, Response, Environment, DataFile, KeyValue, Automation, AutomationRun, AutomationRequestResult, AutomationStep, Cookie } from '../lib/types';
+import type { Project, Request, Folder, Response, Environment, DataFile, KeyValue, Automation, AutomationRun, AutomationRequestResult, AutomationStep, Cookie, Replay, ReplayHit } from '../lib/types';
 
 export interface HistoryEntry {
   id: number;
@@ -559,6 +559,30 @@ export function useDatabase() {
     await invoke('delete_automation', { id });
   }, []);
 
+  const listReplays = useCallback(async (projectId: number): Promise<Replay[]> => {
+    return invoke<Replay[]>('list_replays', { projectId });
+  }, []);
+
+  const createReplay = useCallback(async (projectId: number, requestId: number, name: string, port: number): Promise<Replay> => {
+    return invoke<Replay>('create_replay', { projectId, requestId, name, port });
+  }, []);
+
+  const updateReplay = useCallback(async (id: number, name: string, port: number): Promise<Replay> => {
+    return invoke<Replay>('update_replay', { id, name, port });
+  }, []);
+
+  const deleteReplay = useCallback(async (id: number): Promise<void> => {
+    await invoke('delete_replay', { id });
+  }, []);
+
+  const listReplayHits = useCallback(async (replayId: number): Promise<ReplayHit[]> => {
+    return invoke<ReplayHit[]>('list_replay_hits', { replayId });
+  }, []);
+
+  const clearReplayHits = useCallback(async (replayId: number): Promise<void> => {
+    await invoke('clear_replay_hits', { replayId });
+  }, []);
+
   const saveAutomationRun = useCallback(async (automationId: number, status: string, results: AutomationRequestResult[], durationMs: number): Promise<AutomationRun> => {
     const r = await invoke<{ id: number; automationId: number; status: string; results: string; durationMs: number; createdAt: string }>('save_automation_run', {
       automationId,
@@ -680,6 +704,12 @@ export function useDatabase() {
     createAutomation,
     updateAutomation,
     deleteAutomation,
+    listReplays,
+    createReplay,
+    updateReplay,
+    deleteReplay,
+    listReplayHits,
+    clearReplayHits,
     saveAutomationRun,
     listAutomationRuns,
     clearAutomationRuns,

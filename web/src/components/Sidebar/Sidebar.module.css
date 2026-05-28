@@ -173,6 +173,12 @@
 .iconBtn.deleteBtn:hover    { color: var(--status-error);  }
 .iconBtn.renameBtn:hover    { color: var(--accent-put);    }
 .iconBtn.duplicateBtn:hover { color: var(--accent-get);    }
+
+/* Start/Stop icons on the Replays root — always visible (not hover-gated) and tinted */
+.iconBtn.replayStopBtn { display: flex; color: var(--accent-put); }
+.iconBtn.replayStopBtn:hover { color: var(--accent-put); background: color-mix(in srgb, var(--accent-put) 18%, transparent); }
+.iconBtn.replayStartBtn { display: flex; color: var(--accent-get); }
+.iconBtn.replayStartBtn:hover { color: var(--accent-get); background: color-mix(in srgb, var(--accent-get) 18%, transparent); }
 .iconBtn.importBtn:hover    { color: var(--accent-post);   }
 .iconBtn.exportBtn:hover    { color: var(--accent-patch);  }
 .iconBtn.addBtn:hover       { color: var(--accent-get);    }
@@ -318,6 +324,23 @@
 
 .treeIconEnv {
   color: var(--accent-patch);
+}
+
+.treeIconReplay {
+  color: var(--accent-get);
+}
+
+/* Pulsing indicator while a replay's local server is running */
+.replayRunning {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent-get);
+  animation: replayPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes replayPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
 }
 
 .treeIconDataset {

@@ -48,6 +48,13 @@ function appReducer(state: AppState, action: AppAction): AppState {
       const activeAutomationGone = state.activeAutomationId != null && deletedAutomationIds.has(state.activeAutomationId);
       const activeRequestGone = state.currentRequestId != null && deletedRequestIds.has(state.currentRequestId);
       const activeDataFileGone = state.activeDataFileId != null && deletedDataFileIds.has(state.activeDataFileId);
+      const deletedReplayIds = new Set(
+        state.replays.filter((r) => r.projectId === deletedProjectId).map((r) => r.id),
+      );
+      const activeReplayGone = state.activeReplayId != null && deletedReplayIds.has(state.activeReplayId);
+      const remainingRunning = new Set(
+        [...state.runningReplayIds].filter((id) => !deletedReplayIds.has(id)),
+      );
       return {
         ...state,
         projects: state.projects.filter((p) => p.id !== deletedProjectId),
@@ -55,13 +62,19 @@ function appReducer(state: AppState, action: AppAction): AppState {
         requests: state.requests.filter((r) => r.project_id !== deletedProjectId),
         environments: state.environments.filter((e) => e.project_id !== deletedProjectId),
         automations: state.automations.filter((a) => a.projectId !== deletedProjectId),
+        replays: state.replays.filter((r) => r.projectId !== deletedProjectId),
+        runningReplayIds: remainingRunning,
         dataFiles: state.dataFiles.filter((d) => d.project_id !== deletedProjectId),
         currentProjectId: state.currentProjectId === deletedProjectId ? null : state.currentProjectId,
         currentRequestId: activeRequestGone ? null : state.currentRequestId,
         activeEnvironmentId: activeEnvGone ? null : state.activeEnvironmentId,
         activeAutomationId: activeAutomationGone ? null : state.activeAutomationId,
+        activeReplayId: activeReplayGone ? null : state.activeReplayId,
         activeDataFileId: activeDataFileGone ? null : state.activeDataFileId,
-        activeView: activeEnvGone || activeAutomationGone || activeDataFileGone ? 'request' : state.activeView,
+        activeView:
+          activeEnvGone || activeAutomationGone || activeDataFileGone || activeReplayGone
+            ? 'request'
+            : state.activeView,
       };
     }
     case 'SET_REQUESTS':
@@ -76,9 +89,17 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'DELETE_REQUEST': {
       const newHist = state.requestNavHistory.filter(id => id !== action.payload);
       const newIdx = Math.min(state.navHistoryIndex, newHist.length - 1);
+      const deletedReplayIds = new Set(
+        state.replays.filter((r) => r.requestId === action.payload).map((r) => r.id),
+      );
+      const replayActiveGone = state.activeReplayId != null && deletedReplayIds.has(state.activeReplayId);
       return {
         ...state,
         requests: state.requests.filter((r) => r.id !== action.payload),
+        replays: state.replays.filter((r) => r.requestId !== action.payload),
+        runningReplayIds: new Set([...state.runningReplayIds].filter((id) => !deletedReplayIds.has(id))),
+        activeReplayId: replayActiveGone ? null : state.activeReplayId,
+        activeView: replayActiveGone && state.activeView === 'replay' ? 'request' : state.activeView,
         currentRequestId: state.currentRequestId === action.payload ? null : state.currentRequestId,
         requestNavHistory: newHist,
         navHistoryIndex: newIdx,
@@ -135,10 +156,18 @@ function appReducer(state: AppState, action: AppAction): AppState {
       const folderRequestIds = new Set(
         state.requests.filter((r) => r.folder_id === action.payload).map((r) => r.id)
       );
+      const folderReplayIds = new Set(
+        state.replays.filter((r) => folderRequestIds.has(r.requestId)).map((r) => r.id)
+      );
+      const folderReplayActiveGone = state.activeReplayId != null && folderReplayIds.has(state.activeReplayId);
       return {
         ...state,
         folders: state.folders.filter((f) => f.id !== action.payload),
         requests: state.requests.filter((r) => r.folder_id !== action.payload),
+        replays: state.replays.filter((r) => !folderReplayIds.has(r.id)),
+        runningReplayIds: new Set([...state.runningReplayIds].filter((id) => !folderReplayIds.has(id))),
+        activeReplayId: folderReplayActiveGone ? null : state.activeReplayId,
+        activeView: folderReplayActiveGone && state.activeView === 'replay' ? 'request' : state.activeView,
         currentRequestId: folderRequestIds.has(state.currentRequestId ?? -1)
           ? null
           : state.currentRequestId,
@@ -206,6 +235,67 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, activeView: action.payload };
     case 'SET_ACTIVE_AUTOMATION':
       return { ...state, activeAutomationId: action.payload };
+    case 'SET_REPLAYS': {
+      const ids = new Set(action.payload.map((r) => r.id));
+      const stillValid = state.activeReplayId != null && ids.has(state.activeReplayId);
+      return {
+        ...state,
+        replays: action.payload,
+        activeReplayId: stillValid ? state.activeReplayId : null,
+        activeView: !stillValid && state.activeView === 'replay' ? 'request' : state.activeView,
+      };
+    }
+    case 'ADD_REPLAY':
+      return { ...state, replays: [...state.replays, action.payload] };
+    case 'UPDATE_REPLAY':
+      return {
+        ...state,
+        replays: state.replays.map((r) => (r.id === action.payload.id ? action.payload : r)),
+      };
+    case 'DELETE_REPLAY': {
+      const wasActive = state.activeReplayId === action.payload;
+      const running = new Set(state.runningReplayIds);
+      running.delete(action.payload);
+      const paused = new Set(state.pausedReplayIds);
+      paused.delete(action.payload);
+      const { [action.payload]: _removedPause, ...activePauses } = state.activePauses;
+      return {
+        ...state,
+        replays: state.replays.filter((r) => r.id !== action.payload),
+        runningReplayIds: running,
+        pausedReplayIds: paused,
+        activePauses,
+        activeReplayId: wasActive ? null : state.activeReplayId,
+        activeView: wasActive && state.activeView === 'replay' ? 'request' : state.activeView,
+      };
+    }
+    case 'SET_ACTIVE_REPLAY':
+      return { ...state, activeReplayId: action.payload };
+    case 'SET_REPLAY_RUNNING': {
+      const running = new Set(state.runningReplayIds);
+      if (action.payload.running) {
+        running.add(action.payload.id);
+        return { ...state, runningReplayIds: running };
+      }
+      // Stopping clears pause mode + any in-flight pause (backend resets on restart).
+      running.delete(action.payload.id);
+      const paused = new Set(state.pausedReplayIds);
+      paused.delete(action.payload.id);
+      const { [action.payload.id]: _removed, ...activePauses } = state.activePauses;
+      return { ...state, runningReplayIds: running, pausedReplayIds: paused, activePauses };
+    }
+    case 'SET_REPLAY_PAUSED': {
+      const paused = new Set(state.pausedReplayIds);
+      if (action.payload.paused) paused.add(action.payload.id);
+      else paused.delete(action.payload.id);
+      return { ...state, pausedReplayIds: paused };
+    }
+    case 'SET_ACTIVE_PAUSE': {
+      const activePauses = { ...state.activePauses };
+      if (action.payload.pause) activePauses[action.payload.replayId] = action.payload.pause;
+      else delete activePauses[action.payload.replayId];
+      return { ...state, activePauses };
+    }
     case 'SET_ACTIVE_ENVIRONMENT':
       return { ...state, activeEnvironmentId: action.payload };
     case 'SET_DATA_FILES': {
@@ -320,6 +410,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const n = parseInt(v, 10);
         return Number.isFinite(n) ? n : null;
       })(),
+      replays: [],
+      runningReplayIds: new Set<number>(),
+      pausedReplayIds: new Set<number>(),
+      activePauses: {},
+      activeReplayId: null,
       activeCookieDomain: null,
       cookieJarVersion: 0,
       error: null,

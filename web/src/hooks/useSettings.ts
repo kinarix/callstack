@@ -22,6 +22,8 @@ export interface Settings {
   zoom: number;
   shortcuts: ActionShortcuts;
   responseHistoryLimit: number;
+  replayHitLimit: number;
+  replayDefaultPort: number;
   httpTimeout: number;
   formatOnSend: boolean;
   showSysApplet: boolean;
@@ -42,6 +44,8 @@ export const DEFAULTS: Settings = {
     historyForward: 'Meta+]',
   },
   responseHistoryLimit: 10,
+  replayHitLimit: 50,
+  replayDefaultPort: 9090,
   httpTimeout: 30,
   formatOnSend: true,
   showSysApplet: false,
@@ -68,6 +72,8 @@ function loadSettings(): Settings {
         historyForward: s.historyForward ?? DEFAULTS.shortcuts.historyForward,
       },
       responseHistoryLimit: parsed.responseHistoryLimit ?? DEFAULTS.responseHistoryLimit,
+      replayHitLimit: parsed.replayHitLimit ?? DEFAULTS.replayHitLimit,
+      replayDefaultPort: parsed.replayDefaultPort ?? DEFAULTS.replayDefaultPort,
       httpTimeout: parsed.httpTimeout ?? DEFAULTS.httpTimeout,
       formatOnSend: parsed.formatOnSend ?? DEFAULTS.formatOnSend,
       showSysApplet: parsed.showSysApplet ?? DEFAULTS.showSysApplet,
@@ -134,6 +140,22 @@ export function useSettings() {
     });
   }, []);
 
+  const setReplayHitLimit = useCallback((replayHitLimit: number) => {
+    setSettings((prev) => {
+      const next = { ...prev, replayHitLimit };
+      saveSettings(next);
+      return next;
+    });
+  }, []);
+
+  const setReplayDefaultPort = useCallback((replayDefaultPort: number) => {
+    setSettings((prev) => {
+      const next = { ...prev, replayDefaultPort };
+      saveSettings(next);
+      return next;
+    });
+  }, []);
+
   const setHttpTimeout = useCallback((httpTimeout: number) => {
     setSettings((prev) => {
       const next = { ...prev, httpTimeout };
@@ -163,5 +185,5 @@ export function useSettings() {
     saveSettings(DEFAULTS);
   }, []);
 
-  return { settings, setZoom, setShortcut, setResponseHistoryLimit, setHttpTimeout, setFormatOnSend, setSysApplet, resetSettings };
+  return { settings, setZoom, setShortcut, setResponseHistoryLimit, setReplayHitLimit, setReplayDefaultPort, setHttpTimeout, setFormatOnSend, setSysApplet, resetSettings };
 }

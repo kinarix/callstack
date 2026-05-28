@@ -200,6 +200,49 @@ export function NewAutomationIcon() {
   );
 }
 
+export function ReplayIcon() {
+  return (
+    <svg className={`${styles.treeIcon} ${styles.treeIconReplay}`} width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden style={{ flexShrink: 0 }}>
+      <path d="M10.5 6.5a4 4 0 1 1-1.2-2.85" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" fill="none" />
+      <polygon points="10.8,1.6 10.8,4.4 8,4.4" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function ReplaysFolderIcon() {
+  return (
+    <svg className={`${styles.treeIcon} ${styles.treeIconReplay}`} width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden>
+      <path d="M10.5 6.5a4 4 0 1 1-1.2-2.85" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" fill="none" />
+      <polygon points="10.8,1.6 10.8,4.4 8,4.4" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function NewReplayIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" style={{ color: 'var(--accent-get)' }}>
+      <path d="M11 7a4 4 0 1 1-1.2-2.85" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" fill="none" />
+      <polygon points="11.3,2 11.3,4.8 8.5,4.8" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function StopIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden style={{ flexShrink: 0 }}>
+      <rect x="2.5" y="2.5" width="8" height="8" rx="1.5" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function PlayIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden style={{ flexShrink: 0 }}>
+      <path d="M3.5 2.5L10.5 6.5L3.5 10.5Z" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function DataFileIcon() {
   return (
     <svg className={`${styles.treeIcon} ${styles.treeIconDataset}`} width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden style={{ flexShrink: 0 }}>

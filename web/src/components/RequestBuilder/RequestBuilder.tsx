@@ -61,6 +61,17 @@ function normalizeUrl(raw: string): string {
   }
 }
 
+/** Returns the loopback port if the URL targets localhost/127.0.0.1, else null. */
+function loopbackPort(url: string): number | null {
+  try {
+    const u = new URL(url);
+    if (u.hostname === 'localhost' || u.hostname === '127.0.0.1' || u.hostname === '::1') {
+      return u.port ? parseInt(u.port, 10) : (u.protocol === 'https:' ? 443 : 80);
+    }
+  } catch { /* templated or invalid URL — not a replay target */ }
+  return null;
+}
+
 function validateUrl(url: string): UrlError | null {
   if (!url.trim()) return null;
 
@@ -829,6 +840,12 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         testStatus = passed === testResults.length ? 'PASS' : passed === 0 ? 'FAIL' : 'PARTIAL';
       }
 
+      const sentPort = loopbackPort(normalizedUrl);
+      const runningReplayPorts = new Set(
+        state.replays.filter((r) => state.runningReplayIds.has(r.id)).map((r) => r.port),
+      );
+      const fromReplay = sentPort != null && runningReplayPorts.has(sentPort);
+
       dispatch({
         type: 'SET_RESPONSE',
         payload: {
@@ -844,6 +861,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
           timestamp: sentAt,
           testResults: testResults && testResults.length > 0 ? testResults : undefined,
           testStatus: testStatus || undefined,
+          fromReplay,
         },
       });
 
