@@ -1,6 +1,7 @@
 mod database;
 mod http_client;
 mod replay_server;
+mod websocket;
 
 use database::Database;
 use serde::Serialize;
@@ -341,6 +342,7 @@ pub fn run() {
         .manage(cancel_handle)
         .manage(sys_info)
         .manage(replay_server::ReplayServers::default())
+        .manage(websocket::WsConnections::default())
         .invoke_handler(tauri::generate_handler![
             http_client::send_request,
             database::list_projects,
@@ -389,6 +391,10 @@ pub fn run() {
             replay_server::list_running_replays,
             replay_server::set_replay_paused,
             replay_server::resume_replay,
+            websocket::ws_connect,
+            websocket::ws_send,
+            websocket::ws_close,
+            websocket::ws_list_open,
             database::save_automation_run,
             database::list_automation_runs,
             database::clear_automation_runs,

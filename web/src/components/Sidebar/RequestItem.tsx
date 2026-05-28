@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Request } from '../../lib/types';
-import { getMethodColor, getMethodIcon } from '../../lib/utils';
+import { getMethodColor, getMethodIcon, getProtocol, getRequestLabel } from '../../lib/utils';
 import styles from './RequestItem.module.css';
 
-function MethodIcon({ method }: { method: string }) {
+function MethodIcon({ method, url }: { method: string; url: string }) {
+  const key = getRequestLabel(method, getProtocol(url));
   return (
     <span
       className={styles.fileIcon}
-      style={{ color: getMethodColor(method as any) }}
+      style={{ color: getMethodColor(key) }}
       aria-hidden
     >
-      {getMethodIcon(method as any)}
+      {getMethodIcon(key)}
     </span>
   );
 }
@@ -136,7 +137,7 @@ export function RequestItem({
     >
       {isExecuting
         ? <span className={styles.executingDot} aria-label="Executing" />
-        : <MethodIcon method={request.method} />}
+        : <MethodIcon method={request.method} url={request.url} />}
       <div className={styles.content}>
         {isEditing ? (
           <input

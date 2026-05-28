@@ -28,6 +28,7 @@
   --accent-patch: #a855f7;    /* purple */
   --accent-head: #6b7280;     /* gray */
   --accent-options: #0ea5e9;  /* sky blue */
+  --accent-ws: #ec4899;       /* pink — WebSocket */
 
   /* Status colors */
   --status-success: #10b981;
@@ -146,6 +147,7 @@
   --accent-patch:    #cc44ff;
   --accent-head:     #8899aa;
   --accent-options:  #00ccff;
+  --accent-ws:       #ff5cc8;
   --status-success:  #00e896;
   --status-error:    #ff3b5c;
   --status-warning:  #ffcc00;
@@ -161,6 +163,7 @@
   --accent-patch:    #989898;
   --accent-head:     #606068;
   --accent-options:  #ababab;
+  --accent-ws:       #c8c8d0;
   --status-success:  #b8b8c0;
   --status-error:    #787880;
   --status-warning:  #888890;

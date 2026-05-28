@@ -195,6 +195,7 @@ function FormUrlBodyEditor({ requestId, body, onChange, envVars, secrets }: Read
 
 interface TabPanelProps {
   request: Request | null;
+  isWs?: boolean;
   onRequestChange: (changes: Partial<Request>) => void;
   files: FileAttachment[];
   onFilesChange: (files: FileAttachment[]) => void;
@@ -211,7 +212,7 @@ interface TabPanelProps {
   siblingRequests?: Request[];
 }
 
-export function TabPanel({ request, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, secrets, onScriptTest, copyFlash, useCookieJar = true, onUseCookieJarChange, projectId = null, bodyEditorViewRef, siblingRequests }: Readonly<TabPanelProps>) {
+export function TabPanel({ request, isWs = false, onRequestChange, files, onFilesChange, consoleLogs, onClearLogs, envVars, secrets, onScriptTest, copyFlash, useCookieJar = true, onUseCookieJarChange, projectId = null, bodyEditorViewRef, siblingRequests }: Readonly<TabPanelProps>) {
   const [wrapBody, setWrapBody] = useWrapToggle('callstack.wrapBody.request');
   const [bodyCopyFlash, setBodyCopyFlash] = useState(false);
   const [confirmClearBody, setConfirmClearBody] = useState(false);
@@ -237,6 +238,13 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
       localStorage.setItem('callstack.activeTab.' + request.id, activeTab);
     }
   }, [activeTab, request?.id]);
+
+  // WS requests only expose Params/Headers — bounce off any HTTP-only tab.
+  useEffect(() => {
+    if (isWs && activeTab !== 'params' && activeTab !== 'headers') {
+      setActiveTab('headers');
+    }
+  }, [isWs, activeTab]);
 
   const panelRef = useRef<HTMLDivElement>(null);
   const [paneHeight, setPaneHeight] = useState(0);
@@ -480,14 +488,19 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
     document.addEventListener('mouseup', onUp);
   }
 
-  const TABS: { name: TabName; label: string; count?: number; warn?: boolean }[] = [
-    { name: 'params', label: 'Params', count: request.params.filter(p => p.key).length || undefined },
-    { name: 'headers', label: 'Headers', count: userHeaders.filter(h => h.key).length || undefined },
-    { name: 'files', label: 'Files', count: files.length || undefined, warn: hasMissingFiles || undefined },
-    { name: 'body', label: 'Body' },
-    { name: 'script', label: 'Scripting' },
-    { name: 'setup', label: 'Chaining', count: (request.pre_chain?.length || undefined) },
-  ];
+  const TABS: { name: TabName; label: string; count?: number; warn?: boolean }[] = isWs
+    ? [
+        { name: 'params', label: 'Params', count: request.params.filter(p => p.key).length || undefined },
+        { name: 'headers', label: 'Headers', count: userHeaders.filter(h => h.key).length || undefined },
+      ]
+    : [
+        { name: 'params', label: 'Params', count: request.params.filter(p => p.key).length || undefined },
+        { name: 'headers', label: 'Headers', count: userHeaders.filter(h => h.key).length || undefined },
+        { name: 'files', label: 'Files', count: files.length || undefined, warn: hasMissingFiles || undefined },
+        { name: 'body', label: 'Body' },
+        { name: 'script', label: 'Scripting' },
+        { name: 'setup', label: 'Chaining', count: (request.pre_chain?.length || undefined) },
+      ];
 
   function renderImplicitSection() {
     return (
@@ -563,10 +576,10 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
     <div className={styles.tabPanel} ref={panelRef}>
       <div className={styles.header}>
         <span className={styles.sectionLabel}>Request</span>
-        <ContentTypeSelector value={currentContentType} onChange={handleContentTypeChange} />
+        {!isWs && <ContentTypeSelector value={currentContentType} onChange={handleContentTypeChange} />}
         <div className={styles.spacer} />
-        {bodySize && <span className={styles.sizeTag}>{bodySize}</span>}
-        {request.body.trim() && (
+        {!isWs && bodySize && <span className={styles.sizeTag}>{bodySize}</span>}
+        {!isWs && request.body.trim() && (
           <div
             className={`${styles.validationTag} ${bodyValidation.valid ? styles.validationTagValid : styles.validationTagInvalid}`}
             title={bodyValidation.error}
@@ -606,19 +619,21 @@ export function TabPanel({ request, onRequestChange, files, onFilesChange, conso
             </div>
           );
         })}
-        <label className={styles.cookieToggle} title="Automatically send and store cookies">
-          <input
-            type="checkbox"
-            checked={useCookieJar}
-            onChange={(e) => onUseCookieJarChange?.(e.target.checked)}
-          />
-          <span>Cookies</span>
-        </label>
+        {!isWs && (
+          <label className={styles.cookieToggle} title="Automatically send and store cookies">
+            <input
+              type="checkbox"
+              checked={useCookieJar}
+              onChange={(e) => onUseCookieJarChange?.(e.target.checked)}
+            />
+            <span>Cookies</span>
+          </label>
+        )}
       </div>
 
       {/* Pinned panels — shown when pinned and a different tab is active */}
       {PINNABLE
-        .filter(p => pinned.has(p) && activeTab !== p)
+        .filter(p => pinned.has(p) && activeTab !== p && (!isWs || p === 'params' || p === 'headers'))
         .map(p => (
           <Fragment key={p}>
             <div className={styles.pinnedPanel} style={{ flex: `0 0 ${effectiveHeights[p] ?? 180}px` }}>
