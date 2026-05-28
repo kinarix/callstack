@@ -8,8 +8,9 @@ import { tags } from '@lezer/highlight';
 import { useApp } from '../../context/AppContext';
 import { useDatabase } from '../../hooks/useDatabase';
 import { useReplayServer } from '../../hooks/useReplayServer';
+import { useReplayControls } from '../../hooks/useReplayControls';
 import { useSettings } from '../../hooks/useSettings';
-import type { ReplayHit } from '../../lib/types';
+import type { ReplayHit, PausedRequest } from '../../lib/types';
 import { formatBody } from '../../lib/formatBody';
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 import { CopyIcon } from '../Sidebar/SidebarIcons';
@@ -79,7 +80,8 @@ function extractCookies(headers: [string, string][]): [string, string][] {
 export default function ReplayView({ replayId, showExpandBtn, onExpand }: Props) {
   const { state, dispatch } = useApp();
   const { updateReplay, createRequest, updateRequest, listReplayHits, clearReplayHits } = useDatabase();
-  const { startReplay, stopReplay } = useReplayServer();
+  const { startReplay, stopReplay, setReplayPaused, resumeReplay } = useReplayServer();
+  const { startAll } = useReplayControls();
   const { settings } = useSettings();
   const hitLimit = settings.replayHitLimit;
 
@@ -91,10 +93,13 @@ export default function ReplayView({ replayId, showExpandBtn, onExpand }: Props)
   const [hits, setHits] = useState<(ReplayHit & { _k: number })[]>([]);
   const [selectedKey, setSelectedKey] = useState<number | null>(null);
   const hitSeq = useRef(0);
+  const selectNextHitRef = useRef(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const pauseMode = replay ? state.pausedReplayIds.has(replay.id) : false;
+  const currentPause = replay ? (state.activePauses[replay.id] ?? null) : null;
 
   useEffect(() => {
     setPortInput(String(replay?.port ?? 9090));
@@ -118,7 +123,12 @@ export default function ReplayView({ replayId, showExpandBtn, onExpand }: Props)
     let cancelled = false;
     listen<ReplayHit>('replay-hit', (e) => {
       if (e.payload.replayId !== replayId) return;
-      setHits((prev) => [{ ...e.payload, _k: ++hitSeq.current }, ...prev].slice(0, hitLimit > 0 ? hitLimit : 1000));
+      const k = ++hitSeq.current;
+      setHits((prev) => [{ ...e.payload, _k: k }, ...prev].slice(0, hitLimit > 0 ? hitLimit : 1000));
+      if (selectNextHitRef.current) {
+        setSelectedKey(k);
+        selectNextHitRef.current = false;
+      }
     }).then((fn) => {
       // If the effect was already cleaned up before the listener registered
       // (e.g. React StrictMode double-invoke), detach immediately to avoid a
@@ -131,6 +141,22 @@ export default function ReplayView({ replayId, showExpandBtn, onExpand }: Props)
       unlisten?.();
     };
   }, [replayId, hitLimit]);
+
+  // Capture pause/resume for the open replay directly (App also listens for
+  // cross-view auto-open; dispatching the same global action is idempotent).
+  useEffect(() => {
+    const unlistens: Array<() => void> = [];
+    let cancelled = false;
+    listen<PausedRequest>('replay-paused', (e) => {
+      if (e.payload.replayId !== replayId) return;
+      dispatch({ type: 'SET_ACTIVE_PAUSE', payload: { replayId, pause: e.payload } });
+    }).then((fn) => { if (cancelled) fn(); else unlistens.push(fn); });
+    listen<{ replayId: number; pauseId: number }>('replay-resumed', (e) => {
+      if (e.payload.replayId !== replayId) return;
+      dispatch({ type: 'SET_ACTIVE_PAUSE', payload: { replayId, pause: null } });
+    }).then((fn) => { if (cancelled) fn(); else unlistens.push(fn); });
+    return () => { cancelled = true; unlistens.forEach((u) => u()); };
+  }, [replayId, dispatch]);
 
   if (!replay) return null;
 
@@ -164,8 +190,7 @@ export default function ReplayView({ replayId, showExpandBtn, onExpand }: Props)
     setErr(null);
     setBusy(true);
     try {
-      await startReplay(replay.id, replay.requestId, replay.port, hitLimit);
-      dispatch({ type: 'SET_REPLAY_RUNNING', payload: { id: replay.id, running: true } });
+      await startAll();
     } catch (e) {
       setErr(String(e));
     } finally {
@@ -188,17 +213,35 @@ export default function ReplayView({ replayId, showExpandBtn, onExpand }: Props)
     dispatch({ type: 'SET_VIEW', payload: 'request' });
   };
 
-  const cookies = selected ? extractCookies(selected.requestHeaders) : [];
-  const queryParams: [string, string][] = selected
-    ? [...new URLSearchParams(selected.path.split('?')[1] ?? '')]
+  const togglePause = async () => {
+    const next = !pauseMode;
+    dispatch({ type: 'SET_REPLAY_PAUSED', payload: { id: replay.id, paused: next } });
+    await setReplayPaused(replay.id, next).catch(() => {});
+  };
+
+  const step = async () => {
+    if (!currentPause) return;
+    // Select the resulting hit (it arrives via replay-hit) so its full
+    // request/response shows once stepped.
+    selectNextHitRef.current = true;
+    await resumeReplay(currentPause.pauseId).catch(() => {});
+    dispatch({ type: 'SET_ACTIVE_PAUSE', payload: { replayId: replay.id, pause: null } });
+  };
+
+  // A live paused request takes precedence in the detail pane over a clicked hit.
+  const detail = currentPause ? { ...currentPause, matched: true } : selected;
+
+  const cookies = detail ? extractCookies(detail.requestHeaders) : [];
+  const queryParams: [string, string][] = detail
+    ? [...new URLSearchParams(detail.path.split('?')[1] ?? '')]
     : [];
-  const selectedContentType = selected
-    ? (selected.requestHeaders.find(([k]) => k.toLowerCase() === 'content-type')?.[1] ?? '')
+  const selectedContentType = detail
+    ? (detail.requestHeaders.find(([k]) => k.toLowerCase() === 'content-type')?.[1] ?? '')
     : '';
-  const rawReqBody = selected?.requestBody ?? '';
+  const rawReqBody = detail?.requestBody ?? '';
   const bodyIsJson = selectedContentType.includes('json') || /^\s*[[{]/.test(rawReqBody.trimStart());
   const formattedBody = rawReqBody ? formatBody(rawReqBody, bodyIsJson ? 'application/json' : selectedContentType) : '';
-  const rawRespBody = selected?.responseBody ?? '';
+  const rawRespBody = detail?.responseBody ?? '';
   const responseIsJson = /^\s*[[{]/.test(rawRespBody.trimStart());
   const formattedResponseBody = rawRespBody ? formatBody(rawRespBody, responseIsJson ? 'application/json' : '') : '';
 
@@ -231,7 +274,7 @@ export default function ReplayView({ replayId, showExpandBtn, onExpand }: Props)
             onClick={start}
             disabled={busy}
           >
-            Start
+            Start all
           </button>
         )}
       </header>
@@ -250,22 +293,40 @@ export default function ReplayView({ replayId, showExpandBtn, onExpand }: Props)
       </div>
 
       <div className={styles.body}>
-        {/* Left: request → response debug skeleton */}
+        {/* Left: request → response debug flow with a Pause/Step breakpoint */}
         <div className={styles.flow}>
-          <div className={styles.node}>
+          <button
+            className={`${styles.pauseToggle} ${pauseMode ? styles.pauseOn : ''}`}
+            onClick={togglePause}
+            disabled={!running}
+            title="When on, incoming matched requests pause for inspection until you Step. Resets when the replay is restarted."
+          >
+            {pauseMode ? 'Debug On' : 'Debug Off'}
+          </button>
+
+          <div className={`${styles.node} ${currentPause ? styles.nodePaused : ''}`}>
             <div className={styles.nodeBadge} style={{ color: 'var(--accent-post)' }}>↑</div>
             <div className={styles.nodeLabel}>
               <div className={styles.nodeTitle}>Request in</div>
               <div className={styles.nodeSub}>{method} {path}</div>
             </div>
           </div>
-          {/* TODO(v2): Step/Pause breakpoint control mounts above this connector line */}
-          <div className={styles.connector} />
+
+          <div className={styles.connector}>
+            {currentPause ? (
+              <button className={styles.stepBtn} onClick={step} title="Send the response and continue">
+                Step ▶
+              </button>
+            ) : (
+              <div className={`${styles.connectorLine} ${pauseMode && running ? styles.connectorArmed : ''}`} />
+            )}
+          </div>
+
           <div className={styles.node}>
             <div className={styles.nodeBadge} style={{ color: 'var(--accent-get)' }}>↓</div>
             <div className={styles.nodeLabel}>
               <div className={styles.nodeTitle}>Response out</div>
-              <div className={styles.nodeSub}>latest captured response</div>
+              <div className={styles.nodeSub}>{currentPause ? `paused — status ${currentPause.status}` : 'latest captured response'}</div>
             </div>
           </div>
 
@@ -305,17 +366,17 @@ export default function ReplayView({ replayId, showExpandBtn, onExpand }: Props)
 
         {/* Right: introspection of the selected incoming request */}
         <div className={styles.detail}>
-          {!selected ? (
+          {!detail ? (
             <div className={styles.detailEmpty}>Select a hit to inspect the incoming request.</div>
           ) : (
             <>
               <section className={styles.section}>
                 <h3 className={styles.sectionTitle}>Request line</h3>
                 <div className={styles.tbl}>
-                  <div className={styles.tblRow}><span className={styles.tblKey}>Method</span><span className={styles.tblVal}>{selected.method}</span></div>
-                  <div className={styles.tblRow}><span className={styles.tblKey}>Path</span><span className={styles.tblVal}>{selected.path}</span></div>
-                  <div className={styles.tblRow}><span className={styles.tblKey}>Matched</span><span className={styles.tblVal}>{selected.matched ? 'yes' : 'no'}</span></div>
-                  <div className={styles.tblRow}><span className={styles.tblKey}>Served status</span><span className={styles.tblVal}>{selected.status}</span></div>
+                  <div className={styles.tblRow}><span className={styles.tblKey}>Method</span><span className={styles.tblVal}>{detail.method}</span></div>
+                  <div className={styles.tblRow}><span className={styles.tblKey}>Path</span><span className={styles.tblVal}>{detail.path}</span></div>
+                  <div className={styles.tblRow}><span className={styles.tblKey}>Matched</span><span className={styles.tblVal}>{detail.matched ? 'yes' : 'no'}</span></div>
+                  <div className={styles.tblRow}><span className={styles.tblKey}>Served status</span><span className={styles.tblVal}>{detail.status}</span></div>
                 </div>
               </section>
 
@@ -333,9 +394,9 @@ export default function ReplayView({ replayId, showExpandBtn, onExpand }: Props)
               </section>
 
               <section className={styles.section}>
-                <h3 className={styles.sectionTitle}>Headers ({selected.requestHeaders.length})</h3>
+                <h3 className={styles.sectionTitle}>Headers ({detail.requestHeaders.length})</h3>
                 <div className={styles.tbl}>
-                  {selected.requestHeaders.map(([k, v], i) => (
+                  {detail.requestHeaders.map(([k, v], i) => (
                     <div key={i} className={styles.tblRow}><span className={styles.tblKey}>{k}</span><span className={styles.tblVal}>{v}</span></div>
                   ))}
                 </div>
@@ -356,7 +417,7 @@ export default function ReplayView({ replayId, showExpandBtn, onExpand }: Props)
 
               <section className={styles.section}>
                 <h3 className={styles.sectionTitle}>Request body</h3>
-                {selected.requestBody ? (
+                {detail.requestBody ? (
                   <div className={styles.bodyEditor}>
                     <CodeMirror
                       value={formattedBody}
@@ -371,35 +432,41 @@ export default function ReplayView({ replayId, showExpandBtn, onExpand }: Props)
                 )}
               </section>
 
-              <section className={styles.section}>
-                <h3 className={styles.sectionTitle}>Response headers ({selected.responseHeaders.length})</h3>
-                {selected.responseHeaders.length === 0 ? (
-                  <div className={styles.muted}>No response headers.</div>
-                ) : (
-                  <div className={styles.tbl}>
-                    {selected.responseHeaders.map(([k, v], i) => (
-                      <div key={i} className={styles.tblRow}><span className={styles.tblKey}>{k}</span><span className={styles.tblVal}>{v}</span></div>
-                    ))}
-                  </div>
-                )}
-              </section>
+              {currentPause ? (
+                <div className={styles.pendingResponse}>Response is held — click <strong>Step ▶</strong> to send it.</div>
+              ) : (
+                <>
+                  <section className={styles.section}>
+                    <h3 className={styles.sectionTitle}>Response headers ({detail.responseHeaders.length})</h3>
+                    {detail.responseHeaders.length === 0 ? (
+                      <div className={styles.muted}>No response headers.</div>
+                    ) : (
+                      <div className={styles.tbl}>
+                        {detail.responseHeaders.map(([k, v], i) => (
+                          <div key={i} className={styles.tblRow}><span className={styles.tblKey}>{k}</span><span className={styles.tblVal}>{v}</span></div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
 
-              <section className={styles.section}>
-                <h3 className={styles.sectionTitle}>Response body (served, status {selected.status})</h3>
-                {selected.responseBody ? (
-                  <div className={styles.bodyEditor}>
-                    <CodeMirror
-                      value={formattedResponseBody}
-                      extensions={responseIsJson ? replayJsonExtensions : replayBodyExtensions}
-                      theme="none"
-                      readOnly
-                      basicSetup={{ lineNumbers: true, foldGutter: true, highlightActiveLine: false, highlightSelectionMatches: false }}
-                    />
-                  </div>
-                ) : (
-                  <div className={styles.muted}>Empty response body.</div>
-                )}
-              </section>
+                  <section className={styles.section}>
+                    <h3 className={styles.sectionTitle}>Response body (served, status {detail.status})</h3>
+                    {detail.responseBody ? (
+                      <div className={styles.bodyEditor}>
+                        <CodeMirror
+                          value={formattedResponseBody}
+                          extensions={responseIsJson ? replayJsonExtensions : replayBodyExtensions}
+                          theme="none"
+                          readOnly
+                          basicSetup={{ lineNumbers: true, foldGutter: true, highlightActiveLine: false, highlightSelectionMatches: false }}
+                        />
+                      </div>
+                    ) : (
+                      <div className={styles.muted}>Empty response body.</div>
+                    )}
+                  </section>
+                </>
+              )}
             </>
           )}
         </div>

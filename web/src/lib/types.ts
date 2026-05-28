@@ -173,6 +173,8 @@ export interface AppState {
   automations: Automation[];
   replays: Replay[];
   runningReplayIds: Set<number>;
+  pausedReplayIds: Set<number>;
+  activePauses: Record<number, PausedRequest>;
   activeView: 'request' | 'automation' | 'environment' | 'dataFile' | 'cookies' | 'replay';
   activeAutomationId: number | null;
   activeReplayId: number | null;
@@ -231,6 +233,8 @@ export type AppAction =
   | { type: 'DELETE_REPLAY'; payload: number }
   | { type: 'SET_ACTIVE_REPLAY'; payload: number | null }
   | { type: 'SET_REPLAY_RUNNING'; payload: { id: number; running: boolean } }
+  | { type: 'SET_REPLAY_PAUSED'; payload: { id: number; paused: boolean } }
+  | { type: 'SET_ACTIVE_PAUSE'; payload: { replayId: number; pause: PausedRequest | null } }
   | { type: 'SET_VIEW'; payload: 'request' | 'automation' | 'environment' | 'dataFile' | 'cookies' | 'replay' }
   | { type: 'SET_ACTIVE_COOKIE_DOMAIN'; payload: string | null }
   | { type: 'BUMP_COOKIE_JAR_VERSION' }
@@ -296,6 +300,19 @@ export interface ReplayHit {
   method: string;
   path: string;
   matched: boolean;
+  status: number;
+  requestHeaders: [string, string][];
+  requestBody: string;
+  responseHeaders: [string, string][];
+  responseBody: string;
+  ts: number;
+}
+
+export interface PausedRequest {
+  replayId: number;
+  pauseId: number;
+  method: string;
+  path: string;
   status: number;
   requestHeaders: [string, string][];
   requestBody: string;

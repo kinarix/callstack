@@ -25,6 +25,7 @@ import {
   ProjectIcon,
   ReplayIcon,
   StopIcon,
+  PlayIcon,
   ReplaysFolderIcon,
 } from './SidebarIcons';
 import styles from './Sidebar.module.css';
@@ -140,6 +141,7 @@ export interface ProjectRowProps {
   expandedReplaySections: Set<number>;
   setExpandedReplaySections: React.Dispatch<React.SetStateAction<Set<number>>>;
   runningReplayIds: Set<number>;
+  onStartReplays: () => void;
   onStopReplays: () => void;
   onOpenReplay: (replay: Replay) => void;
   onDeleteReplay: (id: number, name: string, e: React.MouseEvent) => void;
@@ -236,6 +238,7 @@ export function ProjectRow({
   expandedReplaySections,
   setExpandedReplaySections,
   runningReplayIds,
+  onStartReplays,
   onStopReplays,
   onOpenReplay,
   onDeleteReplay,
@@ -764,15 +767,23 @@ export function ProjectRow({
               {projectReplays.length > 0 && (
                 <span className={styles.countBadge}>{projectReplays.length}</span>
               )}
-              {projectReplays.some((r) => runningReplayIds.has(r.id)) && (
+              {runningReplayIds.size > 0 ? (
                 <button
                   className={`${styles.iconBtn} ${styles.replayStopBtn}`}
                   onClick={(e) => { e.stopPropagation(); onStopReplays(); }}
-                  title="Stop replay server (stops all replays)"
+                  title="Stop all replays"
                 >
                   <StopIcon />
                 </button>
-              )}
+              ) : projectReplays.length > 0 ? (
+                <button
+                  className={`${styles.iconBtn} ${styles.replayStartBtn}`}
+                  onClick={(e) => { e.stopPropagation(); onStartReplays(); }}
+                  title="Start all replays"
+                >
+                  <PlayIcon />
+                </button>
+              ) : null}
             </div>
             {replaysExpanded && (
               <div className={styles.folderChildren}>

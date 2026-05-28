@@ -387,6 +387,8 @@ pub fn run() {
             replay_server::start_replay,
             replay_server::stop_replay,
             replay_server::list_running_replays,
+            replay_server::set_replay_paused,
+            replay_server::resume_replay,
             database::save_automation_run,
             database::list_automation_runs,
             database::clear_automation_runs,

@@ -17,5 +17,13 @@ export function useReplayServer() {
     return invoke<number[]>('list_running_replays');
   }, []);
 
-  return { startReplay, stopReplay, listRunningReplays };
+  const setReplayPaused = useCallback(async (replayId: number, paused: boolean): Promise<void> => {
+    await invoke('set_replay_paused', { replayId, paused });
+  }, []);
+
+  const resumeReplay = useCallback(async (pauseId: number): Promise<void> => {
+    await invoke('resume_replay', { pauseId });
+  }, []);
+
+  return { startReplay, stopReplay, listRunningReplays, setReplayPaused, resumeReplay };
 }

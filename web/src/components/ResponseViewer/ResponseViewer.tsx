@@ -18,7 +18,7 @@ import { CopyIcon, ReplayIcon } from '../Sidebar/SidebarIcons';
 import { WrapIcon, SaveIcon, ClearIcon } from '../RequestBuilder/editorIcons';
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 import { useDatabase } from '../../hooks/useDatabase';
-import { useReplayServer } from '../../hooks/useReplayServer';
+import { useReplayControls } from '../../hooks/useReplayControls';
 import { useSettings } from '../../hooks/useSettings';
 import { useEditorMemory } from '../../hooks/useEditorMemory';
 import { useWrapBody } from '../../hooks/useWrapBody';
@@ -356,7 +356,7 @@ function UrlPopover({
 export function ResponseViewer({ response, requestId, requestName, copyFlash, onClear, onCopy, onOpenUrlInNewRequest }: ResponseViewerProps) {
   const { state, dispatch } = useApp();
   const { getResponseHistory, clearRequestHistory, createReplay } = useDatabase();
-  const { startReplay } = useReplayServer();
+  const { startAll } = useReplayControls();
   const { settings } = useSettings();
   const [wrapBody, setWrapBody] = useWrapBody();
   const [urlPopover, setUrlPopover] = useState<UrlClickInfo | null>(null);
@@ -497,12 +497,8 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
       const name = requestName?.trim() || req.name || 'Replay';
       const replay = await createReplay(req.project_id, requestId, name, settings.replayDefaultPort);
       dispatch({ type: 'ADD_REPLAY', payload: replay });
-      try {
-        await startReplay(replay.id, requestId, replay.port, settings.replayHitLimit);
-        dispatch({ type: 'SET_REPLAY_RUNNING', payload: { id: replay.id, running: true } });
-      } catch (err) {
-        dispatch({ type: 'SHOW_ERROR', payload: { message: `Replay created but failed to start: ${String(err)}`, showReset: false } });
-      }
+      // Start is global — bring up this replay along with any others.
+      await startAll([replay]);
       dispatch({ type: 'SET_ACTIVE_REPLAY', payload: replay.id });
       dispatch({ type: 'SET_VIEW', payload: 'replay' });
     } catch (err) {

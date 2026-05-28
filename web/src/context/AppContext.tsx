@@ -256,10 +256,15 @@ function appReducer(state: AppState, action: AppAction): AppState {
       const wasActive = state.activeReplayId === action.payload;
       const running = new Set(state.runningReplayIds);
       running.delete(action.payload);
+      const paused = new Set(state.pausedReplayIds);
+      paused.delete(action.payload);
+      const { [action.payload]: _removedPause, ...activePauses } = state.activePauses;
       return {
         ...state,
         replays: state.replays.filter((r) => r.id !== action.payload),
         runningReplayIds: running,
+        pausedReplayIds: paused,
+        activePauses,
         activeReplayId: wasActive ? null : state.activeReplayId,
         activeView: wasActive && state.activeView === 'replay' ? 'request' : state.activeView,
       };
@@ -268,9 +273,28 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, activeReplayId: action.payload };
     case 'SET_REPLAY_RUNNING': {
       const running = new Set(state.runningReplayIds);
-      if (action.payload.running) running.add(action.payload.id);
-      else running.delete(action.payload.id);
-      return { ...state, runningReplayIds: running };
+      if (action.payload.running) {
+        running.add(action.payload.id);
+        return { ...state, runningReplayIds: running };
+      }
+      // Stopping clears pause mode + any in-flight pause (backend resets on restart).
+      running.delete(action.payload.id);
+      const paused = new Set(state.pausedReplayIds);
+      paused.delete(action.payload.id);
+      const { [action.payload.id]: _removed, ...activePauses } = state.activePauses;
+      return { ...state, runningReplayIds: running, pausedReplayIds: paused, activePauses };
+    }
+    case 'SET_REPLAY_PAUSED': {
+      const paused = new Set(state.pausedReplayIds);
+      if (action.payload.paused) paused.add(action.payload.id);
+      else paused.delete(action.payload.id);
+      return { ...state, pausedReplayIds: paused };
+    }
+    case 'SET_ACTIVE_PAUSE': {
+      const activePauses = { ...state.activePauses };
+      if (action.payload.pause) activePauses[action.payload.replayId] = action.payload.pause;
+      else delete activePauses[action.payload.replayId];
+      return { ...state, activePauses };
     }
     case 'SET_ACTIVE_ENVIRONMENT':
       return { ...state, activeEnvironmentId: action.payload };
@@ -388,6 +412,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       })(),
       replays: [],
       runningReplayIds: new Set<number>(),
+      pausedReplayIds: new Set<number>(),
+      activePauses: {},
       activeReplayId: null,
       activeCookieDomain: null,
       cookieJarVersion: 0,

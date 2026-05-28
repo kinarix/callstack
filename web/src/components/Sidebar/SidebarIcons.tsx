@@ -235,6 +235,14 @@ export function StopIcon() {
   );
 }
 
+export function PlayIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden style={{ flexShrink: 0 }}>
+      <path d="M3.5 2.5L10.5 6.5L3.5 10.5Z" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function DataFileIcon() {
   return (
     <svg className={`${styles.treeIcon} ${styles.treeIconDataset}`} width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden style={{ flexShrink: 0 }}>

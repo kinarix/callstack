@@ -1,14 +1,17 @@
 use rusqlite::{params, Connection};
 use serde::Serialize;
-use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::collections::{HashMap, HashSet};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 use tiny_http::{Header, Response, Server};
 
 use crate::database::{db_path, Database};
+
+/// How long a paused request waits for a Step before auto-continuing.
+const PAUSE_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// One replay registered on a port's shared server.
 #[derive(Clone)]
@@ -18,11 +21,46 @@ struct Route {
     method: String,             // expected method, uppercased
     expected_path: Option<String>, // None => method-only match (templated URL)
     hit_limit: i64,
+    paused: Arc<AtomicBool>,    // when true, matched requests block until stepped
 }
 
 struct PortServer {
     stop: Arc<AtomicBool>,
     routes: Arc<Mutex<Vec<Route>>>,
+}
+
+/// Lets a paused server thread block until the UI sends a Step (resume).
+#[derive(Default)]
+struct ResumeGate {
+    resumed: Mutex<HashSet<u64>>,
+    cv: Condvar,
+}
+
+enum PauseOutcome {
+    Stepped,
+    Stopped,
+    TimedOut,
+}
+
+fn wait_for_resume(gate: &ResumeGate, stop: &AtomicBool, pause_id: u64) -> PauseOutcome {
+    let start = Instant::now();
+    let mut resumed = gate.resumed.lock().unwrap();
+    loop {
+        if resumed.remove(&pause_id) {
+            return PauseOutcome::Stepped;
+        }
+        if stop.load(Ordering::Relaxed) {
+            return PauseOutcome::Stopped;
+        }
+        let elapsed = start.elapsed();
+        if elapsed >= PAUSE_TIMEOUT {
+            return PauseOutcome::TimedOut;
+        }
+        // Cap each wait so the stop flag is re-checked promptly even without a notify.
+        let slice = (PAUSE_TIMEOUT - elapsed).min(Duration::from_millis(500));
+        let (g, _) = gate.cv.wait_timeout(resumed, slice).unwrap();
+        resumed = g;
+    }
 }
 
 #[derive(Default)]
@@ -31,6 +69,8 @@ struct Inner {
     ports: HashMap<u16, PortServer>,
     /// Which port each running replay is served from.
     replay_to_port: HashMap<i64, u16>,
+    gate: Arc<ResumeGate>,
+    next_pause_id: Arc<AtomicU64>,
 }
 
 #[derive(Default)]
@@ -51,6 +91,28 @@ struct ReplayHit {
     ts: i64,
 }
 
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct ResumedEvent {
+    replay_id: i64,
+    pause_id: u64,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct PausedRequest {
+    replay_id: i64,
+    pause_id: u64,
+    method: String,
+    path: String,
+    status: i64,
+    request_headers: Vec<(String, String)>,
+    request_body: String,
+    response_headers: Vec<(String, String)>,
+    response_body: String,
+    ts: i64,
+}
+
 /// Derive the path portion of a (possibly templated) request URL.
 /// Returns None when the URL is too templated to extract a path — callers
 /// fall back to method-only matching in that case.
@@ -58,18 +120,16 @@ fn expected_path(url: &str) -> Option<String> {
     if let Ok(u) = reqwest::Url::parse(url) {
         return Some(u.path().to_string());
     }
-    let no_q = url.split(['?', '#']).next().unwrap_or(url);
-    if let Some(idx) = no_q.find("://") {
-        let after = &no_q[idx + 3..];
-        return match after.find('/') {
-            Some(slash) => Some(after[slash..].to_string()),
-            None => Some("/".to_string()),
-        };
-    }
-    if no_q.starts_with('/') {
-        return Some(no_q.to_string());
-    }
-    None
+    // Templated / scheme-less URL: strip scheme + host (or `{{var}}` host) and
+    // take everything from the first '/' as the path. Only a URL with no path
+    // component at all (e.g. a fully-templated `{{fullUrl}}`) yields None and
+    // falls back to method-only matching.
+    let no_q = url.split(['?', '#']).next().unwrap_or(url).trim();
+    let after_scheme = match no_q.find("://") {
+        Some(idx) => &no_q[idx + 3..],
+        None => no_q,
+    };
+    after_scheme.find('/').map(|slash| after_scheme[slash..].to_string())
 }
 
 /// Path match where any segment containing `{{…}}` is a single-segment wildcard.
@@ -120,6 +180,7 @@ pub fn start_replay(
         method: req_method.to_uppercase(),
         expected_path: expected_path(&req_url),
         hit_limit,
+        paused: Arc::new(AtomicBool::new(false)),
     };
 
     let mut inner = servers.0.lock().map_err(|e| e.to_string())?;
@@ -149,6 +210,8 @@ pub fn start_replay(
     let stop_thread = stop.clone();
     let routes = Arc::new(Mutex::new(vec![route]));
     let routes_thread = routes.clone();
+    let gate = inner.gate.clone();
+    let pause_ids = inner.next_pause_id.clone();
 
     thread::spawn(move || {
         let conn = match Connection::open(&db_path) {
@@ -252,23 +315,74 @@ pub fn start_replay(
                             }
                         }
 
-                        persist(route.replay_id, route.hit_limit, status, true, &method, &path, &req_headers, &body, &resp_headers, &resp_body, ts);
-                        let _ = app.emit(
-                            "replay-hit",
-                            ReplayHit {
-                                replay_id: route.replay_id,
-                                method,
-                                path,
-                                matched: true,
-                                status,
-                                request_headers: req_headers,
-                                request_body: body,
-                                response_headers: resp_headers,
-                                response_body: resp_body,
-                                ts,
-                            },
-                        );
-                        let _ = request.respond(response);
+                        // Breakpoint: if this replay is in pause mode, surface the
+                        // request + prepared response and block until the UI steps.
+                        if route.paused.load(Ordering::Relaxed) {
+                            let pause_id = pause_ids.fetch_add(1, Ordering::Relaxed);
+                            let _ = app.emit(
+                                "replay-paused",
+                                PausedRequest {
+                                    replay_id: route.replay_id,
+                                    pause_id,
+                                    method: method.clone(),
+                                    path: path.clone(),
+                                    status,
+                                    request_headers: req_headers.clone(),
+                                    request_body: body.clone(),
+                                    response_headers: resp_headers.clone(),
+                                    response_body: resp_body.clone(),
+                                    ts,
+                                },
+                            );
+                            let outcome = wait_for_resume(&gate, &stop_thread, pause_id);
+                            let _ = app.emit("replay-resumed", ResumedEvent { replay_id: route.replay_id, pause_id });
+                            match outcome {
+                                PauseOutcome::Stepped => {
+                                    persist(route.replay_id, route.hit_limit, status, true, &method, &path, &req_headers, &body, &resp_headers, &resp_body, ts);
+                                    let _ = app.emit(
+                                        "replay-hit",
+                                        ReplayHit {
+                                            replay_id: route.replay_id,
+                                            method,
+                                            path,
+                                            matched: true,
+                                            status,
+                                            request_headers: req_headers,
+                                            request_body: body,
+                                            response_headers: resp_headers,
+                                            response_body: resp_body,
+                                            ts,
+                                        },
+                                    );
+                                    let _ = request.respond(response);
+                                }
+                                PauseOutcome::TimedOut => {
+                                    // Don't strand the client; serve but don't log.
+                                    let _ = request.respond(response);
+                                }
+                                PauseOutcome::Stopped => {
+                                    let _ = request.respond(Response::from_string("Replay stopped").with_status_code(503));
+                                }
+                            }
+                        } else {
+                            persist(route.replay_id, route.hit_limit, status, true, &method, &path, &req_headers, &body, &resp_headers, &resp_body, ts);
+                            let _ = app.emit(
+                                "replay-hit",
+                                ReplayHit {
+                                    replay_id: route.replay_id,
+                                    method,
+                                    path,
+                                    matched: true,
+                                    status,
+                                    request_headers: req_headers,
+                                    request_body: body,
+                                    response_headers: resp_headers,
+                                    response_body: resp_body,
+                                    ts,
+                                },
+                            );
+                            let _ = request.respond(response);
+                        }
                     } else {
                         if let Some(route) = sole_route {
                             persist(route.replay_id, route.hit_limit, 404, false, &method, &path, &req_headers, &body, &[], "Not Found", ts);
@@ -321,6 +435,8 @@ pub fn stop_replay(servers: tauri::State<'_, ReplayServers>, replay_id: i64) -> 
     if shutdown {
         inner.ports.remove(&port);
     }
+    // Wake any thread blocked on a paused request so it can re-check its stop flag.
+    inner.gate.cv.notify_all();
     Ok(())
 }
 
@@ -328,4 +444,30 @@ pub fn stop_replay(servers: tauri::State<'_, ReplayServers>, replay_id: i64) -> 
 pub fn list_running_replays(servers: tauri::State<'_, ReplayServers>) -> Result<Vec<i64>, String> {
     let inner = servers.0.lock().map_err(|e| e.to_string())?;
     Ok(inner.replay_to_port.keys().copied().collect())
+}
+
+/// Toggle pause (breakpoint) mode for a running replay. Resets when restarted.
+#[tauri::command]
+pub fn set_replay_paused(servers: tauri::State<'_, ReplayServers>, replay_id: i64, paused: bool) -> Result<(), String> {
+    let inner = servers.0.lock().map_err(|e| e.to_string())?;
+    if let Some(port) = inner.replay_to_port.get(&replay_id) {
+        if let Some(ps) = inner.ports.get(port) {
+            let routes = ps.routes.lock().map_err(|e| e.to_string())?;
+            for r in routes.iter() {
+                if r.replay_id == replay_id {
+                    r.paused.store(paused, Ordering::Relaxed);
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Step: release a paused request so its response is sent.
+#[tauri::command]
+pub fn resume_replay(servers: tauri::State<'_, ReplayServers>, pause_id: u64) -> Result<(), String> {
+    let inner = servers.0.lock().map_err(|e| e.to_string())?;
+    inner.gate.resumed.lock().map_err(|e| e.to_string())?.insert(pause_id);
+    inner.gate.cv.notify_all();
+    Ok(())
 }

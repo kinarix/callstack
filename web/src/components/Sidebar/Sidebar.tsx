@@ -4,6 +4,7 @@ import { AccentToggle } from '../Header/AccentToggle';
 import { useApp } from '../../context/AppContext';
 import { useDatabase } from '../../hooks/useDatabase';
 import { useReplayServer } from '../../hooks/useReplayServer';
+import { useReplayControls } from '../../hooks/useReplayControls';
 import { useShortcuts } from '../../hooks/useShortcuts';
 import { ShortcutModal } from '../ShortcutModal/ShortcutModal';
 import { NewProjectModal } from './NewProjectModal';
@@ -138,6 +139,7 @@ function getLogoGradient(): string {
 export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, onOpenSettings, showSysApplet }: Readonly<SidebarProps>) {
   const { state, dispatch } = useApp();
   const { stopReplay } = useReplayServer();
+  const { startAll, stopAll } = useReplayControls();
   const {
     createProject,
     createRequest,
@@ -379,13 +381,11 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     dispatch({ type: 'SET_ACTIVE_REPLAY', payload: replay.id });
   };
 
+  const handleStartReplays = () => { void startAll(); };
   const handleStopReplays = () => setConfirmStopReplays(true);
 
   const doStopReplays = async () => {
-    // All-or-nothing: stop every running replay (they share servers by port).
-    const ids = [...state.runningReplayIds];
-    await Promise.all(ids.map((id) => stopReplay(id).catch(() => {})));
-    ids.forEach((id) => dispatch({ type: 'SET_REPLAY_RUNNING', payload: { id, running: false } }));
+    await stopAll();
     setConfirmStopReplays(false);
   };
 
@@ -1404,6 +1404,7 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
                 expandedReplaySections={expandedReplaySections}
                 setExpandedReplaySections={setExpandedReplaySections}
                 runningReplayIds={state.runningReplayIds}
+                onStartReplays={handleStartReplays}
                 onStopReplays={handleStopReplays}
                 onOpenReplay={handleOpenReplay}
                 onDeleteReplay={requestDeleteReplay}

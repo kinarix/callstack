@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { AppProvider, useApp } from './context/AppContext';
 import { ErrorBoundary } from './components/ErrorBoundary/ErrorBoundary';
 import { Sidebar } from './components/Sidebar/Sidebar';
@@ -17,7 +18,7 @@ import { useReplayServer } from './hooks/useReplayServer';
 import { useSettings, matchesShortcut } from './hooks/useSettings';
 import { formatBody } from './lib/formatBody';
 import { isScratchProject, SCRATCH_PROJECT_NAME } from './lib/utils';
-import type { KeyValue } from './lib/types';
+import type { KeyValue, PausedRequest } from './lib/types';
 
 function clearUIState() {
   Object.keys(localStorage)
@@ -32,6 +33,22 @@ function AppContent() {
   const { listRunningReplays } = useReplayServer();
   const { settings, setZoom, setShortcut, setResponseHistoryLimit, setReplayHitLimit, setReplayDefaultPort, setHttpTimeout, setFormatOnSend, setSysApplet, resetSettings } = useSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // App-level so paused requests are captured and the replay opens even when
+  // the user is on another view. Survives ReplayView mount/unmount.
+  useEffect(() => {
+    const unlistens: Array<() => void> = [];
+    listen<PausedRequest>('replay-paused', (e) => {
+      dispatch({ type: 'SET_ACTIVE_PAUSE', payload: { replayId: e.payload.replayId, pause: e.payload } });
+      dispatch({ type: 'SET_ACTIVE_REPLAY', payload: e.payload.replayId });
+      dispatch({ type: 'SET_VIEW', payload: 'replay' });
+    }).then((fn) => unlistens.push(fn));
+    listen<{ replayId: number; pauseId: number }>('replay-resumed', (e) => {
+      dispatch({ type: 'SET_ACTIVE_PAUSE', payload: { replayId: e.payload.replayId, pause: null } });
+    }).then((fn) => unlistens.push(fn));
+    return () => unlistens.forEach((u) => u());
+  }, [dispatch]);
+
   const [displayZoom, setDisplayZoom] = useState(settings.zoom);
   const displayZoomRef = useRef(settings.zoom);
   const zoomRafRef = useRef<number | null>(null);
