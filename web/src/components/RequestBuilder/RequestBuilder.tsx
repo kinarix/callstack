@@ -5,6 +5,7 @@ import type { Request, KeyValue, LogEntry, FileAttachment, Environment, Document
 import { UrlBar } from './UrlBar';
 import { TabPanel } from './TabPanel';
 import { ResponseViewer } from '../ResponseViewer/ResponseViewer';
+import { WebSocketView } from '../WebSocketView/WebSocketView';
 import DocsModal from './DocsEditor/DocsModal';
 import styles from './RequestBuilder.module.css';
 import { useApp } from '../../context/AppContext';
@@ -21,7 +22,7 @@ function formatBodyAsync(body: string, contentType: string): Promise<string> {
     worker.postMessage({ body, contentType });
   });
 }
-import { getImplicitHeaders } from '../../lib/utils';
+import { getImplicitHeaders, getProtocol, getUrlScheme, stripScheme, setScheme, applySchemeIfMissing, type UrlScheme } from '../../lib/utils';
 import { runScript } from '../../hooks/useScriptRunner';
 import type { EnvMutations } from '../../hooks/useScriptRunner';
 import type { Settings } from '../../hooks/useSettings';
@@ -49,16 +50,31 @@ interface UrlError {
 
 const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH']);
 
+/** Lowercase the literal parts of a string while preserving {{var}} token casing. */
+function lowerPreservingVars(s: string): string {
+  return s
+    .split(/(\{\{[^}]*\}\})/)
+    .map((part, i) => (i % 2 === 1 ? part : part.toLowerCase()))
+    .join('');
+}
+
 function normalizeUrl(raw: string): string {
   const trimmed = raw.trim();
-  try {
-    // URL constructor lowercases scheme and hostname automatically
-    return new URL(trimmed).toString();
-  } catch {
-    // Return as-is — do NOT lowercase. If the URL contains template variables
-    // like {{baseUrl}}, lowercasing would corrupt the variable names.
-    return trimmed;
+  if (!trimmed.includes('{{')) {
+    try {
+      // URL constructor lowercases scheme and hostname automatically
+      return new URL(trimmed).toString();
+    } catch {
+      return trimmed;
+    }
   }
+  // Templated URL: new URL() would lowercase a {{baseUrl}} sitting in the host and
+  // corrupt the var name. Normalize only the scheme + host literals (the parts URL
+  // canonicalization actually touches), preserving token casing and the path/query as-is.
+  const m = trimmed.match(/^([a-zA-Z][a-zA-Z0-9+.-]*:\/\/)([^/?#]*)(.*)$/s);
+  if (!m) return trimmed;
+  const [, schemeSep, host, rest] = m;
+  return lowerPreservingVars(schemeSep) + lowerPreservingVars(host) + rest;
 }
 
 /** Returns the loopback port if the URL targets localhost/127.0.0.1, else null. */
@@ -85,9 +101,9 @@ function validateUrl(url: string): UrlError | null {
   }
 
   const scheme = schemeMatch[1].toLowerCase();
-  if (scheme !== 'http' && scheme !== 'https') {
+  if (scheme !== 'http' && scheme !== 'https' && scheme !== 'ws' && scheme !== 'wss') {
     return {
-      message: `Unsupported scheme "${scheme}". Use http or https.`,
+      message: `Unsupported scheme "${scheme}". Use http, https, ws, or wss.`,
       start: 0,
       end: schemeMatch[1].length,
     };
@@ -299,6 +315,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
 
   const handleMethodChange = (method: string) => {
     if (!request) return;
+
     const changes: Partial<Request> = { method: method as Request['method'] };
 
     // When switching to a body method (POST/PUT/PATCH), default Content-Type to JSON
@@ -308,6 +325,11 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
 
     dispatch({ type: 'UPDATE_REQUEST', payload: { ...request, ...changes } });
     saveToDb(request.id, changes);
+  };
+
+  const handleSchemeChange = (scheme: UrlScheme) => {
+    if (!request) return;
+    handleUrlChange(setScheme(request.url, scheme));
   };
 
   const handleUrlChange = (url: string) => {
@@ -523,6 +545,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
 
   const handleSend = async () => {
     if (!request || !request.url) return;
+    if (getProtocol(request.url) === 'ws') return; // WS uses connect/disconnect, not the HTTP send path
     if (state.isLoading) return;
 
     // Clear console on each send
@@ -591,7 +614,8 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         // Execute this step silently
         const stepStart = Date.now();
         const allLive = [...chainEnv, ...chainSecrets];
-        let url = resolveTemplate(req.url, allLive);
+        const stepScheme = getUrlScheme(req.url) ?? 'https';
+        let url = applySchemeIfMissing(resolveTemplate(stripScheme(req.url), allLive), stepScheme);
         let body = resolveTemplate(req.body, allLive);
         body = body.replace(/(?<!")\{\{#[\w.$-]+\}\}(?!")/g, '"$&"');
         let params = req.params.map(p => ({ ...p, value: resolveTemplate(p.value, allLive) }));
@@ -617,7 +641,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         const stepCurl = buildCurl(req.method, normalizedStepUrl, params, headers, body);
         try {
           const result = await send({
-            method: req.method, url, params, headers, body,
+            method: req.method, url: normalizedStepUrl, params, headers, body,
             followRedirects: req.follow_redirects ?? true,
             attachments: req.files ?? [],
             projectId: state.currentProjectId,
@@ -733,7 +757,10 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
     // Apply template resolution using active env variables + secrets
     // (chainEnv/chainSecrets reflect any mutations from the pre-chain above)
     const allVars = [...chainEnv, ...chainSecrets];
-    let resolvedUrl = resolveTemplate(request.url, allVars);
+    // Resolve the scheme-less remainder first, then re-apply the chosen scheme only if the
+    // resolved value doesn't already carry one (so a {{baseUrl}} that includes a scheme isn't doubled).
+    const urlScheme = getUrlScheme(request.url) ?? 'https';
+    let resolvedUrl = applySchemeIfMissing(resolveTemplate(stripScheme(request.url), allVars), urlScheme);
     let resolvedBody = resolveTemplate(rawBody, allVars);
     // Quote any unresolved {{#...}} data-file vars so the JSON body stays valid
     resolvedBody = resolvedBody.replace(/(?<!")\{\{#[\w.$-]+\}\}(?!")/g, '"$&"');
@@ -777,11 +804,26 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
 
     // Normalize URL (lowercase scheme + host) — only write back if the original URL
     // itself changed, not because template variables were resolved.
-    const normalizedUrl = normalizeUrl(resolvedUrl);
+    const normalizedUrl = normalizeUrl(applySchemeIfMissing(resolvedUrl, urlScheme));
     const normalizedOriginal = normalizeUrl(request.url);
     if (normalizedOriginal !== request.url) {
       dispatch({ type: 'UPDATE_REQUEST', payload: { ...request, url: normalizedOriginal } });
       saveToDb(request.id, { url: normalizedOriginal });
+    }
+
+    // Catch template variables that didn't resolve (e.g. wrong/no environment selected)
+    // before they reach the backend, where they surface as a cryptic "builder error for url".
+    const unresolved = normalizedUrl.match(/\{\{\s*([\w.$#-]+)\s*\}\}/);
+    if (unresolved) {
+      const at = normalizedUrl.indexOf(unresolved[0]);
+      setUrlError({
+        message: `Unresolved variable {{${unresolved[1]}}} — is the right environment selected?`,
+        start: at,
+        end: at + unresolved[0].length,
+      });
+      dispatch({ type: 'SET_LOADING', payload: false });
+      dispatch({ type: 'SET_EXECUTING_REQUEST', payload: null });
+      return;
     }
 
     // Validate URL
@@ -937,6 +979,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         showExpandBtn={showExpandBtn}
         onExpand={onExpand}
         onMethodChange={handleMethodChange}
+        onSchemeChange={handleSchemeChange}
         onUrlChange={handleUrlChange}
         onUrlBlur={handleUrlBlur}
         onNameChange={(name) => handleRequestChange({ name })}
@@ -978,6 +1021,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         <div className={styles.requestPane} onFocus={onRequestFocus}>
           <TabPanel
             request={request}
+            isWs={!!request && getProtocol(request.url) === 'ws'}
             onRequestChange={handleRequestChange}
             files={files}
             onFilesChange={handleFilesChange}
@@ -996,15 +1040,19 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         </div>
         <div className={styles.splitHandle} onMouseDown={startPanelResize} />
         <div className={styles.responsePane} onFocus={onResponseFocus}>
-          <ResponseViewer
-            response={state.currentResponse}
-            requestId={request?.id}
-            requestName={request?.name}
-            copyFlash={copyFlashPane === 'response'}
-            onClear={() => dispatch({ type: 'SET_RESPONSE', payload: null })}
-            onCopy={onCopyResponse}
-            onOpenUrlInNewRequest={onNew ? (url) => onNew(url) : undefined}
-          />
+          {request && getProtocol(request.url) === 'ws' ? (
+            <WebSocketView request={request} envVars={envVars} secrets={secrets} />
+          ) : (
+            <ResponseViewer
+              response={state.currentResponse}
+              requestId={request?.id}
+              requestName={request?.name}
+              copyFlash={copyFlashPane === 'response'}
+              onClear={() => dispatch({ type: 'SET_RESPONSE', payload: null })}
+              onCopy={onCopyResponse}
+              onOpenUrlInNewRequest={onNew ? (url) => onNew(url) : undefined}
+            />
+          )}
         </div>
       </div>
       {docsOpen && request && (

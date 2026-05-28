@@ -1,7 +1,7 @@
 import type { HTTPMethod, KeyValue } from './types';
 
-export function getMethodColor(method: HTTPMethod): string {
-  const colors: Record<HTTPMethod, string> = {
+export function getMethodColor(method: string): string {
+  const colors: Record<string, string> = {
     GET: 'var(--accent-get)',
     POST: 'var(--accent-post)',
     PUT: 'var(--accent-put)',
@@ -9,12 +9,13 @@ export function getMethodColor(method: HTTPMethod): string {
     PATCH: 'var(--accent-patch)',
     HEAD: 'var(--accent-head)',
     OPTIONS: 'var(--accent-options)',
+    WS: 'var(--accent-ws)',
   };
   return colors[method] || 'var(--text-tertiary)';
 }
 
-export function getMethodIcon(method: HTTPMethod): string {
-  const icons: Record<HTTPMethod, string> = {
+export function getMethodIcon(method: string): string {
+  const icons: Record<string, string> = {
     GET: '↓',      // Download/retrieve
     POST: '↑',     // Upload/create
     PUT: '↔',      // Replace/update
@@ -22,8 +23,44 @@ export function getMethodIcon(method: HTTPMethod): string {
     PATCH: '◐',    // Partial/patch
     HEAD: '⌒',     // Head/metadata
     OPTIONS: '⊕',  // Options/capabilities
+    WS: '⇌',       // WebSocket — bidirectional
   };
   return icons[method] || '?';
+}
+
+/** Display label for a request's protocol/method (WS requests show "WS"). */
+export function getRequestLabel(method: string, protocol?: string): string {
+  return protocol === 'ws' ? 'WS' : method;
+}
+
+export type UrlScheme = 'http' | 'https' | 'ws' | 'wss';
+
+/** Parse the literal leading scheme of a URL, or null if absent/templated. */
+export function getUrlScheme(url: string): UrlScheme | null {
+  const m = url.match(/^(https?|wss?):\/\//i);
+  return m ? (m[1].toLowerCase() as UrlScheme) : null;
+}
+
+/** Transport derived from the URL scheme — ws/wss → 'ws', everything else → 'http'. */
+export function getProtocol(url: string): 'http' | 'ws' {
+  const scheme = getUrlScheme(url);
+  return scheme === 'ws' || scheme === 'wss' ? 'ws' : 'http';
+}
+
+/** Remove one or more leading `scheme://` prefixes, leaving the hostname onward.
+ *  Strips repeats so legacy double-scheme values self-heal. */
+export function stripScheme(url: string): string {
+  return url.replace(/^((https?|wss?):\/\/)+/i, '');
+}
+
+/** Replace (or set) the leading scheme of a URL, keeping the remainder intact. */
+export function setScheme(url: string, scheme: UrlScheme): string {
+  return `${scheme}://${stripScheme(url)}`;
+}
+
+/** Prepend the scheme only when the URL has none — never duplicates an existing one. */
+export function applySchemeIfMissing(url: string, scheme: UrlScheme): string {
+  return getUrlScheme(url) ? url : `${scheme}://${url}`;
 }
 
 export function getStatusColor(status: number): string {

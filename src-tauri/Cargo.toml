@@ -1,6 +1,6 @@
 [package]
 name = "callstack"
-version = "0.23.1"
+version = "0.25.0"
 description = "A modern REST API testing tool"
 authors = ["Kinarix"]
 edition = "2021"
@@ -31,6 +31,8 @@ base64 = "0.22"
 rusqlite = { version = "0.39", features = ["bundled"] }
 tiny_http = "0.12"
 tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
+futures-util = "0.3"
 dirs = "6"
 rfd = "0.17"
 arboard = { version = "3", default-features = false }

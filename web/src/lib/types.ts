@@ -53,6 +53,25 @@ export interface Request {
   use_cookie_jar: boolean;
   pre_chain: PreChainStep[];
   documentation: DocumentationFields;
+  ws_config?: WsConfig;
+}
+
+export interface WsConfig {
+  subprotocols: string[];
+  autoReconnect: boolean;
+  pingIntervalSecs: number;
+}
+
+export type WsStatus = 'connecting' | 'open' | 'closing' | 'closed' | 'error' | 'reconnecting';
+
+export interface WsMessage {
+  id?: number;
+  requestId: number;
+  direction: 'in' | 'out' | 'system';
+  kind: 'text' | 'binary' | 'ping' | 'pong' | 'close' | 'open' | 'error';
+  data: string;
+  size: number;
+  ts: number;
 }
 
 export interface DocumentationFields {

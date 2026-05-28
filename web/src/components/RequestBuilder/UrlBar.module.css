@@ -119,8 +119,13 @@
   width: 116px;
 }
 
-.methodPill:hover {
+.methodPill:hover:not(:disabled) {
   filter: brightness(1.15);
+}
+
+.methodPill:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .methodPillIcon {
@@ -181,6 +186,84 @@
   font-weight: 700;
   -webkit-text-stroke: 0.4px currentColor;
   color: var(--method-color);
+}
+
+.schemeWrapper {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: stretch;
+}
+
+.schemePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: stretch;
+  background: var(--bg-tertiary);
+  border: 1px solid;
+  box-shadow: var(--shadow-sm);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Outfit', sans-serif;
+  cursor: pointer;
+  padding: 0 10px;
+  white-space: nowrap;
+  transition: filter 0.15s;
+  width: 78px;
+  text-transform: uppercase;
+}
+
+.schemePill:hover {
+  filter: brightness(1.15);
+}
+
+.schemePlaceholder {
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+.schemeDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  min-width: 90px;
+  z-index: 100;
+  overflow: hidden;
+  padding: 4px;
+}
+
+.schemeOption {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'Outfit', sans-serif;
+  cursor: pointer;
+  padding: 6px 8px;
+  text-align: left;
+  text-transform: uppercase;
+  transition: background 0.1s, color 0.1s;
+}
+
+.schemeOption:hover {
+  background: var(--bg-hover);
+  color: var(--scheme-color);
+}
+
+.schemeOptionActive {
+  color: var(--scheme-color);
+  font-weight: 600;
 }
 
 .urlInputWrapper {
