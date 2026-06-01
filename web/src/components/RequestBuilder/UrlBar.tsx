@@ -166,20 +166,6 @@ function SchemeSelector({ value, onChange }: { value: UrlScheme; onChange: (s: U
   );
 }
 
-function renderUrlSegments(url: string, error: UrlError) {
-  const { start, end } = error;
-  if (start === undefined || end === undefined || start >= end || start < 0 || end > url.length) {
-    return <span className={styles.urlErrorSpan}>{url}</span>;
-  }
-  return (
-    <>
-      {start > 0 && <span>{url.slice(0, start)}</span>}
-      <span className={styles.urlErrorSpan}>{url.slice(start, end)}</span>
-      {end < url.length && <span>{url.slice(end)}</span>}
-    </>
-  );
-}
-
 export function UrlBar({
   request,
   isLoading,
@@ -230,11 +216,13 @@ export function UrlBar({
   };
 
   // Validation offsets come from the full URL; shift them into the scheme-less remainder.
+  // A structural error with no offsets underlines the whole remainder.
   const prefixLen = url.length - remainder.length;
-  const overlayError: UrlError | null =
-    urlError && urlError.start !== undefined && urlError.end !== undefined
-      ? { ...urlError, start: Math.max(0, urlError.start - prefixLen), end: Math.max(0, urlError.end - prefixLen) }
-      : urlError ?? null;
+  const errorRange: { start: number; end: number } | null = urlError
+    ? urlError.start !== undefined && urlError.end !== undefined
+      ? { start: Math.max(0, urlError.start - prefixLen), end: Math.max(0, urlError.end - prefixLen) }
+      : { start: 0, end: remainder.length }
+    : null;
   const sendBlockedByUrl = !isUrlValid(url);
   return (
     <div className={styles.urlBar}>
@@ -329,11 +317,6 @@ export function UrlBar({
           }
         }}
       >
-        {overlayError && remainder && (
-          <div className={styles.urlOverlay} aria-hidden>
-            {renderUrlSegments(remainder, overlayError)}
-          </div>
-        )}
         <TemplateInput
           key={request?.id ?? 'none'}
           value={remainder}
@@ -341,6 +324,7 @@ export function UrlBar({
           placeholder="api.example.com/endpoint"
           envVars={envVars}
           secrets={secrets}
+          errorRange={errorRange}
           showTitle
           onKeyDown={(e) => {
             if (e.key === 'Enter') {

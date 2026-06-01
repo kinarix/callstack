@@ -36,6 +36,87 @@
   opacity: 0.5;
 }
 
+/* When the colored overlay is active it supplies the visible text; the input itself
+   goes transparent but keeps a visible caret. */
+.inputOverlaid {
+  color: transparent;
+  caret-color: var(--text-primary);
+}
+
+.inputOverlaid::placeholder {
+  color: var(--text-tertiary);
+  opacity: 0.6;
+}
+
+/* Colored token overlay sitting exactly over the input. pointer-events:none keeps native
+   editing (click-to-caret, drag-select) fully intact; padding/font are mirrored from the
+   input at runtime via inline styles. */
+.overlay {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  white-space: pre;
+  overflow: hidden;
+  pointer-events: none;
+  color: var(--text-primary);
+  z-index: 1;
+}
+
+.overlay span {
+  flex: 0 0 auto;
+  white-space: pre;
+}
+
+.token {
+  color: var(--accent-options);
+}
+
+.unresolved {
+  color: var(--accent-delete);
+}
+
+.errorSpan {
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-color: var(--accent-delete);
+  text-decoration-skip-ink: none;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 1100;
+  max-width: 360px;
+  padding: 4px 8px;
+  background: var(--bg-elevated, var(--bg-secondary));
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm, 4px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-all;
+  pointer-events: none;
+}
+
+/* `top` is the token's bottom edge — render downward. */
+.tooltipBelow {
+  transform: none;
+}
+
+/* `top` is the token's top edge — lift the tooltip fully above it. */
+.tooltipAbove {
+  transform: translateY(-100%);
+}
+
+.tooltipError {
+  color: var(--accent-delete);
+  border-color: color-mix(in srgb, var(--accent-delete) 50%, var(--border-primary));
+}
+
 .dropdown {
   position: absolute;
   top: calc(100% + 4px);

@@ -2,6 +2,7 @@ import { useRef, useCallback, useState, useEffect, useMemo } from 'react';
 import type { KeyValue } from '../../lib/types';
 import { BinIcon } from '../Sidebar/SidebarIcons';
 import { TemplateInput } from './TemplateInput';
+import { TemplateText } from './TemplateText';
 import { isJwt } from '../../lib/jwt';
 import { JwtBadge } from '../JwtBadge/JwtBadge';
 import { resolveTemplate } from '../../lib/template';
@@ -204,9 +205,18 @@ export function KeyValueEditor({
                     {item.key || <em className={styles.pillPlaceholder}>key</em>}
                   </span>
                   <span className={styles.pillSep}>:</span>
-                  <span className={styles.pillValue} title={item.value || undefined}>
-                    {item.value || <em className={styles.pillPlaceholder}>empty</em>}
-                  </span>
+                  {item.value ? (
+                    <TemplateText
+                      value={item.value}
+                      envVars={envVars}
+                      secrets={secrets}
+                      className={styles.pillValue}
+                    />
+                  ) : (
+                    <span className={styles.pillValue}>
+                      <em className={styles.pillPlaceholder}>empty</em>
+                    </span>
+                  )}
                   {hasJwt && <JwtBadge token={resolved} />}
                   {!hideActions && (
                     <button
