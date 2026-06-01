@@ -7,6 +7,7 @@ import { autocompletion } from '@codemirror/autocomplete';
 import { tags } from '@lezer/highlight';
 import type { KeyValue } from '../../lib/types';
 import { templateCompletion, replaceTokensForValidation } from '../../lib/template';
+import { templateDecorations, templateHoverTooltip } from '../../lib/cmTemplate';
 import { useEditorMemory } from '../../hooks/useEditorMemory';
 import { useWrapToggle } from '../../hooks/useWrapBody';
 import styles from './BodyEditor.module.css';
@@ -183,6 +184,24 @@ const appEditorTheme = EditorView.theme({
     marginLeft: '8px',
     fontSize: '11px',
   },
+  '.cm-template-unresolved': {
+    color: 'var(--accent-delete) !important',
+    textDecoration: 'underline wavy var(--accent-delete)',
+    textDecorationSkipInk: 'none',
+  },
+  '.cm-template-tooltip': {
+    padding: '4px 8px',
+    maxWidth: '360px',
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: '11.5px',
+    lineHeight: '1.4',
+    color: 'var(--text-primary)',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-all',
+  },
+  '.cm-template-tooltip-error': {
+    color: 'var(--accent-delete)',
+  },
 });
 
 const appHighlight = HighlightStyle.define([
@@ -242,6 +261,8 @@ export function BodyEditor({
     const baseExtensions = lang ? [...appThemeExtension, lang] : appThemeExtension;
     return [
       ...baseExtensions,
+      templateDecorations(envVars, secrets),
+      templateHoverTooltip(envVars, secrets),
       autocompletion({ override: [templateCompletion(envVarKeys, secretKeys)], activateOnTyping: true }),
       ...(wrap ? [EditorView.lineWrapping] : []),
       memoryExtension,

@@ -282,28 +282,6 @@
   padding: 0 130px 0 var(--space-2);
 }
 
-.urlOverlay {
-  position: absolute;
-  inset: 1px; /* sits inside the 1px border */
-  padding: 0 var(--space-2);
-  display: flex;
-  align-items: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  color: transparent;
-  white-space: pre;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.urlErrorSpan {
-  text-decoration-line: underline;
-  text-decoration-style: wavy;
-  text-decoration-color: var(--accent-delete);
-  text-decoration-skip-ink: none;
-}
-
 .urlInput {
   flex: 1;
   width: 100%;
