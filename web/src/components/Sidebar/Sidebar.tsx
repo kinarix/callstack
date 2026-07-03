@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState, useCallback, type Dispatch, type SetStateAction } from 'react';
-import { ThemeToggle } from '../Header/ThemeToggle';
-import { AccentToggle } from '../Header/AccentToggle';
 import { useApp } from '../../context/AppContext';
 import { useDatabase } from '../../hooks/useDatabase';
 import { useReplayServer } from '../../hooks/useReplayServer';
@@ -16,7 +14,7 @@ import type { ExportItem, ExportResult } from '../ExportModal/ExportModal';
 import type { ParsedCollection, ParsedRequest } from '../../utils/postmanParser';
 import { exportFolderAsPostman, exportProjectAsPostman } from '../../utils/postmanParser';
 import { exportProjectAsOpenAPIYAML } from '../../utils/openapiExport';
-import { exportProject as exportCallstackProject, exportProjectPlain, importArchive, deserializeAutomationStep } from '../../utils/callstackArchive';
+import { exportProject as exportCallstackProject, exportProjectPlain, exportAllProjects, importArchive, deserializeAutomationStep } from '../../utils/callstackArchive';
 import type { ArchivePreview } from '../../lib/callstackSchema';
 import { invoke } from '@tauri-apps/api/core';
 import type { AppAction, AppState, Automation, Cookie, DataFile, Environment, Replay, Request } from '../../lib/types';
@@ -89,6 +87,17 @@ function HelpIcon() {
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" />
       <path d="M10 9.5a2 2 0 1 1 3.5 1.5c-.6.6-1.5 1.1-1.5 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx="12" cy="15.5" r="0.75" fill="currentColor" />
+    </svg>
+  );
+}
+
+function ExportAllIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M9 11V4M6 7L9 4L12 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
+      <path d="M4 13h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity="0.5" />
+      <path d="M15 17V10M12 13L15 10L18 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 19h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   );
 }
@@ -954,6 +963,37 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     }
   }, [exportModalState, state, getLastResponse, getLastResponsesForProject]);
 
+  const handleExportAllProjects = useCallback(async () => {
+    try {
+      const blob = await exportAllProjects(state.projects, async (project) => {
+        const projectFolders = state.folders.filter((f) => f.project_id === project.id);
+        const projectRequests = state.requests.filter((r) => r.project_id === project.id);
+        const projectEnvironments = state.environments.filter((e) => e.project_id === project.id);
+        const projectAutomations = automations.filter((a) => a.projectId === project.id);
+        const projectDataFiles = state.dataFiles.filter((d) => d.project_id === project.id);
+
+        const responses = await getLastResponsesForProject(project.id);
+
+        return exportCallstackProject({
+          project,
+          folders: projectFolders,
+          requests: projectRequests,
+          environments: projectEnvironments,
+          automations: projectAutomations,
+          dataFiles: projectDataFiles,
+          responses,
+        });
+      });
+
+      const data = Array.from(new Uint8Array(await blob.arrayBuffer()));
+      const date = new Date().toISOString().slice(0, 10);
+      await invoke('save_binary_file', { filename: `callstack-export-${date}.zip`, data });
+    } catch (err) {
+      console.error('Failed to export all projects:', err);
+      dispatch({ type: 'SHOW_ERROR', payload: { message: `Failed to export all projects: ${String(err)}`, showReset: false } });
+    }
+  }, [state.projects, state.folders, state.requests, state.environments, state.dataFiles, automations, getLastResponsesForProject]);
+
   // ─── Native DnD handlers ────────────────────────────────────────────────────
 
   const applyRequestMove = async (
@@ -1466,8 +1506,9 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
           <button className={`${styles.iconAction} ${styles.helpBtn}`} onClick={() => invoke('open_system_url', { url: 'https://callstack.kinarix.com/docs/' })} title="Help & Docs">
             <HelpIcon />
           </button>
-          <ThemeToggle />
-          <AccentToggle />
+          <button className={`${styles.iconAction} ${styles.exportAllBtn}`} onClick={handleExportAllProjects} title="Export all projects">
+            <ExportAllIcon />
+          </button>
           <button className={`${styles.iconAction} ${styles.collapseBtn}`} onClick={onToggleCollapse} title="Collapse navigator">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <rect x="1.5" y="1.5" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="1.3"/>

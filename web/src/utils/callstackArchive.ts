@@ -213,6 +213,38 @@ export async function exportProject(opts: ExportOptions): Promise<Blob> {
   return zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
 }
 
+export async function exportAllProjects(projects: Project[], perProject: (project: Project) => Promise<Blob>): Promise<Blob> {
+  const zip = new JSZip();
+  const usedNames = new Set<string>();
+
+  const entries: { name: string; id: number; file: string }[] = [];
+
+  for (const project of projects) {
+    const blob = await perProject(project);
+    const buffer = await blob.arrayBuffer();
+
+    const safeBase = project.name.replace(/[^A-Za-z0-9_.-]+/g, '_') || 'project';
+    let safeName = safeBase;
+    if (usedNames.has(safeName)) {
+      safeName = `${safeBase}-${project.id}`;
+    }
+    usedNames.add(safeName);
+
+    const file = `projects/${safeName}.callstack`;
+    zip.file(file, buffer);
+    entries.push({ name: project.name, id: project.id, file });
+  }
+
+  const manifest = {
+    generator: `callstack/${__APP_VERSION__}`,
+    exportedAt: new Date().toISOString(),
+    projects: entries,
+  };
+  zip.file('manifest.json', JSON.stringify(manifest, null, 2));
+
+  return zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+}
+
 export async function exportProjectPlain(opts: ExportOptions): Promise<string> {
   const { project, folders, requests, environments, automations, dataFiles, responses, selectedEnvironmentName } = opts;
 
