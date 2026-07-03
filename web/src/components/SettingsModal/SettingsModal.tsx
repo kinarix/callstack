@@ -5,7 +5,24 @@ import { invoke } from '@tauri-apps/api/core';
 declare const __APP_VERSION__: string;
 import type { ActionShortcuts, Settings } from '../../hooks/useSettings';
 import { formatShortcut } from '../../hooks/useSettings';
+import { useTheme } from '../../hooks/useTheme';
+import type { Theme } from '../../lib/types';
+import { useAccentTheme } from '../../hooks/useAccentTheme';
+import type { AccentTheme } from '../../hooks/useAccentTheme';
 import styles from './SettingsModal.module.css';
+
+const THEME_OPTIONS: { label: string; value: Theme }[] = [
+  { label: 'Light', value: 'light' },
+  { label: 'Dark', value: 'dark' },
+  { label: 'Dim', value: 'dim' },
+  { label: 'Match system', value: 'system' },
+];
+
+const ACCENT_OPTIONS: { label: string; value: AccentTheme }[] = [
+  { label: 'Color', value: 'color' },
+  { label: 'Bright', value: 'bright' },
+  { label: 'Mono', value: 'mono' },
+];
 
 const ZOOM_OPTIONS: { label: string; value: number }[] = [
   { label: 'Default (100%)', value: 1 },
@@ -84,7 +101,7 @@ function readCallstackLocalStorage(): { entries: LsEntry[]; totalBytes: number }
   return { entries, totalBytes };
 }
 
-type Tab = 'general' | 'data' | 'system';
+type Tab = 'general' | 'appearance' | 'data' | 'system';
 
 interface SystemStats {
   cpu_usage: number;
@@ -261,6 +278,9 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetRespons
   const [appVersion, setAppVersion] = useState<string>(() => {
     try { return (window as any).__APP_VERSION__ ?? __APP_VERSION__; } catch { return __APP_VERSION__; }
   });
+
+  const { theme, applyTheme } = useTheme();
+  const { accent, applyAccent } = useAccentTheme();
 
   const MAX_HISTORY = 60;
   const [sysStats, setSysStats] = useState<SystemStats | null>(null);
@@ -455,6 +475,12 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetRespons
             General
           </button>
           <button
+            className={`${styles.tab} ${tab === 'appearance' ? styles.tabActive : ''}`}
+            onClick={() => setTab('appearance')}
+          >
+            Appearance
+          </button>
+          <button
             className={`${styles.tab} ${tab === 'data' ? styles.tabActive : ''}`}
             onClick={() => setTab('data')}
           >
@@ -586,6 +612,56 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetRespons
                     </div>
                   </section>
                 )}
+              </div>
+            </div>
+          )}
+
+          {tab === 'appearance' && (
+            <div className={styles.columns}>
+              <div className={styles.column}>
+                <section className={styles.section}>
+                  <div className={styles.sectionTitle}>Theme</div>
+                  <div className={styles.sectionDesc}>
+                    Light, dark, dim, or follow the system setting.
+                  </div>
+                  <div className={styles.zoomOptions}>
+                    {THEME_OPTIONS.map(({ label, value }) => (
+                      <label key={value} className={`${styles.zoomOption} ${theme === value ? styles.zoomSelected : ''}`}>
+                        <input
+                          type="radio"
+                          name="theme"
+                          value={value}
+                          checked={theme === value}
+                          onChange={() => applyTheme(value)}
+                          className={styles.zoomRadio}
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                </section>
+
+                <section className={styles.section}>
+                  <div className={styles.sectionTitle}>Icon accent</div>
+                  <div className={styles.sectionDesc}>
+                    Color of method/action icons throughout the app.
+                  </div>
+                  <div className={styles.zoomOptions}>
+                    {ACCENT_OPTIONS.map(({ label, value }) => (
+                      <label key={value} className={`${styles.zoomOption} ${accent === value ? styles.zoomSelected : ''}`}>
+                        <input
+                          type="radio"
+                          name="accent"
+                          value={value}
+                          checked={accent === value}
+                          onChange={() => applyAccent(value)}
+                          className={styles.zoomRadio}
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                </section>
               </div>
             </div>
           )}
