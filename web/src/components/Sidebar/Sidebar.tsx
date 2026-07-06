@@ -14,8 +14,8 @@ import type { ExportItem, ExportResult } from '../ExportModal/ExportModal';
 import type { ParsedCollection, ParsedRequest } from '../../utils/postmanParser';
 import { exportFolderAsPostman, exportProjectAsPostman } from '../../utils/postmanParser';
 import { exportProjectAsOpenAPIYAML } from '../../utils/openapiExport';
-import { exportProject as exportCallstackProject, exportProjectPlain, exportAllProjects, importArchive, deserializeAutomationStep } from '../../utils/callstackArchive';
-import type { ArchivePreview } from '../../lib/callstackSchema';
+import { exportProject as exportCallstackProject, exportProjectPlain, exportAllProjects, importArchive, importAllProjects, deserializeAutomationStep } from '../../utils/callstackArchive';
+import type { ArchivePreview, CallstackManifest } from '../../lib/callstackSchema';
 import { invoke } from '@tauri-apps/api/core';
 import type { AppAction, AppState, Automation, Cookie, DataFile, Environment, Replay, Request } from '../../lib/types';
 import { isScratchProject } from '../../lib/utils';
@@ -98,6 +98,17 @@ function ExportAllIcon() {
       <path d="M4 13h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity="0.5" />
       <path d="M15 17V10M12 13L15 10L18 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M10 19h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ImportAllIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M9 7V14M6 11L9 14L12 11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
+      <path d="M4 16h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity="0.5" />
+      <path d="M15 13V20M12 17L15 20L18 17" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 5h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   );
 }
@@ -269,6 +280,21 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     | { mode: 'folder'; folderId: number; projectId: number }
     | null
   >(null);
+
+  const [showExportImportMenu, setShowExportImportMenu] = useState(false);
+  const exportImportWrapRef = useRef<HTMLDivElement>(null);
+  const importAllFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!showExportImportMenu) return;
+    const onClickOutside = (e: MouseEvent) => {
+      if (exportImportWrapRef.current && !exportImportWrapRef.current.contains(e.target as Node)) {
+        setShowExportImportMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [showExportImportMenu]);
 
   // Native DnD — ref avoids re-renders during drag; state drives visual feedback
   const dragging = useRef<{ kind: 'request' | 'folder'; id: number } | null>(null);
@@ -682,27 +708,9 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
     }
   }, [importModalState, importRequests, dispatch]);
 
-  const handleCallstackFileParsed = useCallback(async (_preview: ArchivePreview, file: File) => {
-    const ctx = filePickerState; // capture before clearing
-    setFilePickerState(null);
-    try {
-      const { manifest } = await importArchive(file);
-
-      // 1. Import into the context project if available; otherwise create a new project
-      const contextProjectId = ctx != null && 'projectId' in ctx ? (ctx as { projectId: number }).projectId : null;
-      const existingProject = contextProjectId != null
-        ? state.projects.find((p) => p.id === contextProjectId) ?? null
-        : null;
-
-      let project: import('../../lib/types').Project;
-      if (existingProject) {
-        project = existingProject;
-      } else {
-        project = await createProject(null, manifest.project.name, manifest.project.description ?? null);
-        dispatch({ type: 'ADD_PROJECT', payload: project });
-        dispatch({ type: 'TOGGLE_PROJECT', payload: project.id });
-      }
-
+  // Imports a parsed manifest's folders/requests/environments/responses/data files/automations
+  // into an existing (empty) project. Shared by single-file and multi-project bundle imports.
+  const importManifestIntoProject = useCallback(async (project: import('../../lib/types').Project, manifest: CallstackManifest) => {
       // 2. Create folders and build ref → DB ID map
       const folderIdMap = new Map<string, number>();
       for (const f of manifest.folders) {
@@ -820,12 +828,67 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
         }
       }
 
+  }, [createFolder, importRequests, createEnvironment, updateEnvironment, saveResponse, updateRequest, createDataFile, createAutomation, dispatch]);
+
+  const handleCallstackFileParsed = useCallback(async (_preview: ArchivePreview, file: File) => {
+    const ctx = filePickerState; // capture before clearing
+    setFilePickerState(null);
+    try {
+      const { manifest } = await importArchive(file);
+
+      // Import into the context project if available; otherwise create a new project
+      const contextProjectId = ctx != null && 'projectId' in ctx ? (ctx as { projectId: number }).projectId : null;
+      const existingProject = contextProjectId != null
+        ? state.projects.find((p) => p.id === contextProjectId) ?? null
+        : null;
+
+      let project: import('../../lib/types').Project;
+      if (existingProject) {
+        project = existingProject;
+      } else {
+        project = await createProject(null, manifest.project.name, manifest.project.description ?? null);
+        dispatch({ type: 'ADD_PROJECT', payload: project });
+        dispatch({ type: 'TOGGLE_PROJECT', payload: project.id });
+      }
+
+      await importManifestIntoProject(project, manifest);
       dispatch({ type: 'SET_CURRENT_PROJECT', payload: project.id });
     } catch (err) {
       console.error('Failed to import .callstack archive:', err);
       dispatch({ type: 'SHOW_ERROR', payload: { message: `Failed to import archive: ${String(err)}`, showReset: true } });
     }
-  }, [filePickerState, state.projects, state.dataFiles, createProject, createFolder, importRequests, createEnvironment, updateEnvironment, saveResponse, updateRequest, createDataFile, createAutomation, dispatch]);
+  }, [filePickerState, state.projects, createProject, importManifestIntoProject, dispatch]);
+
+  const handleImportAllProjectsFile = useCallback(async (file: File) => {
+    try {
+      const { projects } = await importAllProjects(file);
+      let lastProjectId: number | null = null;
+      for (const entry of projects) {
+        const project = await createProject(null, entry.manifest.project.name, entry.manifest.project.description ?? null);
+        dispatch({ type: 'ADD_PROJECT', payload: project });
+        await importManifestIntoProject(project, entry.manifest);
+        lastProjectId = project.id;
+      }
+      if (lastProjectId != null) {
+        dispatch({ type: 'TOGGLE_PROJECT', payload: lastProjectId });
+        dispatch({ type: 'SET_CURRENT_PROJECT', payload: lastProjectId });
+      }
+    } catch (err) {
+      console.error('Failed to import projects bundle:', err);
+      dispatch({ type: 'SHOW_ERROR', payload: { message: `Failed to import projects: ${String(err)}`, showReset: true } });
+    }
+  }, [createProject, importManifestIntoProject, dispatch]);
+
+  const handleImportProjectsMenuClick = useCallback(() => {
+    setShowExportImportMenu(false);
+    importAllFileInputRef.current?.click();
+  }, []);
+
+  const handleImportAllFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (file) handleImportAllProjectsFile(file);
+  }, [handleImportAllProjectsFile]);
 
   // ─── Export handlers ────────────────────────────────────────────────────────
 
@@ -1506,9 +1569,40 @@ export function Sidebar({ collapsed, onToggleCollapse, externalRenameRequestId, 
           <button className={`${styles.iconAction} ${styles.helpBtn}`} onClick={() => invoke('open_system_url', { url: 'https://callstack.kinarix.com/docs/' })} title="Help & Docs">
             <HelpIcon />
           </button>
-          <button className={`${styles.iconAction} ${styles.exportAllBtn}`} onClick={handleExportAllProjects} title="Export all projects">
-            <ExportAllIcon />
-          </button>
+          <div className={styles.exportImportWrap} ref={exportImportWrapRef}>
+            <button
+              className={`${styles.iconAction} ${styles.exportAllBtn}`}
+              onClick={() => setShowExportImportMenu((v) => !v)}
+              title="Export / Import projects"
+            >
+              <ExportAllIcon />
+            </button>
+            {showExportImportMenu && (
+              <div className={styles.exportImportMenu}>
+                <button
+                  className={styles.exportImportMenuItem}
+                  onClick={() => {
+                    setShowExportImportMenu(false);
+                    handleExportAllProjects();
+                  }}
+                >
+                  <ExportAllIcon />
+                  Export all projects
+                </button>
+                <button className={styles.exportImportMenuItem} onClick={handleImportProjectsMenuClick}>
+                  <ImportAllIcon />
+                  Import projects
+                </button>
+              </div>
+            )}
+            <input
+              ref={importAllFileInputRef}
+              type="file"
+              accept=".zip,application/zip"
+              style={{ display: 'none' }}
+              onChange={handleImportAllFileInputChange}
+            />
+          </div>
           <button className={`${styles.iconAction} ${styles.collapseBtn}`} onClick={onToggleCollapse} title="Collapse navigator">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <rect x="1.5" y="1.5" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="1.3"/>
