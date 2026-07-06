@@ -477,6 +477,69 @@ export async function importArchive(file: File): Promise<ParsedCallstackExport> 
   return { manifest };
 }
 
+// ── Import (multi-project bundle from "Export all projects") ─────────────
+
+export interface ParsedAllProjectsExport {
+  projects: { name: string; manifest: CallstackManifest }[];
+}
+
+export async function importAllProjects(file: File): Promise<ParsedAllProjectsExport> {
+  const buffer = await file.arrayBuffer();
+  const zip = await JSZip.loadAsync(buffer);
+
+  const manifestFile = zip.file('manifest.json');
+  if (!manifestFile) {
+    throw new Error('Invalid export bundle: missing manifest.json');
+  }
+
+  const bundleManifest = JSON.parse(await manifestFile.async('text')) as {
+    projects?: { name: string; id: number; file: string }[];
+  };
+
+  if (!Array.isArray(bundleManifest.projects)) {
+    throw new Error('Invalid export bundle: not a multi-project archive');
+  }
+
+  const projects: { name: string; manifest: CallstackManifest }[] = [];
+
+  for (const entry of bundleManifest.projects) {
+    const projectFile = zip.file(entry.file);
+    if (!projectFile) continue;
+
+    const projectBuffer = await projectFile.async('arraybuffer');
+    const projectZip = await JSZip.loadAsync(projectBuffer);
+    const projectManifestFile = projectZip.file('manifest.json');
+    if (!projectManifestFile) continue;
+
+    const manifest = JSON.parse(await projectManifestFile.async('text')) as CallstackManifest;
+    const majorVersion = parseInt(manifest.schemaVersion.split('.')[0], 10);
+    if (isNaN(majorVersion) || majorVersion > 1) {
+      throw new Error(
+        `Unsupported schema version in "${entry.name}": ${manifest.schemaVersion}. This version of Callstack supports schema v1.x.x.`
+      );
+    }
+
+    projects.push({ name: entry.name, manifest });
+  }
+
+  return { projects };
+}
+
+// ── Detect whether a .zip is a single project or multi-project bundle ────
+
+export async function isMultiProjectBundle(file: File): Promise<boolean> {
+  try {
+    const buffer = await file.arrayBuffer();
+    const zip = await JSZip.loadAsync(buffer);
+    const manifestFile = zip.file('manifest.json');
+    if (!manifestFile) return false;
+    const manifest = JSON.parse(await manifestFile.async('text'));
+    return Array.isArray(manifest.projects);
+  } catch {
+    return false;
+  }
+}
+
 // ── Preview (lightweight) ───────────────────────────────
 
 export async function previewArchive(file: File): Promise<ArchivePreview> {
