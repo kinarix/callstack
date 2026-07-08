@@ -446,24 +446,27 @@ pub fn update_project(
 
 #[tauri::command]
 pub fn delete_project(db: tauri::State<Database>, id: i64) -> Result<(), String> {
-    let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    conn.execute(
+    let mut conn = db.conn.lock().map_err(|e| e.to_string())?;
+    // Atomic: either the whole project (and all its children) goes, or nothing does.
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    tx.execute(
         "DELETE FROM responses WHERE request_id IN (SELECT id FROM requests WHERE project_id = ?1)",
         params![id],
     )
     .map_err(|e| e.to_string())?;
-    conn.execute("DELETE FROM requests WHERE project_id = ?1", params![id])
+    tx.execute("DELETE FROM requests WHERE project_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
-    conn.execute("DELETE FROM automations WHERE project_id = ?1", params![id])
+    tx.execute("DELETE FROM automations WHERE project_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
-    conn.execute("DELETE FROM data_files WHERE project_id = ?1", params![id])
+    tx.execute("DELETE FROM data_files WHERE project_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
-    conn.execute("DELETE FROM environments WHERE project_id = ?1", params![id])
+    tx.execute("DELETE FROM environments WHERE project_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
-    conn.execute("DELETE FROM folders WHERE project_id = ?1", params![id])
+    tx.execute("DELETE FROM folders WHERE project_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
-    conn.execute("DELETE FROM projects WHERE id = ?1", params![id])
+    tx.execute("DELETE FROM projects WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
+    tx.commit().map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -762,15 +765,21 @@ pub fn reorder_requests(
     db: tauri::State<Database>,
     ids: Vec<i64>,
 ) -> Result<(), String> {
-    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let mut conn = db.conn.lock().map_err(|e| e.to_string())?;
 
-    for (position, id) in ids.iter().enumerate() {
-        conn.execute(
-            "UPDATE requests SET position = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
-            params![position as i64, id],
-        )
-        .map_err(|e| e.to_string())?;
+    // One transaction + one prepared statement: reordering a large list is a single
+    // commit instead of N independent writes (each of which would otherwise fsync).
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    {
+        let mut stmt = tx
+            .prepare("UPDATE requests SET position = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2")
+            .map_err(|e| e.to_string())?;
+        for (position, id) in ids.iter().enumerate() {
+            stmt.execute(params![position as i64, id])
+                .map_err(|e| e.to_string())?;
+        }
     }
+    tx.commit().map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -874,18 +883,20 @@ pub fn update_folder(
 
 #[tauri::command]
 pub fn delete_folder(db: tauri::State<Database>, id: i64) -> Result<(), String> {
-    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let mut conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
     // Delete responses for requests in this folder
-    conn.execute(
+    tx.execute(
         "DELETE FROM responses WHERE request_id IN (SELECT id FROM requests WHERE folder_id = ?1)",
         params![id],
     )
     .map_err(|e| e.to_string())?;
     // Delete requests in this folder
-    conn.execute("DELETE FROM requests WHERE folder_id = ?1", params![id])
+    tx.execute("DELETE FROM requests WHERE folder_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
-    conn.execute("DELETE FROM folders WHERE id = ?1", params![id])
+    tx.execute("DELETE FROM folders WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
+    tx.commit().map_err(|e| e.to_string())?;
     Ok(())
 }
 

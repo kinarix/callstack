@@ -325,8 +325,25 @@ pub fn run() {
             }
             if let Some(win) = app.get_webview_window("main") {
                 use tauri_plugin_window_state::{StateFlags, WindowExt};
-                let _ = win.restore_state(StateFlags::MAXIMIZED | StateFlags::SIZE | StateFlags::POSITION);
-                let _ = win.show();
+                // Apply saved geometry while the window is still hidden (it's created
+                // visible:false) so it never flashes at the default spot before jumping
+                // to the restored position. FULLSCREEN is included so a quit-in-fullscreen
+                // returns to fullscreen on the next launch.
+                let _ = win.restore_state(
+                    StateFlags::MAXIMIZED
+                        | StateFlags::SIZE
+                        | StateFlags::POSITION
+                        | StateFlags::FULLSCREEN,
+                );
+                // The frontend calls show() once the UI has painted (see App.tsx), so the
+                // window reveals fully-rendered instead of as a blank webview. This timer is
+                // only a safety net: if the webview never loads, reveal the window anyway so
+                // it can't get stuck permanently invisible.
+                let fallback = win.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_secs(5));
+                    let _ = fallback.show();
+                });
             }
             Ok(())
         })

@@ -434,10 +434,7 @@ export function ResponseViewer({ response, requestId, requestName, copyFlash, on
 
   useEffect(() => {
     if (response) {
-      const contentType = getContentType(response.headers);
-      if (isPreviewable(contentType)) {
-        setTab('preview');
-      } else if (!response.body.trim()) {
+      if (!response.body.trim()) {
         setTab('headers');
       } else {
         setTab('body');

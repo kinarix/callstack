@@ -2,7 +2,11 @@
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: 1fr;
-  height: 100vh;
+  /* zoom (applied inline via --app-zoom) magnifies this element, so size it to
+     viewport ÷ zoom — after scaling it lands back at exactly 100vw × 100vh and
+     never spills past the window. */
+  width: calc(100vw / var(--app-zoom, 1));
+  height: calc(100vh / var(--app-zoom, 1));
   background: var(--bg-secondary);
   gap: 0;
   color: var(--text-primary);

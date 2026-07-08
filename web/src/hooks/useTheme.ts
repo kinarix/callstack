@@ -1,21 +1,33 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import type { Theme } from '../lib/types';
 
 const THEME_KEY = 'callstack-theme';
 
+export function readStoredTheme(): Theme {
+  const saved = localStorage.getItem(THEME_KEY) as Theme | null;
+  return saved || 'system';
+}
+
+function applyThemeToDom(t: Theme) {
+  const root = document.documentElement;
+  if (t === 'system') {
+    root.removeAttribute('data-theme');
+  } else {
+    root.setAttribute('data-theme', t);
+  }
+}
+
+/** Apply the persisted theme to the DOM. Call once at app boot so the theme is
+ *  active from launch and independent of whether the settings modal is open. */
+export function applyStoredTheme() {
+  applyThemeToDom(readStoredTheme());
+}
+
 export function useTheme() {
-  const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem(THEME_KEY) as Theme | null;
-    return saved || 'system';
-  });
+  const [theme, setTheme] = useState<Theme>(readStoredTheme);
 
   const applyTheme = useCallback((t: Theme) => {
-    const root = document.documentElement;
-    if (t === 'system') {
-      root.removeAttribute('data-theme');
-    } else {
-      root.setAttribute('data-theme', t);
-    }
+    applyThemeToDom(t);
     localStorage.setItem(THEME_KEY, t);
     setTheme(t);
   }, []);
@@ -31,10 +43,6 @@ export function useTheme() {
       return next;
     });
   }, [applyTheme]);
-
-  useEffect(() => {
-    applyTheme(theme);
-  }, []);
 
   return { theme, toggleTheme, applyTheme };
 }

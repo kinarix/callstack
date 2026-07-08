@@ -1,6 +1,6 @@
 [package]
 name = "callstack"
-version = "0.27.0"
+version = "0.29.0"
 description = "A modern REST API testing tool"
 authors = ["Kinarix"]
 edition = "2021"
@@ -24,19 +24,23 @@ tauri-plugin-single-instance = "2"
 tauri-plugin-window-state = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-reqwest = { version = "0.12", features = ["rustls-tls", "multipart", "cookies"], default-features = false }
+# rustls-tls-webpki-roots = bundled Mozilla roots (baseline, works on every OS);
+# rustls-tls-native-roots  = the OS trust store (macOS keychain / Windows store / Linux /etc/ssl),
+# which is what carries corporate TLS-inspection roots (e.g. Netskope). reqwest loads BOTH by default.
+reqwest = { version = "0.12", features = ["rustls-tls-webpki-roots", "rustls-tls-native-roots", "multipart", "cookies"], default-features = false }
 flate2 = "1"
-brotli = "3"
+brotli = "8"
 base64 = "0.22"
-rusqlite = { version = "0.39", features = ["bundled"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
 tiny_http = "0.12"
 tokio = { version = "1", features = ["full"] }
-tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
+# native roots so wss:// also works behind a TLS-inspecting proxy, cross-platform
+tokio-tungstenite = { version = "0.29", features = ["rustls-tls-native-roots"] }
 futures-util = "0.3"
 dirs = "6"
 rfd = "0.17"
 arboard = { version = "3", default-features = false }
-sysinfo = { version = "0.32", default-features = false, features = ["system"] }
+sysinfo = { version = "0.39", default-features = false, features = ["system"] }
 
 [profile.release]
 strip = true        # remove debug symbols from binary
