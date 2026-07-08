@@ -647,6 +647,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
             projectId: state.currentProjectId,
             useCookieJar: req.use_cookie_jar ?? true,
             timeoutSecs: httpTimeout ?? settings.httpTimeout,
+            verifyTls: settings.verifyTls,
           });
           const ms = Date.now() - stepStart;
           appendLog(`[pre-chain] ${req.method} ${url} → ${result.status} (${ms}ms)`);
@@ -860,6 +861,7 @@ export function RequestBuilder({ request, showExpandBtn, onExpand, executeRef, c
         projectId: state.currentProjectId,
         useCookieJar,
         timeoutSecs: httpTimeout ?? settings.httpTimeout,
+        verifyTls: settings.verifyTls,
       });
 
       // Run post-request script

@@ -13,6 +13,7 @@ interface SendOptions {
   projectId: number | null;
   useCookieJar: boolean;
   timeoutSecs: number;
+  verifyTls: boolean;
 }
 
 interface SendResult {

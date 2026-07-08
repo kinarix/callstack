@@ -27,6 +27,7 @@ export interface Settings {
   httpTimeout: number;
   formatOnSend: boolean;
   showSysApplet: boolean;
+  verifyTls: boolean;
 }
 
 export const DEFAULTS: Settings = {
@@ -49,6 +50,7 @@ export const DEFAULTS: Settings = {
   httpTimeout: 30,
   formatOnSend: true,
   showSysApplet: false,
+  verifyTls: true,
 };
 
 function loadSettings(): Settings {
@@ -77,6 +79,7 @@ function loadSettings(): Settings {
       httpTimeout: parsed.httpTimeout ?? DEFAULTS.httpTimeout,
       formatOnSend: parsed.formatOnSend ?? DEFAULTS.formatOnSend,
       showSysApplet: parsed.showSysApplet ?? DEFAULTS.showSysApplet,
+      verifyTls: parsed.verifyTls ?? DEFAULTS.verifyTls,
     };
   } catch {
     return DEFAULTS;
@@ -180,10 +183,18 @@ export function useSettings() {
     });
   }, []);
 
+  const setVerifyTls = useCallback((verifyTls: boolean) => {
+    setSettings((prev) => {
+      const next = { ...prev, verifyTls };
+      saveSettings(next);
+      return next;
+    });
+  }, []);
+
   const resetSettings = useCallback(() => {
     setSettings(DEFAULTS);
     saveSettings(DEFAULTS);
   }, []);
 
-  return { settings, setZoom, setShortcut, setResponseHistoryLimit, setReplayHitLimit, setReplayDefaultPort, setHttpTimeout, setFormatOnSend, setSysApplet, resetSettings };
+  return { settings, setZoom, setShortcut, setResponseHistoryLimit, setReplayHitLimit, setReplayDefaultPort, setHttpTimeout, setFormatOnSend, setSysApplet, setVerifyTls, resetSettings };
 }

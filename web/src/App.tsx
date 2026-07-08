@@ -31,7 +31,7 @@ function AppContent() {
   const { state, dispatch } = useApp();
   const { loadUserProjects, loadUserRequests, loadFolders, listEnvironments, listAutomations, listDataFiles, listReplays, createRequest, createProject, duplicateRequest, getLastResponse, updateEnvironmentSecrets, updateRequest } = useDatabase();
   const { listRunningReplays } = useReplayServer();
-  const { settings, setZoom, setShortcut, setResponseHistoryLimit, setReplayHitLimit, setReplayDefaultPort, setHttpTimeout, setFormatOnSend, setSysApplet, resetSettings } = useSettings();
+  const { settings, setZoom, setShortcut, setResponseHistoryLimit, setReplayHitLimit, setReplayDefaultPort, setHttpTimeout, setFormatOnSend, setSysApplet, setVerifyTls, resetSettings } = useSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // App-level so paused requests are captured and the replay opens even when
@@ -527,6 +527,7 @@ function AppContent() {
           onSetReplayDefaultPort={setReplayDefaultPort}
           onSetHttpTimeout={setHttpTimeout}
           onSetFormatOnSend={setFormatOnSend}
+          onSetVerifyTls={setVerifyTls}
           onSetSysApplet={setSysApplet}
           onReset={resetSettings}
           onResetAll={() => invoke('reset_all_data')}

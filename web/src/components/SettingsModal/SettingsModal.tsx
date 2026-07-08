@@ -172,6 +172,7 @@ interface SettingsModalProps {
   onSetReplayDefaultPort: (port: number) => void;
   onSetHttpTimeout: (secs: number) => void;
   onSetFormatOnSend: (v: boolean) => void;
+  onSetVerifyTls: (v: boolean) => void;
   onSetSysApplet?: (v: boolean) => void;
   onClearNavHistory?: () => void;
   onReset?: () => void;
@@ -256,7 +257,7 @@ function SystemTab({ settings, onSetSysApplet, sysStats, cpuHistory, ramHistory 
   );
 }
 
-export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetResponseHistoryLimit, onSetReplayHitLimit, onSetReplayDefaultPort, onSetHttpTimeout, onSetFormatOnSend, onSetSysApplet, onClearNavHistory, onReset, onResetAll, onClose }: Readonly<SettingsModalProps>) {
+export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetResponseHistoryLimit, onSetReplayHitLimit, onSetReplayDefaultPort, onSetHttpTimeout, onSetFormatOnSend, onSetVerifyTls, onSetSysApplet, onClearNavHistory, onReset, onResetAll, onClose }: Readonly<SettingsModalProps>) {
   const [tab, setTab] = useState<Tab>('general');
   const [recording, setRecording] = useState<keyof ActionShortcuts | null>(null);
   const [confirmingReset, setConfirmingReset] = useState(false);
@@ -539,28 +540,6 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetRespons
 
               <div className={styles.column}>
                 <section className={styles.section}>
-                  <div className={styles.sectionTitle}>Zoom</div>
-                  <div className={styles.sectionDesc}>
-                    Scale the entire UI for better readability.
-                  </div>
-                  <div className={styles.zoomOptions}>
-                    {ZOOM_OPTIONS.map(({ label, value }) => (
-                      <label key={value} className={`${styles.zoomOption} ${settings.zoom === value ? styles.zoomSelected : ''}`}>
-                        <input
-                          type="radio"
-                          name="zoom"
-                          value={value}
-                          checked={settings.zoom === value}
-                          onChange={() => onSetZoom(value)}
-                          className={styles.zoomRadio}
-                        />
-                        {label}
-                      </label>
-                    ))}
-                  </div>
-                </section>
-
-                <section className={styles.section}>
                   <div className={styles.sectionTitle}>HTTP Timeout</div>
                   <div className={styles.sectionDesc}>
                     Maximum time to wait for a response before cancelling the request.
@@ -589,6 +568,21 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetRespons
                       onChange={(e) => onSetFormatOnSend(e.target.checked)}
                     />
                     <span>Format body before send</span>
+                  </label>
+                </section>
+                <section className={styles.section}>
+                  <div className={styles.sectionTitle}>TLS verification</div>
+                  <div className={styles.sectionDesc}>
+                    Verify server certificates. Turn off for self-signed dev servers, or a
+                    TLS-inspecting proxy whose root CA isn't trusted by the system.
+                  </div>
+                  <label className={styles.toggleRow}>
+                    <input
+                      type="checkbox"
+                      checked={settings.verifyTls}
+                      onChange={(e) => onSetVerifyTls(e.target.checked)}
+                    />
+                    <span>Verify TLS certificates</span>
                   </label>
                 </section>
                 {onClearNavHistory && (
@@ -655,6 +649,30 @@ export function SettingsModal({ settings, onSetZoom, onSetShortcut, onSetRespons
                           value={value}
                           checked={accent === value}
                           onChange={() => applyAccent(value)}
+                          className={styles.zoomRadio}
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                </section>
+              </div>
+
+              <div className={styles.column}>
+                <section className={styles.section}>
+                  <div className={styles.sectionTitle}>Zoom</div>
+                  <div className={styles.sectionDesc}>
+                    Scale the entire UI for better readability.
+                  </div>
+                  <div className={styles.zoomOptions}>
+                    {ZOOM_OPTIONS.map(({ label, value }) => (
+                      <label key={value} className={`${styles.zoomOption} ${settings.zoom === value ? styles.zoomSelected : ''}`}>
+                        <input
+                          type="radio"
+                          name="zoom"
+                          value={value}
+                          checked={settings.zoom === value}
+                          onChange={() => onSetZoom(value)}
                           className={styles.zoomRadio}
                         />
                         {label}

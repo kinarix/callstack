@@ -96,6 +96,8 @@ export function useAutomationRunner() {
   const { settings } = useSettings();
   const httpTimeoutRef = useRef(settings.httpTimeout);
   httpTimeoutRef.current = settings.httpTimeout;
+  const verifyTlsRef = useRef(settings.verifyTls);
+  verifyTlsRef.current = settings.verifyTls;
 
   // Returns true if execution should stop (stop step hit or cancelled)
   const executeSteps = useCallback(async (
@@ -299,6 +301,7 @@ export function useAutomationRunner() {
             projectId: projectIdRef.current,
             useCookieJar: req.use_cookie_jar ?? true,
             timeoutSecs: httpTimeoutRef.current,
+            verifyTls: verifyTlsRef.current,
           });
 
           let testResults: import('../lib/types').TestResult[] = [];

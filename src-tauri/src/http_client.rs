@@ -71,6 +71,7 @@ async fn execute_request(
     follow_redirects: bool,
     attachments: Vec<FileAttachment>,
     timeout_secs: u64,
+    verify_tls: bool,
 ) -> Result<SendResponse, String> {
     let normalized = if url.starts_with("http://") || url.starts_with("https://") {
         url.clone()
@@ -101,6 +102,11 @@ async fn execute_request(
     } else {
         client_builder.timeout(std::time::Duration::from_secs(timeout_secs))
     };
+    // When verification is off, skip cert validation (self-signed dev servers, or a
+    // TLS-inspecting proxy whose root isn't trusted). Trust store still applies otherwise.
+    if !verify_tls {
+        client_builder = client_builder.danger_accept_invalid_certs(true);
+    }
     let client = client_builder
         .build()
         .map_err(|e| format!("Failed to create client: {e}"))?;
@@ -430,6 +436,7 @@ pub async fn send_request(
     project_id: Option<i64>,
     use_cookie_jar: bool,
     timeout_secs: u64,
+    verify_tls: Option<bool>,
 ) -> Result<SendResponse, String> {
     let url_str = url.clone();
 
@@ -453,6 +460,7 @@ pub async fn send_request(
 
     let handle = tokio::spawn(execute_request(
         method, url, params, headers, body, follow_redirects, attachments, timeout_secs,
+        verify_tls.unwrap_or(true),
     ));
     {
         let mut g = cancel_state.0.lock().await;

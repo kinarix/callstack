@@ -56,7 +56,16 @@
       "Bash(web/node_modules/.bin/tsc --noEmit --project web/tsconfig.json)",
       "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
       "Bash(grep -E \"\\\\.\\(ts|sql|rs\\)$\")",
-      "Bash(rtk proxy *)"
+      "Bash(rtk proxy *)",
+      "Bash(cargo run *)",
+      "Bash(env)",
+      "Bash(scutil --proxies)",
+      "Bash(openssl x509 *)",
+      "Read(//Users/harikrishnan/.cargo/**)",
+      "Bash(grep -n 'tls_built_in_root_certs\\\\|tls_built_in_webpki_certs\\\\|tls_built_in_native_certs' __TRACKED_VAR__/src/async_impl/client.rs)",
+      "Bash(grep -n 'tls_built_in_certs_webpki\\\\|tls_built_in_certs_native' __TRACKED_VAR__/src/async_impl/client.rs)",
+      "Bash(sed -n 680,720p __TRACKED_VAR__/src/async_impl/client.rs)",
+      "Bash(awk '/^\\\\[features\\\\]/{f=1} f&&/rustls-tls/{print} /^\\\\[dependencies\\\\]/{f=0}' __TRACKED_VAR__/Cargo.toml)"
     ]
   }
 }
