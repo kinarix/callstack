@@ -8,20 +8,22 @@ on:
       - 'docs/**'
 
 jobs:
-  publish-tauri:
-    permissions:
-      contents: write
+  build:
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest' # for Arm based macs (M1 and above).
+          - platform: 'macos-latest' # Arm based macs (M1 and above).
+            id: 'macos-arm'
             args: '--target aarch64-apple-darwin'
-          - platform: 'macos-latest' # for Intel based macs.
+          - platform: 'macos-latest' # Intel based macs.
+            id: 'macos-intel'
             args: '--target x86_64-apple-darwin'
-          - platform: 'ubuntu-22.04' # for Tauri v1 you could replace this with ubuntu-20.04.
+          - platform: 'ubuntu-22.04' # For Tauri v1 you could replace this with ubuntu-20.04.
+            id: 'linux'
             args: ''
           - platform: 'windows-latest'
+            id: 'windows'
             args: ''
 
     runs-on: ${{ matrix.platform }}
@@ -36,7 +38,7 @@ jobs:
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
+          # targets only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Cache Rust build artifacts
@@ -53,18 +55,67 @@ jobs:
       - name: install frontend dependencies
         working-directory: web
         run: npm install
-      
+
       - name: Build frontend
         working-directory: web
         run: npm run build
 
+      # Build the app bundles only. No release is created here — release
+      # publishing happens once, cross-repo, in the `release` job below.
       - uses: tauri-apps/tauri-action@v0
+        id: tauri
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: Callstack-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
-          releaseName: 'Callstack v__VERSION__'
-          releaseBody: |
+          args: ${{ matrix.args }}
+
+      - name: Collect artifact paths
+        id: files
+        shell: bash
+        run: |
+          {
+            echo "list<<EOF"
+            echo '${{ steps.tauri.outputs.artifactPaths }}' | jq -r '.[]'
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload bundles
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-${{ matrix.id }}
+          path: ${{ steps.files.outputs.list }}
+          if-no-files-found: error
+          retention-days: 1
+
+  # Publish a single draft release with all platform assets to the public
+  # releases repo. Runs once (not per-matrix) to avoid duplicate draft races.
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get app version
+        id: ver
+        run: echo "version=$(jq -r .version src-tauri/tauri.conf.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Download all bundles
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Publish draft release to callstack-releases
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: kinarix/callstack-releases
+          token: ${{ secrets.RELEASES_TOKEN }}
+          tag_name: Callstack-v${{ steps.ver.outputs.version }}
+          name: Callstack v${{ steps.ver.outputs.version }}
+          draft: true
+          prerelease: false
+          files: artifacts/**/*
+          body: |
             ## Install
 
             **macOS (recommended)**: Install via Homebrew for automatic setup:
@@ -76,6 +127,3 @@ jobs:
             **All platforms**: Download from the assets below.
 
             To uninstall: `brew uninstall --zap callstack` (macOS)
-          releaseDraft: true
-          prerelease: false
-          args: ${{ matrix.args }}

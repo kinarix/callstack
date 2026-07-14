@@ -55,17 +55,17 @@ jobs:
 
             on_arm do
               sha256 "AARCH64_SHA_PLACEHOLDER"
-              url "https://github.com/kinarix/callstack/releases/download/TAG_PLACEHOLDER/Callstack_VERSION_PLACEHOLDER_aarch64.dmg"
+              url "https://github.com/kinarix/callstack-releases/releases/download/TAG_PLACEHOLDER/Callstack_VERSION_PLACEHOLDER_aarch64.dmg"
             end
 
             on_intel do
               sha256 "X64_SHA_PLACEHOLDER"
-              url "https://github.com/kinarix/callstack/releases/download/TAG_PLACEHOLDER/Callstack_VERSION_PLACEHOLDER_x64.dmg"
+              url "https://github.com/kinarix/callstack-releases/releases/download/TAG_PLACEHOLDER/Callstack_VERSION_PLACEHOLDER_x64.dmg"
             end
 
             name "Callstack"
             desc "Desktop REST API testing tool"
-            homepage "https://github.com/kinarix/callstack"
+            homepage "https://github.com/kinarix/callstack-releases"
 
             app "Callstack.app"
 

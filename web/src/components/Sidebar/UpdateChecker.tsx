@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
 import styles from './UpdateChecker.module.css';
 
-const REPO = 'kinarix/callstack';
+const REPO = 'kinarix/callstack-releases';
 
 function semverIsNewer(latest: string, current: string): boolean {
   const a = latest.replace(/^v/, '').split('.').map(Number);

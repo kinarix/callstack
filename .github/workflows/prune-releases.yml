@@ -1,13 +1,11 @@
 name: Prune old releases
 
 on:
-  workflow_run:
-    workflows: ["Build"]
-    types: [completed]
+  release:
+    types: [published]
 
 jobs:
   prune:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
