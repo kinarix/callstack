@@ -22,7 +22,7 @@ jobs:
       - name: Publish docs to callstack-releases (gh-pages)
         uses: peaceiris/actions-gh-pages@v4
         with:
-          personal_token: ${{ secrets.RELEASES_TOKEN }}
+          personal_token: ${{ secrets.RELEASE_TOKEN }}
           external_repository: kinarix/callstack-releases
           publish_branch: gh-pages
           publish_dir: ./docs
