@@ -1,0 +1,32 @@
+name: 'Deploy Docs'
+
+# Canonical docs live in this (private) repo. On docs changes we publish the
+# built docs/ folder to the public callstack-releases repo's gh-pages branch,
+# which serves the site at callstack.kinarix.com. Swap the trigger to
+# `release: [published]` if you'd rather publish only at release time.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'schema.json'
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publish docs to callstack-releases (gh-pages)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          personal_token: ${{ secrets.RELEASES_TOKEN }}
+          external_repository: kinarix/callstack-releases
+          publish_branch: gh-pages
+          publish_dir: ./docs
+          cname: callstack.kinarix.com
+          # peaceiris adds .nojekyll by default; keep_files not needed since
+          # the branch is dedicated to the docs site.
+          commit_message: 'docs: publish from ${{ github.sha }}'
